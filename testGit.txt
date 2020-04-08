@@ -1,4 +1,4 @@
 I am test git handsome boy!
 learnling GIT ready up! rewrite txt
-t has a mutable index called stage.
+has a mutable index called stage.
 Git tracks changes
