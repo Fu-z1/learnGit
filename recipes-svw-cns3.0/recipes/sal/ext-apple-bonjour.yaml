@@ -1,0 +1,39 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "Apache License 2.0"
+   PKG_VERSION: "878.1.1"
+   PKG_NAME: "mDNSResponder"
+   PKG_PATCH_VERSION: ""
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "Application, Library"
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/ext.apple.bonjour.git
+   dir: ext.apple.bonjour
+   tag: mqb_sop1_eu-1.145.2
+
+buildVars: [AUTOCONF_HOST]
+
+multiPackage:
+   ? ""
+   :  buildScript: buildenvBuildAll
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-apple-bonjour" \
+                  -p "emmc.sal" \
+                  -o "sal:ext-apple-bonjour " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

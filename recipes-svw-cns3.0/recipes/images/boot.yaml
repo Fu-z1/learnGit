@@ -1,0 +1,907 @@
+inherit: [packing-image, packing-device, bl2]
+
+# CNS3.0 Hyperflash Layout (32MB)
+#
+#  0x0000 0000
+#    Offset   | Size | Sector |  Name
+#   -------------------------------------------
+#   0x00 0000 | 0,25 |   0    |  bootparam_sa0
+#   0x04 0000 | 0,25 |   1    |  bl2-zr3
+#   0x08 0000 | 0,50 |  2-3   |  u-boot-elf (BL33)
+#
+# 0x0010 0000 NORMAL (Offset: 1MB, Size: 10MB)
+#    Offset   | Size | Sector |  Name
+#   -------------------------------------------
+#   0x00 0000 | 0,25 |   4    |  cert_header_sa6
+#   0x04 0000 | 0,25 |   5    |  bl31-zr3 (BL31)
+#   0x08 0000 | 0,50 |  6-7   |  tee-zr3  (BL32)
+#   0x10 0000 | 2,50 |  8-17  |  tsd.carcom.image.mib3 (SCP_BL2)
+#   0x38 0000 | 0,25 |   18   |  devicetree (BL333)
+#   0x3c 0000 | 4,00 | 19-34  |  linux (BL332)
+#   0x7c 0000 | 2,25 | 35-43  |  cpio (BL334)
+#
+# 0x00B0 0000 SWUPDATE1 (Offset: 11 MB, Size: 10MB)
+#    Offset   | Size | Sector |  Name
+#   -------------------------------------------
+#   0x00 0000 | 0,25 |   44   |  cert_header_sa6
+#   0x04 0000 | 0,25 |   45   |  bl31-zr3
+#   0x08 0000 | 0,50 | 46-47  |  tee-zr3
+#   0x10 0000 | 2,50 | 48-57  |  tsd.carcom.image.mib3
+#   0x38 0000 | 0,25 |   58   |  devicetree
+#   0x3c 0000 | 4,00 | 59-74  |  linux
+#   0x7c 0000 | 2,25 | 75-83  |  cpio
+#
+# 0x0150 0000 SWUPDATE2 (Offset: 21 MB, Size: 10MB)
+#    Offset   | Size | Sector |  Name
+#   -------------------------------------------
+#   0x00 0000 | 0,25 |   84   |  cert_header_sa6
+#   0x04 0000 | 0,25 |   85   |  bl31-zr3
+#   0x08 0000 | 0,50 | 86-87  |  tee-zr3
+#   0x10 0000 | 2,50 | 88-97  |  tsd.carcom.image.mib3
+#   0x38 0000 | 0,25 |   98   |  devicetree
+#   0x3c 0000 | 4,00 | 99-114 |  linux
+#   0x7c 0000 | 2,25 | 115-123|  cpio
+#
+# Hypervisor: add to end of flash to keep the layout above stable and in
+# sync with MIB3 to minimize changes needed in BL2
+#
+# 0x0010 0000 NORMAL (Offset: 1MB, Size: 10MB)
+#    Offset   | Size | Sector |  Name
+#   -------------------------------------------
+#  0x1e4 0000 | 0,75 | 124-127  |  hypervisor
+
+privateEnvironment:
+   # hyperflash offsets
+   BOOTDEVICE_BOOTPARAM_OFFSET: "0x000000"
+   BOOTDEVICE_BL2_OFFSET: "0x040000"
+   BOOTDEVICE_UBOOT_OFFSET: "0x080000"
+   # base addresses
+   BOOTDEVICE_NORMAL_BASE: "0x0100000"
+   BOOTDEVICE_SWDL_A_BASE: "0x0B00000"
+   BOOTDEVICE_SWDL_B_BASE: "0x1500000"
+   # offsets to the block base
+   BOOTDEVICE_CERTHEADER_OFFSET: "0x000000"
+   BOOTDEVICE_BL31_OFFSET: "0x040000"
+   BOOTDEVICE_TEE_OFFSET: "0x080000"
+   BOOTDEVICE_CARCOM_OFFSET: "0x100000"
+   BOOTDEVICE_DTB_OFFSET: "0x380000"
+   BOOTDEVICE_LINUX_OFFSET: "0x3c0000"
+   BOOTDEVICE_CPIO_OFFSET: "0x7c0000"
+   BOOTDEVICE_HYPERVISOR_OFFSET: "0x1F00000"
+
+   SWUPDEVICE_PACKAGENAME: "boot"
+
+   KEY_SET: $(getUniqueFeatureFromList,${VARIANTS},SW_SECUREBOOT_KEY_SET)
+
+depends:
+  - system::bsp::ext-arm-trusted-firmware
+  - system::tsd-minimonitor
+
+checkoutSCM:
+  - if: $(ne,${SIGNING_EXTERNAL:-"False"},"True")
+    scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/4dummy_keys.git
+    dir: keypairs
+    branch: master
+
+  - if: $(eq,${SIGNING_EXTERNAL:-"False"},"True")
+    scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/jpcc.dummyrootkeyparis.cns3.csample
+    dir: keypairs
+    tag: cns3_rootkey-1.0.0
+
+
+# IPL can load a lz4 compressed binary which needs a special header
+# consisting of: <4Bytes magic number><4Bytes compressed size><4Bytes original size>
+buildTools: [lz4, signingtool]
+buildVars: [KEY_SET, SIGNING_EXTERNAL]
+buildVarsWeak: [SIGNING_SERVER_IP, SIGNING_SESSIONTOKEN]
+#To sign SW with tsd.hsm.tool and cryptoserver (secret keys), set the following flags:
+
+#SW-Type              |  X-SW   | sec-Sw | sec-sw(dummy keys)
+#===========================================================
+#SIGNING_EXTERNAL     | -/False |  True  |   -/False
+#SIGNING_SERVER_IP    |    -    | needed |    -
+
+# SIGNING_SERVER_IP="IP of PC, which executes tsd.hsm.tool"
+buildScript: |
+   # create a content certificate
+   # param: $1 - file
+   # param: $2 - FlashAddr
+   # param: $3 - RamAddr
+   # param: $4 - sb_private.pem file
+   # param: $5 - [out] content cert file
+   bl2_create_cert() {
+      # The cert_sb_content util must be executed from it's toplevel
+      # folder!!
+      if [ ! -e signingtool ] ; then
+         mkdir -p signingtool
+         rsync -a ${BOB_TOOL_PATHS[signingtool]}/ signingtool -r
+      fi
+
+      printf '../%s 0x%016x 0x%016x' $1 $3 $2 > imgTblAddr
+      cat > sb_cnt_certf.cfg <<EOF
+   [CNT-CFG]
+   cert-keypair = $4
+   cert-keypair-pwd =
+   images-table = ../imgTblAddr
+   nvcounter-id = 1
+   nvcounter-val = 0
+   cert-pkg = ../$5
+   hash-out = cnt_hash.bin
+   EOF
+      pushd signingtool
+      if [ "${SIGNING_EXTERNAL:-"False"}" == "True" ]; then
+         echo "SIGNING_SERVER_IP: "${SIGNING_SERVER_IP}
+         python3 bin/cert_sb_content_util.py ../sb_cnt_certf.cfg --host "$SIGNING_SERVER_IP"   --port 8008  --sessiontoken "Jenkins" --sb_keyname 5
+      else
+         python3 bin/cert_sb_content_util.py ../sb_cnt_certf.cfg
+      fi
+      popd
+   }
+
+   # create the sb key cert for bootparam_sa0
+   # $1: root_key dir
+   # $2: sb_key_pub
+   # $3: sb_key_cert [out]
+   bl2_create_key_cert() {
+      # The cert_sb_content util must be executed from it's toplevel
+      # folder!!
+      if [ ! -e signingtool ] ; then
+         mkdir -p signingtool
+         rsync -a ${BOB_TOOL_PATHS[signingtool]}/ signingtool -r
+      fi
+
+      cat > sb_key_cert.cfg <<EOF
+   [KEY-CFG]
+   cert-keypair1 = $1/root_priv_1.pem
+   cert-keypair2 = $1/root_priv_2.pem
+   cert-keypair3 = $1/root_priv_3.pem
+   cert-keypair4 = $1/root_priv_4.pem
+   cert-keypair-pwd1 =
+   cert-keypair-pwd2 =
+   cert-keypair-pwd3 =
+   cert-keypair-pwd4 =
+   hbk-id = 2
+   nvcounter-id = 1
+   nvcounter-val = 0
+   next-cert-pubkey = $2
+   cert-pkg = ../$3
+   hash-out1 = root_hash1.bin
+   hash-out2 = root_hash2.bin
+   hash-out3 = root_hash3.bin
+   hash-out4 = root_hash4.bin
+   EOF
+
+   # enable this for only 1 root key.
+   #      cat > sb_key_cert.cfg <<EOF
+   #   [KEY-CFG]
+   #   cert-keypair = $1/root_priv_1.pem
+   #   cert-keypair-pwd =
+   #   hbk-id = 2
+   #   nvcounter-id = 1
+   #   nvcounter-val = 0
+   #   next-cert-pubkey = $2
+   #   cert-pkg = ../$3
+   #   EOF
+      pushd signingtool
+      if [ "${SIGNING_EXTERNAL:-"False"}" == "True" ]; then
+         echo "SIGNING_SERVER_IP: "${SIGNING_SERVER_IP}
+         python3 bin/cert_key_util.py ../sb_key_cert.cfg --host "$SIGNING_SERVER_IP" --port 8008 --sessiontoken "Jenkins"  --root_key1 1 --root_key2 2 --root_key3 3 --root_key4 4
+      else
+         python3 bin/cert_key_util.py ../sb_key_cert.cfg
+      fi
+      popd
+
+   }
+
+   # write the start-address file for image-create too
+   # $1: address
+   # $2: outputfile
+   bl2_flash_address_file() {
+      python3 -c "exec(\"\
+   import sys\\n\
+   with open(sys.argv[1], 'bw') as output:\\n\
+      output.write((int(sys.argv[2]).to_bytes(8,'little')))\")" $2 $1
+   }
+
+   # create bootparam file
+   # $1: param1
+   bl2_create_bootparam() {
+      # bootrom param -> set AUTHSELR Bit
+      python3 -c "exec(\"\
+   import sys\\n\
+   with open(sys.argv[1], 'bw') as output:\\n\
+      output.write((int(sys.argv[2]).to_bytes(4,'little')))\\n\
+      output.write((int(sys.argv[3]).to_bytes(4,'little')))\")" bootrom_param.bin $((0x00000100)) $1
+   }
+
+   # symbols
+   _copy_symbols()
+   {
+      for DIR in $(cd $1; find . -type d -name ".debug") ; do
+         DEST="$2/$DIR"
+         mkdir -p $DEST
+         rsync -a $1/$DIR/ $DEST
+      done
+   }
+
+   copy_symbols()
+   {
+      if [[ ${CONFIG_NO_SYMBOLS_TGZ:-0} == 0 ]]; then
+        rm -rf symbols
+        for key in ${!BOB_DEP_PATHS[@]}; do
+           symdir="${key//::/_}"
+           if [[ -e ${BOB_DEP_PATHS[$key]}/symbols.tgz ]] ; then
+              mkdir -p $symdir
+              cp ${BOB_DEP_PATHS[$key]}/symbols.tgz $symdir
+           else
+              mkdir -p $symdir
+              symbolsTmp=$(mktemp -d)
+              _copy_symbols ${BOB_DEP_PATHS[$key]} $symbolsTmp
+              tar -C $symbolsTmp -cvzf $symdir/symbols.tgz .
+              rm -rf $symbolsTmp
+           fi
+        done
+      fi
+   }
+
+   if [ "${SIGNING_EXTERNAL:-"False"}" == "True" ]; then
+      if [ -z "$SIGNING_SERVER_IP" ]; then
+          echo "Please set signingserver IP!"
+          exit 1
+      fi
+   fi
+
+multiPackage:
+   base:
+      # in the boot base we have bl2 + bootparam
+      buildScript: |
+         readelf -h ${BOB_DEP_PATHS[system::bsp::ext-arm-trusted-firmware]}/.debug/bl2-zr3.elf | grep "Entry point address" | awk '{print $NF}' > bl2.entry
+         cp ${BOB_DEP_PATHS[system::bsp::ext-arm-trusted-firmware]}/bl2.bin .
+
+         # Normally we'd need to create different bootparam-files for M3 1.0 and M3 1.1 cause of rom code changes.
+         # But since we don't want to do secure Boot on M3 1.0 we simply take the files from
+         # ext-arm-trusted-firmware. Otherwise we'd have to create 2048bit keys and sign with these keys.
+         cp ${BOB_DEP_PATHS[system::bsp::ext-arm-trusted-firmware]}/bootparam_sa0.bin bootparam_sa0_v1.bin
+
+         cp -anu ${BOB_DEP_PATHS['system::tsd-minimonitor']}/flash/* .
+
+      multiPackage:
+         ? ""
+         :  buildVars:
+              - BOOTDEVICE_BL2_OFFSET
+              - BOOTDEVICE_BOOTPARAM_OFFSET
+              - SWUPDEVICE_PACKAGENAME
+            buildTools: [imagecreate]
+            buildScript: |
+               mkdir -p _flashcontainer/flash
+               rm -f bl2.cert minimon.cert
+
+               # bl2
+               bl2_create_cert bl2.bin $((${BOOTDEVICE_BL2_OFFSET})) $(< bl2.entry) $1/keypairs/sb_keys/sb_private.pem bl2.cert
+
+               # key certificate
+               bl2_create_key_cert $1/keypairs/root_keys $1/keypairs/sb_keys/sb_public.pem sb_key.cert
+
+               # we need different bootparam file depending on the
+               # HW-Version. Starting with HW_VERSION 12 octaflash is
+               # used.
+               createBootparam() {
+                  bl2_create_bootparam $1
+
+                  # build the bootparam file with renesas image create tool
+                  # create input file.
+               cat > cert_header_image_SA0_v2.txt <<EOF
+               bootrom_param.bin          00000000
+               bl2.cert                   00000080
+               sb_key.cert                00000B00
+               EOF
+
+                  bin_create cert_header_image_SA0_v2.txt $2
+
+               }
+               createBootparam $((0xffffffff)) bootparam_sa0_v2_hyper.bin
+               createBootparam $((0x00000004)) bootparam_sa0_v2_octa.bin
+
+               mkdir -p .debug
+               pushd .debug
+               copy_symbols
+               popd
+
+               # minimonitor
+               # M3 1.0:
+               # we don't have a signed M3 1.0. just use the minimon
+               # without certificates for v1
+               mv minimon.mot minimon_v1.mot
+
+               # M3 1.1:
+               dd if=minimon.bin of=minimon_stripped.bin bs=1 skip=7168
+               bl2_pad minimon_stripped.bin
+               bl2_create_cert minimon_stripped.bin 0xaabbccdd 0xe6302000 $1/keypairs/sb_keys/sb_private.pem minimon.cert
+               srec="bootrom_param.bin -binary -offset 0xe6300400 -data-only"
+               srec+=" minimon.cert -binary -offset 0xe6300480 -data-only"
+               srec+=" sb_key.cert  -binary -offset 0xe6300f00 -data-only"
+               srec+=" minimon_stripped.bin  -binary -offset 0xe6302000 -data-only"
+               srec+=" -o minimon_v2.mot -address-length=4 -line-length=46 -disable=data-count -header=sec_scif_loader.srec -execution-start-address=0xe6300000"
+               srec_cat $srec
+
+            packageScript: |
+               buildSwupImage --packageName="bl2" \
+                  --file $1/bl2.bin \
+                  --requiredBy "{\"Packages\":[{\"PackageName\":\"${SWUPDEVICE_PACKAGENAME}.bootparam\",\"Flags\":\"Selected\"}]}" \
+                  -U Offset="$((${BOOTDEVICE_BL2_OFFSET}))"
+
+               buildSwupImage --packageName="bootparam" \
+                  --file $1/bootparam_sa0_v1.bin \
+                  --hw_index "(1,5)" \
+                  --requiredBy "{\"Packages\":[{\"PackageName\":\"${SWUPDEVICE_PACKAGENAME}.bl2\",\"Flags\":\"Selected\"}]}" \
+                  -U Offset="$((${BOOTDEVICE_BOOTPARAM_OFFSET}))"
+
+               buildSwupImage --packageName="bootparam" \
+                  --file $1/bootparam_sa0_v2_hyper.bin \
+                  --hw_index "(6,10)" \
+                  --requiredBy "{\"Packages\":[{\"PackageName\":\"${SWUPDEVICE_PACKAGENAME}.bl2\",\"Flags\":\"Selected\"}]}" \
+                  -U Offset="$((${BOOTDEVICE_BOOTPARAM_OFFSET}))"
+
+               buildSwupImage --packageName="bootparam" \
+                  --file $1/bootparam_sa0_v2_octa.bin \
+                  --hw_index "(11,42)" \
+                  --requiredBy "{\"Packages\":[{\"PackageName\":\"${SWUPDEVICE_PACKAGENAME}.bl2\",\"Flags\":\"Selected\"}]}" \
+                  -U Offset="$((${BOOTDEVICE_BOOTPARAM_OFFSET}))"
+
+               # Flashcontainer
+               mkdir -p _flashcontainer/flash
+               cp -anu $1/minimon*.mot _flashcontainer/flash
+               cp -anu $1/bl2.bin _flashcontainer/flash
+               cp -anu $1/bootparam_sa0*.bin _flashcontainer/flash
+
+               (
+                  # layout.txt: boot image
+                  printf "%8.f\t%s\t%s\n" "$((${BOOTDEVICE_BOOTPARAM_OFFSET}))" "BOOTUP" "bootparam_sa0_0.bin"
+                  printf "%8.f\t%s\t%s\n" "$((${BOOTDEVICE_BL2_OFFSET}))" "BOOTUP" "bl2.bin"
+               ) >> _flashcontainer/flash/layout.txt
+
+               cp $1/.debug . -r
+
+         secure-debug:
+            depends:
+              - images::boot-base
+
+            checkoutScript: |
+               cp ${BOB_DEP_PATHS[images::boot-base]}/bootparam_sa0_v2_hyper.bin bootparam_sa0_hyper.bin
+               cp ${BOB_DEP_PATHS[images::boot-base]}/bootparam_sa0_v2_octa.bin bootparam_sa0_octa.bin
+
+            buildTools: [imagecreate]
+            buildVars: [SECURE_DEBUG_SOC_ID]
+            buildScript: |
+               cp ${BOB_DEP_PATHS[images::boot-base]}/_flashcontainer/flash/bootparam_sa0_v2.bin bootparam_sa0.bin
+
+               # The cert_sb_content util must be executed from it's toplevel
+               # folder!!
+               if [ ! -e signingtool ] ; then
+                 mkdir -p signingtool
+               fi
+               rsync -a ${BOB_TOOL_PATHS[signingtool]}/ signingtool -r -c
+
+
+               # create a binary soc id
+               python3 -c "exec(\"\
+               import sys\\n\
+               with open(sys.argv[2], 'bw') as output:\\n\
+                  for i in (sys.argv[1]).split('-'):\\n\
+                     output.write(int(i,16).to_bytes(1,'little'))\")" $SECURE_DEBUG_SOC_ID soc_id.bin
+
+               # 1) creare the Two Level Primary Debug Certificate
+               cat > sd_prim.cfg <<EOF
+               [PRIM-DBG-CFG]
+               cert-keypair1 = $1/keypairs/root_keys/root_priv_1.pem
+               cert-keypair2 = $1/keypairs/root_keys/root_priv_2.pem
+               cert-keypair3 = $1/keypairs/root_keys/root_priv_3.pem
+               cert-keypair4 = $1/keypairs/root_keys/root_priv_4.pem
+               cert-keypair-pwd1 =
+               cert-keypair-pwd2 =
+               cert-keypair-pwd3 =
+               cert-keypair-pwd4 =
+               lcs = 2
+               debug-mask = 0x080007FF
+               hbk-id = 2
+               next-cert-pubkey = $1/keypairs/sb_keys/sb_public.pem
+               cert-pkg = ../prim.cert
+               hash-out1 = root_hash1.bin
+               hash-out2 = root_hash2.bin
+               hash-out3 = root_hash3.bin
+               hash-out4 = root_hash4.bin
+               EOF
+
+               pushd signingtool
+               if [ "${SIGNING_EXTERNAL:-"False"}" == "True" ]; then
+                  echo "SIGNING_SERVER_IP: "${SIGNING_SERVER_IP}
+                  echo "Sessiontoken: "$SIGNING_SESSIONTOKEN
+                  if [ "$KEY_SET" == "mib3-mqb-sop1"  ]; then
+                     python3 bin/cert_dbg_primary_util.py ../sd_prim.cfg \
+                        --host "$SIGNING_SERVER_IP" --port 5000 \
+                        --sessiontoken "$SIGNING_SESSIONTOKEN" \
+                        --tlscert client_cert.pem --tlskey client_key.pem \
+                        --keygroup sign-mib3 --root_keyname1 $KEY_SET-1 \
+                        --root_keyname2 $KEY_SET-2 --root_keyname3 $KEY_SET-3 \
+                        --root_keyname4 $KEY_SET-4
+                  else
+                     echo "unable to find key"
+                     exit 1
+                  fi
+               else
+                  python3 bin/cert_dbg_primary_util.py ../sd_prim.cfg
+               fi
+               popd
+
+               # 2) create the Two-level Secure Secondary Debug Certificate
+               cat > sd_sec.cfg <<EOF
+               [SCND-DBG-CFG]
+               cert-keypair = $1/keypairs/sb_keys/sb_private.pem
+               cert-keypair-pwd =
+               soc-id = ../soc_id.bin
+               debug-mask = 0x080007FF
+               prim-dbg-cert-pkg = ../prim.cert
+               cert-pkg = ../sec_dbg.cert
+               hash-out = cnt_hash.bin
+               EOF
+
+               pushd signingtool
+               if [ "${SIGNING_EXTERNAL:-"False"}" == "True" ]; then
+                  echo "SIGNING_SERVER_IP: "${SIGNING_SERVER_IP}
+                  echo "Sessiontoken: "$SIGNING_SESSIONTOKEN
+                  if [ "$KEY_SET" == "mib3-mqb-sop1"  ]; then
+                     python3 bin/cert_dbg_secondary_util.py ../sd_sec.cfg \
+                        --host "$SIGNING_SERVER_IP" --port 5000 \
+                        --sessiontoken "$SIGNING_SESSIONTOKEN" \
+                        --tlscert client_cert.pem --tlskey client_key.pem \
+                        --keygroup sign-mib3 --dbg_keyname $KEY_SET-SB
+                  else
+                     echo "unable to find key"
+                     exit 1
+                  fi
+               else
+                  python3 bin/cert_dbg_secondary_util.py ../sd_sec.cfg
+               fi
+               popd
+
+               # 3) add the sec_dbg.cert to bootparam fileg
+               # adress from memory map type 2 for secure debu
+               # certificarte seams to be wrong in ASOM-C17-028_R-CarGen3_Security_Users_Manual_v0p3.pdf
+               createDbg() {
+                  cat > cert_header_image_SA0_dbg.txt <<EOF
+                  $1                         00000000
+                  sec_dbg.cert               00001C00
+                  EOF
+
+                  ./signingtool/bin/bin_create cert_header_image_SA0_dbg.txt $2
+               }
+               createDbg $1/bootparam_sa0_hyper.bin bootparam_sa0_dbg_hyper.bin
+               createDbg $1/bootparam_sa0_octa.bin bootparam_sa0_dbg_octa.bin
+
+            packageScript: |
+               cp $1/bootparam_sa0_dbg_*.bin .
+
+   ? ""
+   :  depends:
+        - system::ext-optee::os-target
+        - system::tsd-config-devicetree-swupdate
+        - system::tsd-config-devicetree-normal
+        - carcom::tsd-carcom-mib3-image
+        - name: system::bsp::ext-u-boot-target
+          if: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_BUS_MONITOR,0),0,1)"
+
+      buildTools: [imagecreate]
+      buildScript: |
+         build() {
+            rm -f *.cert
+            mkdir -p _flashcontainer/flash
+
+
+            if [[ ${UBOOT} == "1" ]]; then
+
+               cp ${BOB_DEP_PATHS[system::bsp::ext-u-boot-target]}/u-boot.bin .
+               cp ${BOB_DEP_PATHS[system::bsp::ext-u-boot-target]}/u-boot.bin.lz4 .
+               readelf -h ${BOB_DEP_PATHS[system::bsp::ext-u-boot-target]}/.debug/u-boot | grep "Entry point address" | awk '{print $NF}' > u-boot.entry
+               bl2_create_cert u-boot.bin $((${BOOTDEVICE_UBOOT_OFFSET})) $(< u-boot.entry) $1/keypairs/sb_keys/sb_private.pem uboot.cert
+               bl2_flash_address_file $((${BOOTDEVICE_UBOOT_OFFSET})) uboot_start_address.bin
+            fi
+
+            # carcom
+            cp ${BOB_DEP_PATHS[carcom::tsd-carcom-mib3-image]}/tsd.carcom.image.mib3.bin .
+            cp ${BOB_DEP_PATHS[carcom::tsd-carcom-mib3-image]}/tsd.carcom.image.mib3.bin.lz4 .
+            readelf -h ${BOB_DEP_PATHS[carcom::tsd-carcom-mib3-image]}/.debug/tsd.carcom.image.mib3.elf | grep "Entry point address" | awk '{print $NF}' > carcom.entry
+            bl2_create_cert tsd.carcom.image.mib3.bin $((${BOOTDEVICE_CARCOM_OFFSET})) $(< carcom.entry) $1/keypairs/sb_keys/sb_private.pem carcom.cert
+            bl2_flash_address_file $((${BOOTDEVICE_CARCOM_OFFSET})) carcom_start_address.bin
+
+            # bl31
+            readelf -h ${BOB_DEP_PATHS[system::bsp::ext-arm-trusted-firmware]}/.debug/bl31-zr3.elf | grep "Entry point address" | awk '{print $NF}' > bl31.entry
+            cp ${BOB_DEP_PATHS[system::bsp::ext-arm-trusted-firmware]}/bl31.bin .
+            cp ${BOB_DEP_PATHS[system::bsp::ext-arm-trusted-firmware]}/bl31.bin.lz4 .
+
+            bl2_create_cert bl31.bin $((${BOOTDEVICE_BL31_OFFSET})) $(< bl31.entry) $1/keypairs/sb_keys/sb_private.pem bl31.cert
+            bl2_flash_address_file $((${BOOTDEVICE_BL31_OFFSET})) bl31_start_address.bin
+
+            if [[ "${DEVICE_NAME}" == "normal" && ${CONFIG_HYPERVISOR:-1} == 1 ]]; then
+                 # coqoshv  use linux.cert, replace the position of  native linux
+                 #Offset should - BOOTDEVICE_NORMAL_BASE  just like native linux
+                 bl2_create_cert coqoshv.img $((${BOOTDEVICE_HYPERVISOR_OFFSET} - ${BOOTDEVICE_NORMAL_BASE})) 0x9c000000 $1/keypairs/sb_keys/sb_private.pem linux.cert
+                 bl2_flash_address_file $((${BOOTDEVICE_HYPERVISOR_OFFSET} - ${BOOTDEVICE_NORMAL_BASE})) linux_start_address.bin
+
+                 bl2_create_cert vmlinux.bin $((${BOOTDEVICE_LINUX_OFFSET})) 0x48080000 $1/keypairs/sb_keys/sb_private.pem linux_kernel.cert
+                 bl2_flash_address_file $((${BOOTDEVICE_LINUX_OFFSET})) linux_kernel_start_address.bin
+            else
+                 # linux
+                 bl2_create_cert vmlinux.bin $((${BOOTDEVICE_LINUX_OFFSET})) 0x48080000 $1/keypairs/sb_keys/sb_private.pem linux.cert
+                 bl2_flash_address_file $((${BOOTDEVICE_LINUX_OFFSET})) linux_start_address.bin
+            fi
+            
+            # min image
+            bl2_create_cert initrd $((${BOOTDEVICE_CPIO_OFFSET})) 0x49300000 $1/keypairs/sb_keys/sb_private.pem initrd.cert
+            bl2_flash_address_file $((${BOOTDEVICE_CPIO_OFFSET})) initrd_start_address.bin
+
+            # optee
+            cp ${BOB_DEP_PATHS[system::ext-optee::os-target]}/tee.bin .
+            cp ${BOB_DEP_PATHS[system::ext-optee::os-target]}/tee.bin.lz4 .
+            readelf -h ${BOB_DEP_PATHS[system::ext-optee::os-target]}/.debug/tee.elf | grep "Entry point address" | awk '{print $NF}' > tee.entry
+            bl2_flash_address_file $((${BOOTDEVICE_TEE_OFFSET})) tee_start_address.bin
+            bl2_create_cert tee.bin $((${BOOTDEVICE_TEE_OFFSET})) $(< tee.entry) $1/keypairs/sb_keys/sb_private.pem tee.cert
+
+            # we have multiple varinats in one Updatecontainer with variant
+            # dependend devicetree. Since the devicetree is part of the cert
+            # header we have to make one certheader per devicetree
+            bl2_flash_address_file $((${BOOTDEVICE_DTB_OFFSET})) dtb_start_address.bin
+            if [[ "${DEVICE_NAME}" == "normal" && ${CONFIG_HYPERVISOR:-1} == 1 ]]; then
+               bl2_flash_address_file 6 bl33_image_num.bin
+            else
+               bl2_flash_address_file 5 bl33_image_num.bin
+            fi
+
+            if [[ "${DEVICE_NAME}" == "normal" ]]; then
+               cp ${BOB_DEP_PATHS[system::tsd-config-devicetree-normal]}/Image*dtb .
+               cp ${BOB_DEP_PATHS[system::tsd-config-devicetree-normal]}/Image*dtb.lz4 .
+               cp ${BOB_DEP_PATHS[system::tsd-config-devicetree-normal]}/dt_variants.txt .
+            else
+               cp ${BOB_DEP_PATHS[system::tsd-config-devicetree-swupdate]}/Image*dtb .
+               cp ${BOB_DEP_PATHS[system::tsd-config-devicetree-swupdate]}/Image*dtb.lz4 .
+               cp ${BOB_DEP_PATHS[system::tsd-config-devicetree-swupdate]}/dt_variants.txt .
+            fi
+
+            # build the certheader file
+            cat > cert_header_image_SA6.txt <<EOF
+         bl33_image_num.bin         00000000
+         bl31_start_address.bin     00000008
+         tee_start_address.bin      00000018
+         carcom_start_address.bin   00000038
+         linux_start_address.bin    00000048
+         dtb_start_address.bin      00000058
+         initrd_start_address.bin   00000068
+
+         bl31.cert                  00000400
+         tee.cert                   00000C00
+         carcom.cert                00001C00
+         linux.cert                 00002400
+         dtb.cert                   00002C00
+         initrd.cert                00003400
+         EOF
+
+            if [[ ${UBOOT} == "1" ]]; then
+               echo "uboot_start_address.bin    00000028" >> cert_header_image_SA6.txt
+               echo "uboot.cert                 00001400" >> cert_header_image_SA6.txt
+            fi
+
+            if [[ "${DEVICE_NAME}" == "normal" && ${CONFIG_HYPERVISOR:-1} == 1 ]]; then
+              echo "linux_kernel_start_address.bin 00000078" >> cert_header_image_SA6.txt
+              echo "linux_kernel.cert              00003c00" >> cert_header_image_SA6.txt
+            fi
+
+            while read LINE; do
+               rm -f dtb.cert dtb.1.cert
+               IFS=" " read -ra DT <<< "$LINE"
+               HW_VERSION=${DT[0]}
+               HW_VARIANT=${DT[1]}
+               SYSTEM_VARIANT=${DT[2]}
+               INFO_STRING=${DT[3]}
+               FILE=${DT[4]}
+
+               # HW_VERSION <=5 -> M3 1.0 -> use generic cert_header
+               if [ "$HW_VERSION" -le "5" ]; then
+                  continue
+               fi
+              
+               bl2_create_cert ${FILE} $((${BOOTDEVICE_DTB_OFFSET})) 0x4a600000 $1/keypairs/sb_keys/sb_private.pem dtb.cert
+
+               bin_create cert_header_image_SA6.txt  ${DEVICE_NAME}.cert_header_sa6_${HW_VERSION}_${HW_VARIANT}.bin
+
+            done < dt_variants.txt
+         }
+
+         cp ${BOB_DEP_PATHS[system::bsp::ext-arm-trusted-firmware]}/cert_header_sa6.bin cert_header_sa6_v1.bin
+
+         mkdir -p .debug
+         pushd .debug
+         copy_symbols
+         popd
+
+      packageScript: |
+         mkdir -p _flashcontainer/flash
+
+         if [[ "${DEVICE_NAME}" == "normal" ]]; then
+            OFFSET=${BOOTDEVICE_NORMAL_BASE}
+            REQUIREDBY="{\"Packages\":[{\"PackageName\":\"boot.normal.*\",\"Flags\":\"Selected\"}]}"
+         else
+            cp $1/_flashcontainer/flash/* _flashcontainer/flash
+            OFFSET=${BOOTDEVICE_SWDL_A_BASE}
+            OFFSET2=${BOOTDEVICE_SWDL_B_BASE}
+            if [[ "${DEVICE_NAME}" == "swupdate" ]]; then
+               REQUIREDBY="{\"Packages\":[{\"PackageName\":\"boot.swupdate.*\",\"Flags\":\"Selected\"},{\"PackageName\":\"swupdate.image\",\"Flags\":\"Selected\"}]}"
+            fi
+         fi
+
+         buildSwupImage --packageName="${DEVICE_NAME}.bl31" \
+            --file $1/bl31.bin.lz4 \
+            --requiredBy "${REQUIREDBY}" \
+            -U Offset="$((${OFFSET} + ${BOOTDEVICE_BL31_OFFSET}))" \
+            ${OFFSET2:+-U Offset2="$((${OFFSET2} + ${BOOTDEVICE_BL31_OFFSET}))"}
+
+         buildSwupImage --packageName="${DEVICE_NAME}.carcom" \
+            --file $1/tsd.carcom.image.mib3.bin.lz4 \
+            --requiredBy "${REQUIREDBY}" \
+            -U Offset="$((${BOOTDEVICE_CARCOM_OFFSET} + ${OFFSET}))" \
+            ${OFFSET2:+-U Offset2="$((${OFFSET2} + ${BOOTDEVICE_CARCOM_OFFSET}))"}
+
+         buildSwupImage --packageName="${DEVICE_NAME}.optee" \
+            --file $1/tee.bin.lz4 \
+            --requiredBy "${REQUIREDBY}" \
+            -U Offset="$((${OFFSET} + ${BOOTDEVICE_TEE_OFFSET}))" \
+            ${OFFSET2:+-U Offset2="$((${OFFSET2} + ${BOOTDEVICE_TEE_OFFSET}))"}
+         
+         if [[ "${DEVICE_NAME}" == "normal" && ${CONFIG_HYPERVISOR:-1} == 1 ]]; then
+             buildSwupImage --packageName="${DEVICE_NAME}.coqoshv" \
+                 --file $1/coqoshv.img.lz4 \
+                 --requiredBy "${REQUIREDBY}" \
+                 -U Offset="$((${BOOTDEVICE_HYPERVISOR_OFFSET} + 0))" \
+                 -U DEVICE="flash"
+         fi
+         buildSwupImage --packageName="${DEVICE_NAME}.linux" \
+            --file $1/vmlinux.bin.lz4 \
+            --requiredBy "${REQUIREDBY}" \
+            -U Offset="$(($OFFSET + ${BOOTDEVICE_LINUX_OFFSET}))" \
+            ${OFFSET2:+-U Offset2="$(($OFFSET2 + ${BOOTDEVICE_LINUX_OFFSET}))"}
+
+         buildSwupImage --packageName="${DEVICE_NAME}.initrd" \
+            --file $1/initrd.lz4 \
+            --requiredBy "${REQUIREDBY}" \
+            -U Offset="$((${OFFSET} + ${BOOTDEVICE_CPIO_OFFSET}))" \
+            ${OFFSET2:+-U Offset2="$((${OFFSET2} + ${BOOTDEVICE_CPIO_OFFSET}))"}
+
+
+         if [[ ${UBOOT} == "1" ]]; then
+            buildSwupImage --packageName="u-boot" \
+              --file $1/u-boot.bin.lz4 \
+              -U Offset="$((${BOOTDEVICE_UBOOT_OFFSET}))"
+
+            cp -nu $1/u-boot.bin.lz4 _flashcontainer/flash
+         fi
+
+         while read LINE; do
+            rm -f dtb.cert dtb.1.cert
+            IFS=" " read -ra DT <<< "$LINE"
+            HW_VERSION=${DT[0]}
+            HW_VARIANT=${DT[1]}
+            SYSTEM_VARIANT=${DT[2]}
+            INFO_STRING=${DT[3]}
+            FILE=${DT[4]}
+
+            buildSwupImage --packageName="${DEVICE_NAME}.devicetree" \
+               --file "$1/${FILE}.lz4" \
+               --hw_index "${HW_VERSION}" \
+               --variantIdx "${SYSTEM_VARIANT}" \
+               --variant "${INFO_STRING}" \
+               --requiredBy "${REQUIREDBY}" \
+               -U Offset="$((${OFFSET} + ${BOOTDEVICE_DTB_OFFSET}))" \
+               ${OFFSET2:+-U Offset2="$((${OFFSET2} + ${BOOTDEVICE_DTB_OFFSET}))"}
+
+            if [ "$HW_VERSION" -gt "5" ]; then
+               # cert_header
+               buildSwupImage --packageName="${DEVICE_NAME}.certheader" \
+                  --file $1/${DEVICE_NAME}.cert_header_sa6_${HW_VERSION}_${HW_VARIANT}.bin \
+                  --hw_index "${HW_VERSION}" \
+                  --variantIdx "${SYSTEM_VARIANT}" \
+                  --variant "${INFO_STRING}" \
+                  --requiredBy "${REQUIREDBY}" \
+                  -U Offset="$((${BOOTDEVICE_CERTHEADER_OFFSET}+${OFFSET}))" \
+                  ${OFFSET2:+-U Offset2="$((${OFFSET2} + ${BOOTDEVICE_CERTHEADER_OFFSET}))"}
+
+               # move certheader to flashcontainer
+               cp -anu $1/${DEVICE_NAME}.cert_header_sa6_${HW_VERSION}_${HW_VARIANT}.bin _flashcontainer/flash/${DEVICE_NAME}.cert_header_sa6_${HW_VERSION}_${HW_VARIANT}.bin
+            else
+               if [ ! -e .bootdevice_${SYSTEM_VARIANT} ]; then
+                  # build a cert header for M3 1.0
+                  buildSwupImage --packageName="${DEVICE_NAME}.certheader" \
+                        --file $1/cert_header_sa6_v1.bin \
+                        --hw_index "(1,5)" \
+                        --variantIdx "${SYSTEM_VARIANT}" \
+                        --variant "${INFO_STRING}" \
+                        --requiredBy "${REQUIREDBY}" \
+                        -U Offset="$((${BOOTDEVICE_CERTHEADER_OFFSET}+${OFFSET}))" \
+                        ${OFFSET2:+-U Offset2="$((${OFFSET2} + ${BOOTDEVICE_CERTHEADER_OFFSET}))"}
+                  touch .bootdevice_${SYSTEM_VARIANT}
+               fi
+            fi
+            # move devicetree to flashcontainer
+            cp -anu $1/${FILE}.lz4 _flashcontainer/flash/${DEVICE_NAME}.${FILE}.lz4
+         done < $1/dt_variants.txt
+
+
+         # Flashcontainer
+         # move files to flashcontainer
+         cp -anu $1/cert_header_sa6_v1.bin _flashcontainer/flash/${DEVICE_NAME}.cert_header_sa6_v1.bin
+         cp -anu $1/tsd.carcom.image.mib3.bin.lz4 _flashcontainer/flash/${DEVICE_NAME}.tsd.carcom.image.mib3.bin.lz4
+         cp -anu $1/tee.bin.lz4 _flashcontainer/flash/${DEVICE_NAME}.tee.bin.lz4
+         cp -anu $1/bl31.bin.lz4 _flashcontainer/flash/${DEVICE_NAME}.bl31.bin.lz4
+         cp -anu $1/vmlinux.bin.lz4 _flashcontainer/flash/${DEVICE_NAME}.vmlinux.bin.lz4
+         if [[ "${DEVICE_NAME}" == "normal" && ${CONFIG_HYPERVISOR:-1} == 1 ]]; then
+            cp -anu $1/coqoshv.img.lz4 _flashcontainer/flash/${DEVICE_NAME}.coqoshv.img.lz4
+         fi
+         cp -anu $1/initrd.lz4 _flashcontainer/flash/${DEVICE_NAME}.initrd.lz4
+
+         createLayoutTxt()
+         {
+            # layout.txt: normal image
+            (
+               printf "%8.f\t%s\t%s\n" "$(($1 + ${BOOTDEVICE_CERTHEADER_OFFSET}))" "BOOTUP" "${DEVICE_NAME}.cert_header_sa6_0_0.bin"
+               printf "%8.f\t%s\t%s\n" "$(($1 + ${BOOTDEVICE_BL31_OFFSET}))" "BOOTUP" "${DEVICE_NAME}.bl31.bin.lz4"
+               printf "%8.f\t%s\t%s\n" "$(($1 + ${BOOTDEVICE_TEE_OFFSET}))" "BOOTUP" "${DEVICE_NAME}.tee.bin.lz4"
+               printf "%8.f\t%s\t%s\n" "$(($1 + ${BOOTDEVICE_CARCOM_OFFSET}))" "BOOTUP" "${DEVICE_NAME}.tsd.carcom.image.mib3.bin.lz4"
+               printf "%8.f\t%s\t%s\n" "$(($1 + ${BOOTDEVICE_DTB_OFFSET}))" "INITRD" "${DEVICE_NAME}.Image-${KERNEL_DTB##*/}_0_0.dtb.lz4"
+               printf "%8.f\t%s\t%s\n" "$(($1 + ${BOOTDEVICE_LINUX_OFFSET}))" "INITRD" "${DEVICE_NAME}.vmlinux.bin.lz4"
+               printf "%8.f\t%s\t%s\n" "$(($1 + ${BOOTDEVICE_CPIO_OFFSET}))" "INITRD" "$DEVICE_NAME.initrd.lz4"
+            ) >> _flashcontainer/flash/layout.txt
+            if [[ "${DEVICE_NAME}" == "normal" && ${CONFIG_HYPERVISOR:-1} == 1 ]]; then
+               (
+                  printf "%8.f\t%s\t%s\n" "${BOOTDEVICE_HYPERVISOR_OFFSET}" "INITRD" "${DEVICE_NAME}.coqoshv.img.lz4"
+               )  >> _flashcontainer/flash/layout.txt
+            fi
+         }
+
+         createLayoutTxt $OFFSET
+         if [ ! -z ${OFFSET2+x} ]; then
+            createLayoutTxt ${OFFSET2}
+         fi
+         if [ "${UBOOT}" == "1" ]; then
+            printf "%8.f\t%s\t%s\n" "$((${BOOTDEVICE_UBOOT_OFFSET}))" "BOOTUP" "u-boot.bin.lz4" >> _flashcontainer/flash/layout.txt
+         fi
+
+         cp $1/.debug . -r
+
+
+      buildVars:
+        - BOOTDEVICE_BOOTPARAM_OFFSET
+        - BOOTDEVICE_BL2_OFFSET
+        - BOOTDEVICE_UBOOT_OFFSET
+        - BOOTDEVICE_CERTHEADER_OFFSET
+        - BOOTDEVICE_BL31_OFFSET
+        - BOOTDEVICE_TEE_OFFSET
+        - BOOTDEVICE_LINUX_OFFSET
+        - BOOTDEVICE_HYPERVISOR_OFFSET
+        - BOOTDEVICE_DTB_OFFSET
+        - BOOTDEVICE_CPIO_OFFSET
+        - BOOTDEVICE_CARCOM_OFFSET
+        - BOOTDEVICE_NORMAL_BASE
+        - BOOTDEVICE_SWDL_A_BASE
+        - BOOTDEVICE_SWDL_B_BASE
+        - DEVICE_NAME
+        - KERNEL_DTB
+        - UBOOT
+        - CONFIG_HYPERVISOR
+
+      multiPackage:
+         normal:
+            depends:
+              - system::bsp::ext-linux-image-normal
+              -
+                if: "$(eq,${CONFIG_HYPERVISOR:-1},1)"
+                name: system::bsp::ext-opensynergy-target
+              - images::min
+
+            privateEnvironment:
+               DEVICE_NAME: "normal"
+               UBOOT: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_BUS_MONITOR,0),0,1)"
+               KERNEL_DTB: '$(if-then-else,$(eq,${CONFIG_HYPERVISOR:-1},1),${HYPERVISOR_DTB},${NORMAL_DTB})'
+
+            buildScript: |
+               cp ${BOB_DEP_PATHS[system::bsp::ext-linux-image-normal]}/vmlinux.bin .
+               cp ${BOB_DEP_PATHS[system::bsp::ext-linux-image-normal]}/vmlinux.bin.lz4 .
+               if [[ ${CONFIG_HYPERVISOR:-1} == 1 ]]; then
+                  cp ${BOB_DEP_PATHS[system::bsp::ext-opensynergy-target]}/coqoshv.img.lz4 .
+                  cp ${BOB_DEP_PATHS[system::bsp::ext-opensynergy-target]}/coqoshv.img .
+               fi
+               cp ${BOB_DEP_PATHS[images::min]}/initrd .
+               cp ${BOB_DEP_PATHS[images::min]}/initrd.lz4 .
+
+               build $1
+
+         swupdate:
+            depends:
+              - system::bsp::ext-linux-image-swupdate
+              - images::swupdate-min
+
+            privateEnvironment:
+               DEVICE_NAME: "swupdate"
+               UBOOT: "0"
+               KERNEL_DTB: "${NORMAL_DTB}"
+
+            buildScript: |
+               cp ${BOB_DEP_PATHS[system::bsp::ext-linux-image-swupdate]}/vmlinux.bin .
+               cp ${BOB_DEP_PATHS[system::bsp::ext-linux-image-swupdate]}/vmlinux.bin.lz4 .
+               cp ${BOB_DEP_PATHS[images::swupdate-min]}/initrd .
+               cp ${BOB_DEP_PATHS[images::swupdate-min]}/initrd.lz4 .
+
+               build $1
+
+               # Boardupdater needs uncompressed files for u-boot boot
+               cp ${BOB_DEP_PATHS[system::bsp::ext-linux-image-swupdate]}/_flashcontainer/flash/* _flashcontainer/flash
+               cp ${BOB_DEP_PATHS[system::tsd-config-devicetree-swupdate]}/Image*.dtb _flashcontainer/flash
+               cp ${BOB_DEP_PATHS[images::swupdate-min]}/_flashcontainer/flash/* _flashcontainer/flash
+   device:
+      depends:
+        - images::boot-base
+        - images::boot-normal
+        - images::boot-swupdate
+        - name: images::boot-base-secure-debug
+          if: "$(ne,${SECURE_DEBUG_SOC_ID:-0},0)"
+
+      buildVars: [KERNEL_DTB]
+      buildVarsWeak: [PACKAGE_VERSION]
+      buildScript: |
+         rm -rf UpdateContainer
+         buildSwupDevice --packageVersion ${PACKAGE_VERSION} \
+            --packageType="device" --packageName="boot" \
+            --outputDir UpdateContainer \
+            --diagnosticAddress=0 \
+            --deviceType=MU \
+            --module ${BOB_DEP_PATHS[images::boot-base]}/_swupdata \
+            --module ${BOB_DEP_PATHS[images::boot-normal]}/_swupdata \
+            --module ${BOB_DEP_PATHS[images::boot-swupdate]}/_swupdata
+
+         cp -r ${BOB_DEP_PATHS[images::boot-base]}/_flashcontainer .
+         cp -r ${BOB_DEP_PATHS[images::boot-normal]}/_flashcontainer .
+         cp -r ${BOB_DEP_PATHS[images::boot-swupdate]}/_flashcontainer .
+
+         # cat all layout.txt's to a big one
+         cat ${BOB_DEP_PATHS[images::boot-base]}/_flashcontainer/flash/layout.txt \
+            ${BOB_DEP_PATHS[images::boot-normal]}/_flashcontainer/flash/layout.txt \
+            ${BOB_DEP_PATHS[images::boot-swupdate]}/_flashcontainer/flash/layout.txt  > _flashcontainer/flash/layout.txt
+
+         pushd _flashcontainer
+         # layout.txt: check that all files named in layout.txt are present
+         while read ADDR TYPE FILE; do
+            if [[ "${FILE}" == *"_0_0.dtb.lz4" ]]; then
+               [ -n $(find flash -maxdepth 1 -type f -iname "*Image*_*_*.dtb.lz4" -print -quit) ] && continue
+            fi
+            if [[ "${FILE}" = *"cert_header_sa6_0_0.bin" ]]; then
+               [ -n $(find flash -maxdepth 1 -type f -iname "*cert_header_sa6_*_*.bin" -print -quit) ] && continue
+            fi
+            if [[ "${FILE}" = *"bootparam_sa0_0.bin" ]]; then
+               [ -n $(find flash -maxdepth 1 -type f -iname "*bootparam_sa0_*.bin" -print -quit) ] && continue
+            fi
+
+            [ -e flash/${FILE} ] && continue
+            echo "File '$FILE' named in layout.txt is missing. Aborting!" >&2
+            exit 1
+         done < flash/layout.txt
+         popd
+
+         # symbols
+         mkdir -p .debug
+         pushd .debug
+         copy_symbols
+         popd
+
+      packageScript: |
+         rsync -a --delete $1/UpdateContainer .
+         rsync -a --delete $1/_flashcontainer .
+
+         cp $1/.debug . -R

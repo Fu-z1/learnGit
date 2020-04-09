@@ -1,0 +1,40 @@
+inherit: [buildenv, werror, packing-module]
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-drivers-dev
+  - system::system-lifecycle::tsd-systemstate-guard-api-mib3-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - system::tsd-watchdog-mib3-api-dev
+
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - system::tsd-common-target
+      - system::system-lifecycle::tsd-systemstate-guard-api-mib3-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd-mib3-root.git
+   dir: tsd.mib3.root
+   #tag: mqb_sop1_eu-3.12.0
+   branch: main/svw_cns3.0_1520_dev
+
+buildScript: |
+   buildenvBuildModules tsd.mib3.root
+
+packageScript: |
+   buildenvPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "root-mib3" \
+      -p "emmc.system" \
+      -o "system:tsd-root-mib3 " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps:
+  - "*-target"

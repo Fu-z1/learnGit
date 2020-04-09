@@ -1,0 +1,50 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-guid-dev
+  - system::tsd-common-daemon-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-server-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.hmi.language.service.mib3.git
+    dir: tsd.hmi.language.service.mib3
+    tag: mqb_sop1_eu-1.5.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule \
+            -n "hmi-language-service-mib3" \
+            -p "emmc.hmi" \
+            -o "hmi:tsd-hmi-language-service-mib3 " -f $d   \
+            -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+      inherit:
+        - packing-module
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget
+

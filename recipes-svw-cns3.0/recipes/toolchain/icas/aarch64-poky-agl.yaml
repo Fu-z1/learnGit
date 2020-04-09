@@ -1,0 +1,127 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   TOOLCHAIN_NAME: "mebicas3-es12-180621-poky-agl-glibc-x86_64-mebicas3-image-aarch64-toolchain-3.0.0+snapshot.sh"
+   TOOLCHAIN_HASH: "fe33f0ce4fb58eef2d11e71f6a3a983e0bd1f8d0"
+   URL:            "${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/icas3/"
+   ARM_ROOTFS:     "aarch64-agl-linux"
+
+shared: True
+checkoutSCM:
+   - scm: url
+     url: ${URL}${TOOLCHAIN_NAME}
+     digestSHA1: ${TOOLCHAIN_HASH}
+
+
+buildScript: |
+   ln -sf $1/*sh
+   ln -sf $1/*tar.gz
+   #cp $1/*sh .
+
+
+packageVars: [TOOLCHAIN_NAME, ARM_ROOTFS]
+packageScript: |
+   #ln -sf $1/*sh
+   cp $1/*sh .
+   chmod +x ${TOOLCHAIN_NAME}
+   if [ ! -e sysroots ] ; then
+      #fetchToolchain
+      echo $PWD
+      ./$TOOLCHAIN_NAME -y -d .
+      rm $TOOLCHAIN_NAME
+      rm -rf sysroots/*/usr/src
+      sed -i -e 's/_GLIBCXX_DEPRECATED//' sysroots/aarch64-agl-linux/usr/include/c++/*/backward/auto_ptr.h
+      rm -f sysroots/x86_64-aglsdk-linux/usr/bin/pkg-config
+   fi
+   # add sysroot for compiler and linker
+   mkdir -p bin
+   for i in ld ld.bfd; do
+      cat > bin/aarch64-agl-linux-$i <<EOF
+   #!/bin/sh
+   \${0%/*}/../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-$i --sysroot=\${0%/*}/../sysroots/$ARM_ROOTFS "\$@"
+   EOF
+      chmod a+x bin/aarch64-agl-linux-$i
+   done
+
+   for i in gcc g++ cpp ; do
+      cat > bin/aarch64-agl-linux-$i <<EOF
+   #!/bin/sh
+   \${COMPILER_PREFIX:- }  \${0%/*}/../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-$i --sysroot=\${0%/*}/../sysroots/$ARM_ROOTFS "\$@"
+   EOF
+      chmod a+x bin/aarch64-agl-linux-$i
+   done
+
+   # just symlink the rest
+   pushd bin
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-ar
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-as
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-gdb
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-nm
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-objcopy
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-objdump
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-ranlib
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-readelf
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-strip
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-size
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/aarch64-agl-linux/aarch64-agl-linux-strings
+   ln -sf ../sysroots/x86_64-aglsdk-linux/usr/bin/pkg-config
+   popd
+
+   pushd sysroots/aarch64-agl-linux/usr/lib
+   ln -sf libEGL.so      libEGL.so.1
+   ln -sf libGLESv2.so   libGLESv2.so.2
+   popd
+
+   # create toolchain file
+   cat > linux_linux-poky_armv8.toolchain <<EOF
+   # tell cmake the name of our target system
+   set (CMAKE_SYSTEM_NAME "Linux")
+
+   # set compiler
+   SET(CMAKE_C_COMPILER   "aarch64-agl-linux-gcc")
+   SET(CMAKE_CXX_COMPILER "aarch64-agl-linux-g++")
+
+   # set root path
+   SET(CMAKE_SYSROOT "${PWD}/sysroots/${ARM_ROOTFS}")
+
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY CACHE INTERNAL "")
+   EOF
+
+provideVars:
+   # architecture
+   ARCH: arm64
+   AUTOCONF_HOST:   "aarch64-agl-linux"
+   AUTOCONF_TARGET: "aarch64-agl-linux"
+   CROSS_COMPILE: aarch64-agl-linux-
+   TARGET_TYPE: "embedded"
+   TARGET_ENVIRONMENT: "icas"
+
+   # compiler settings
+   CMAKE_TARGET_FILE: "armv8_linux.cmake"
+   CMAKE_TOOLCHAIN_FILE: "../linux_linux-poky_armv8.toolchain"
+   CFLAGS: " -O2 -pipe -g -feliminate-unused-debug-types -ffunction-sections -fdata-sections  "
+   CXXFLAGS: "-std=c++11 -O2 -pipe -g -feliminate-unused-debug-types  -DMIB3_MQB=1 -DMIB3_VW=1 -DMIB3_MQB_VW=1 -DMIB3_MQB_SE=0 -DMIB3_MQB37_VW=0 -DMIB3_MQB37_SE=0 -ffunction-sections -fdata-sections  "
+   LDFLAGS: "-Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed"
+   CPPFLAGS: ""
+   LIBDIR: lib64
+   SYSROOT: "../sysroots/${ARM_ROOTFS}"
+
+   # tools
+   AR:     "aarch64-agl-linux-ar"
+   AS:     "aarch64-agl-linux-as"
+   CC:     "aarch64-agl-linux-gcc"
+   CPP:    "aarch64-agl-linux-cpp"
+   CXX:    "aarch64-agl-linux-g++"
+   GDB:    "aarch64-agl-linux-gdb"
+   LD:     "aarch64-agl-linux-ld"
+   OBJCPY: "aarch64-agl-linux-objcopy"
+   OBJDMP: "aarch64-agl-linux-objdump"
+   RANLIB: "aarch64-agl-linux-ranlib"
+   STRIP:  "aarch64-agl-linux-strip"
+
+provideTools:
+   toolchain:
+      path: "bin"

@@ -1,0 +1,28 @@
+inherit: [make, packing-module]
+
+depends:
+  - name: toolchain::aarch64-linux-gnu
+    use: [tools, environment]
+    forward: true
+    if: "$(eq,${SOC_FAMILY},r8a7795)"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:sys/tsd.minimonitor.cns.git
+    branch: main/svw_cns3.0_dev
+
+buildVars: [AS, CC, LD, OBJCPY, OBJDMP]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   mkdir -p obj output
+   make MAIN=PCC RCAR_DRAM_SPLIT=2 BOOT=SCIF AArch=64 OBJCOPY=$OBJCPY OBJDMP=$OBJDMP
+   rsync -a --delete AArch64_output/* output
+   cp AArch64_output/AArch64_Gen3_H3_M3_Scif_MiniMon_V5.02.mot output/minimon.mot
+   cp AArch64_output/AArch64_Gen3_H3_M3_Scif_MiniMon_V5.02.bin output/minimon.bin
+
+packageScript: |
+   mkdir -p flash
+   rsync -a --delete $1/output/*.mot flash
+   rsync -a --delete $1/output/*.bin flash
+

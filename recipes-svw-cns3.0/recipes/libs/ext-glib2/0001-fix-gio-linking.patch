@@ -1,0 +1,24 @@
+diff --git a/gio/Makefile.am b/gio/Makefile.am
+index 67b7fa9..bd1a775 100644
+--- a/gio/Makefile.am
++++ b/gio/Makefile.am
+@@ -949,6 +949,7 @@ gio_SOURCES = \
+ 	$(NULL)
+ gio_LDADD = libgio-2.0.la 				\
+ 	$(top_builddir)/gobject/libgobject-2.0.la	\
++        $(top_builddir)/gmodule/libgmodule-2.0.la 	\
+ 	$(top_builddir)/glib/libglib-2.0.la		\
+ 	$(NULL)
+ 
+diff --git a/gio/Makefile.in b/gio/Makefile.in
+index ccb8957..d5b08cb 100644
+--- a/gio/Makefile.in
++++ b/gio/Makefile.in
+@@ -641,6 +641,7 @@ am_gio_OBJECTS = gio-tool.$(OBJEXT) gio-tool-cat.$(OBJEXT) \
+ gio_OBJECTS = $(am_gio_OBJECTS)
+ gio_DEPENDENCIES = libgio-2.0.la \
+ 	$(top_builddir)/gobject/libgobject-2.0.la \
++        $(top_builddir)/gmodule/libgmodule-2.0.la \
+ 	$(top_builddir)/glib/libglib-2.0.la $(am__DEPENDENCIES_1)
+ am_gio_querymodules_OBJECTS = gio-querymodules.$(OBJEXT) \
+ 	giomodule-priv.$(OBJEXT)

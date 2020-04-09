@@ -1,0 +1,104 @@
+inherit: [autotools, packing-module]
+
+depends:
+  - libs::ext-bzip2-dev
+  - libs::ext-openssl-dev
+  - libs::ext-zlib-dev
+  - system::ext-libarchive-dev
+  - system::ext-libbsd-dev
+  - use: []
+    depends:
+      - libs::ext-bzip2-target
+      - libs::ext-openssl-target
+      - libs::ext-zlib-target
+      - system::ext-libarchive-target
+      - system::ext-libbsd-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.pkg.git
+   tag: 2.0.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [LIBDIR, AUTOCONF_TARGET]
+buildScript: |
+   rm -rf *
+   rsync --exclude=".git*" -a --delete $1/ ${PWD}
+   autoreconf -i
+   # fix readelf language error
+   export LANG=C
+   # fix missing directory
+   mkdir -p external/libelf
+
+   export LIBS="-lssl"
+   export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${BOB_DEP_PATHS['libs::ext-openssl-dev']}/usr/$LIBDIR"
+   if [[ "$AUTOCONF_TARGET" == *aarch64* ]]; then
+      # libelf crosscompilation is broken. In external/libelf/native-elf-format 'cc' is used to determine the
+      # ELF_ARCH. This is not working in sandbox, cause there is no cc. Remove generation of the header and add
+      # a suitable header for AARCH64.
+      rm external/libelf/native-elf-format
+      ln -s /bin/true external/libelf/native-elf-format
+      echo "#define ELFTC_CLASS     ELFCLASS64" > external/libelf/native-elf-format.h
+      echo "#define ELFTC_ARCH      EM_AARCH64" >> external/libelf/native-elf-format.h
+      echo "#define ELFTC_BYTEORDER ELFDATA2LSB" >> external/libelf/native-elf-format.h
+      export CFLAGS="-DEM_AARCH64=183 -g"
+   else
+      export CFLAGS="-g"
+   fi
+   autotoolsBuild ${PWD} ac_cv_search_sarchive_read_open=\"-larchive -lssl -lcrypto\"
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l pkg -l pkgclient -I include \
+         -d ext.bzip2 -d ext.openssl -d ext.zlib -d ext.libarchive -d ext.libbsd ext.pkg
+      provideDeps:
+        - libs::ext-bzip2-dev
+        - libs::ext-openssl-dev
+        - libs::ext-zlib-dev
+        - system::ext-libarchive-dev
+        - system::ext-libbsd-dev
+
+   # needed for creating update container
+   host-tools:
+      buildTools: [host-toolchain]
+      buildScript: |
+         cd dist
+         mkdir -p usr/$LIBDIR
+         for d in ${@:2}; do
+            if [[ -d "$d/usr/$LIBDIR" ]] ; then
+               cp -rf $d/usr/$LIBDIR/* usr/$LIBDIR
+            fi
+         done
+         chmod -R u+w .
+
+      packageScript: |
+         autotoolsPackageTarget
+         mkdir -p usr/bin usr/$LIBDIR
+
+         # pkg tool is linked shared. make pkg a script setting up the
+         # environment
+         cat > usr/bin/pkg <<EOF
+         #!/bin/sh
+         LD_LIBRARY_PATH=\${0%/*}/../${LIBDIR} \${0%/*}/../sbin/pkg "\$@"
+         EOF
+         chmod +x usr/bin/pkg
+      provideTools:
+         pkg: usr/bin
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         shopt -s extglob
+         rm -rf usr/!(lib|lib64)
+         rm -rf etc
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-pkg" \
+            -p "emmc.system" \
+            -o "system:ext-pkg " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

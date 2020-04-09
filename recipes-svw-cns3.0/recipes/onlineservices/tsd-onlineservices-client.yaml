@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - system::tsd-common-dev
+ - onlineservices::tsd-onlineservices-framework-dev
+ - onlineservices::tsd-onlineservices-backendcomcore-dev
+ - onlineservices::tsd-onlineservices-eso-clientsideswitching-dev
+ - basic-services::rsi-library::tsd-rsi-client-dev
+ - connectivity::networking::tsd-networking-api-dev
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - basic-services::rsi-library::tsd-rsi-client-target
+    - connectivity::networking::tsd-networking-api-target
+    - onlineservices::tsd-onlineservices-framework-target
+    - onlineservices::tsd-onlineservices-backendcomcore-target
+    - onlineservices::tsd-onlineservices-eso-clientsideswitching-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.client.git
+   dir: tsd.onlineservices.client
+   tag: mqb_sop1_eu-1.144.0
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget 
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-client" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-client " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.onlineservices.client.app.ExampleApplication
+      packageScript: buildenvPackageTarget

@@ -1,0 +1,138 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+privateEnvironment:
+   PYTHONDONTWRITEBYTECODE: "1"
+depends:
+  - libs::ext-protobuf-dev
+  - libs::ext-protobuf-python
+  - navigation::tsd-nav-sdk-common-api-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+     - libs::ext-protobuf-target
+     - system::tsd-common-target
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.configdata.git
+      dir: tsd.nav.configdata
+      tag: cns3.0_152.0.20191213       #navi-src (src of the navigation)
+
+
+buildTools: [protoc]
+#buildVars: [TARGET_TYPE]
+
+buildScript: |
+   build()
+   {
+    if [ -d "$1/tsd.nav.configdata/.git" ]; then
+        # get the real version from git
+        pushd $1/tsd.nav.configdata
+        export GIT_VERSION=$(git describe --abbrev=4 --dirty --always --tags | cut -f1 -d".")
+        popd
+    else
+        # we are in sandbox and can take the git tag checked output
+        export GIT_VERSION=XXX
+    fi
+    buildenvBuildAll
+   }
+
+multiPackage:
+   ? ""
+   :
+
+      multiPackage:
+          ? ""
+          :
+             inherit: [navi_compflags_protobuf]
+             #inherit: [navi_compflags_werror_sanitize]
+             #inherit: [navi_compflags_sanitize]
+             multiPackage:
+               dev:
+                  buildScript: build $@
+                  packageScript: |
+                     buildenvPackageDev install
+                  provideDeps: ['*-dev']
+
+
+
+   variant:
+      privateEnvironment:
+        SW_NAV_DEV_MaintenanceAccess: "$(getUniqueFeatureFromList,${VARIANTS},SW_NAV_DEV_MaintenanceAccess)"
+        VARIANT_INFO_STRINGS: "$(queryVariantFlags,${VARIANTS},Variant Info String)"
+      inherit: [navi_compflags_protobuf]
+      buildVars: [TARGET_VARIANT, TARGET_ENVIRONMENT, TARGET_TYPE, VARIANTS, SW_NAV_DEV_MaintenanceAccess]
+      buildScript: |
+         set -e
+         build $@
+         rm -rf dist
+         pwd
+         ls -l
+         #export PYTHONPATH="${PYTHONPATH:-}:${BOB_DEP_PATHS[libs::ext-protobuf-python]}/usr/local/lib/python3.6/dist-packages/"
+         export PYTHONPATH="${PYTHONPATH:-}:${BOB_DEP_PATHS[libs::ext-protobuf-python]}/usr/local/lib/python3.6/dist-packages/:${BOB_DEP_PATHS[libs::ext-protobuf-python]}/usr/local/lib/python3.5/dist-packages/"
+         echo "PYTHONPATH: $PYTHONPATH"
+         for variant in ${VARIANTS//,/ }; do
+           if [[ $SW_NAV_DEV_MaintenanceAccess != "0" ]] ; then
+             jsonRepresentationOutFlag="--writeJsonSymbols"
+           fi
+           python3 $1/tsd.nav.configdata/src/tsd/nav/configdata/NavAppConfigGenerator.py --systemVariantNoList=${variant} \
+              --variantDataJson=$1/tsd.nav.configdata/config/variants-data.json,$1/tsd.nav.configdata/config/LG_variants-data.json --fillscript_root=$1/tsd.nav.configdata/config \
+              --appConfigFile=etc/nav/standardConfig.cfg --installPrefix=dist/ --tmpOut=tsd.nav.configdata/public \
+              --protoc=$(which protoc) ${jsonRepresentationOutFlag:-} \
+              --targetEnvironment=${TARGET_ENVIRONMENT:-}
+           mkdir -p dist/${variant}/var/lib/nav/pso      # NAVPATH_PSOTMPFS
+           mkdir -p dist/${variant}/var/lib/nav/pos      # NAVPATH_POSWRITE
+           mkdir -p dist/${variant}/etc/nav/pos          # NAVPATH_POSREAD
+           mkdir -p dist/${variant}/var/lib/nav/md       # NAVPATH_MAPCFG
+           mkdir -p dist/${variant}/var/lib/nav/guidres  # NAVPATH_GUIDRES
+           mkdir -p dist/${variant}/usr/config/resources/pos  # Should be deprecated soon (2017.06.22)
+           rsync -a --delete $1/tsd.nav.configdata/depl/commonapi.ini dist/${variant}/etc/nav/commonapi.ini || true
+           rsync -a --delete $1/tsd.nav.configdata/depl/cert/* dist/${variant}/etc/nav/ # Certificates for UpdateManager, MW
+           cp $1/tsd.nav.configdata/resources/pos/vp.ini    dist/${variant}/usr/config/resources/pos
+           cp $1/tsd.nav.configdata/resources/pos/eu/*   dist/${variant}/usr/config/resources/pos    # DEPECATED, 2017/07/25, Thomas Foerster
+           cp $1/tsd.nav.configdata/resources/pos/eu/*   dist/${variant}/etc/nav/pos                 # NAVPATH_POSREAD
+           rsync -a --delete $1/tsd.nav.configdata/resources/md dist/${variant}/var/lib/nav          # NAVPATH_MAPCFG
+           rsync -a --delete $1/tsd.nav.configdata/resources/guidres dist/${variant}/var/lib/nav     # NAVPATH_GUIDRES
+         done
+      packageVars: [VARIANT_INFO_STRINGS]
+      packageScript: |
+         set -x
+         echo "infoStrings: $VARIANT_INFO_STRINGS"
+         if [[ ${VARIANT_INFO_STRINGS/;/:} == $VARIANT_INFO_STRINGS ]]; then
+            echo " only one variant"
+            rsync -a --delete $1/dist/${VARIANTS}/ .
+         else
+           echo " multiple variants. Only suitable for Swupdate"
+         fi
+         IFS=';' read -r -a variantInfoArray <<< "$VARIANT_INFO_STRINGS"
+         for variantInfo in "${variantInfoArray[@]}"; do
+             variant=$(cut -d':' -f1 <<< $variantInfo)
+             variantInfoString=$(cut -d'=' -f2 <<<$variantInfo)
+             echo "variantInfo: $variantInfo"
+             echo "variant: $variant"
+             echo "variantInfoString: $variantInfoString"
+             # Important note: /var/lib/nav/map/sds must go before /var/lib/nav!
+             buildSwupModule -n "nav-configdata" -p "emmc.navigation" -v "${variant}" -o 'navigation::tsd-nav-configdata' -f $1/dist/${variant} \
+                 -m 'display,display,0775,/var/lib/nav/map/sds$'                           \
+                 -m 'display,display,0775,/var/lib/nav/map/sds/.*'                         \
+                 -m 'display,display,0771,/var/lib/nav$'      \
+                 -m 'display,display,0771,/var/lib/nav/.*' -- \
+                 --variantList "${variantInfoString}" \
+                 -U "Partition=rootfs_ro"
+         done
+
+      multiPackage:
+         host-target: # Resource-files
+            packageVars: [VARIANT_NAME, VARIANT_LIST, VARIANTS]
+         embedded-target: # Resource-files
+            packageVars: [VARIANT_NAME, VARIANT_LIST, VARIANTS]
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

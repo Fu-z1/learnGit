@@ -1,0 +1,26 @@
+inherit: [install, make, autotools, packing-module]
+
+environment:
+   PKG_VERSION: "3.12.0"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-valgrind/valgrind-${PKG_VERSION}.tar.bz2 
+   digestSHA1: "7a6878bf998c60d1e377a4f22ebece8d9305bda4"
+
+buildVars: [SYSROOT, CROSS_COMPILE, ARCH, CC, LD, PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -av $1/valgrind-${PKG_VERSION}/ .
+   autotoolsBuild .
+
+packageScript: |
+   autotoolsPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-valgrind" \
+      -p "emmc.system" \
+      -o "system:ext-valgrind " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

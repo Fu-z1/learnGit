@@ -1,0 +1,86 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - system::tsd-common-target
+
+privateEnvironment:
+   REF:                                    "tags/1.1.0"
+   MODULE_BASE_NAME:                       "tsd.audio.microphoneprocessing.asr.mib3"
+
+   IDL_FILES_FEAT_BASE:                    "idl/AudioAsrConfigurationDataApi_base.fidl"
+   IDL_FILES_FEAT_SW_SPEAKER_LOCALIZATION: "idl/AudioAsrConfigurationDataApi_speaker_localization.fidl"
+
+   FEAT_SW_SPEAKER_LOCALIZATION:           "$(flagIsSet,${VARIANTS},SW_SPEAKER_LOCALIZATION,1)"
+
+checkoutVars: [MODULE_BASE_NAME,TAG,IDL_FILES_FEAT_BASE,IDL_FILES_FEAT_SW_SPEAKER_LOCALIZATION,FEAT_SW_SPEAKER_LOCALIZATION]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.microphoneprocessing.asr.mib3.api.git
+    dir: ${MODULE_BASE_NAME}.api
+    rev: refs/${REF}
+
+  - if: "${CONFIG_CAPI_MOCKS:-0}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.microphoneprocessing.asr.mib3.client.git
+    dir: ${MODULE_BASE_NAME}.client
+    rev: refs/${REF}
+
+  - if: "${CONFIG_CAPI_MOCKS:-0}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.microphoneprocessing.asr.mib3.service.git
+    dir: ${MODULE_BASE_NAME}.service
+    rev: refs/${REF}
+
+checkoutDeterministic: False
+checkoutScript: |
+   cat << EOF > collectIdlFiles
+   idlFiles=${IDL_FILES_FEAT_BASE}
+   if [[ "${FEAT_SW_SPEAKER_LOCALIZATION}"=True ]]; then
+      idlFiles+=" ${IDL_FILES_FEAT_SW_SPEAKER_LOCALIZATION}"
+   fi
+   EOF
+
+   . collectIdlFiles
+
+   pushd ${MODULE_BASE_NAME}.api
+   CreateAPIModule.py -svn ${idlFiles}
+   popd
+
+buildVars: [IDL_FILES_FEAT_NONE,IDL_FILES_FEAT_SW_SPEAKER_LOCALIZATION,FEAT_SW_SPEAKER_LOCALIZATION]
+buildScript: |
+   . $1/collectIdlFiles
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DFEAT_SW_SPEAKER_LOCALIZATION=${FEAT_SW_SPEAKER_LOCALIZATION}
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll -DFEAT_SW_SPEAKER_LOCALIZATION=${FEAT_SW_SPEAKER_LOCALIZATION}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "asr-mib3-api" \
+            -p "emmc.audio.micprg" \
+            -o "audio.microphoneprocessing:tsd-audio-microphoneprocessing-asr-mib3-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

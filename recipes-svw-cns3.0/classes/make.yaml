@@ -1,0 +1,12 @@
+buildVarsWeak: [MAKE_JOBS,MAKE_LOAD_LIMIT , XTENSA_LICENSE_RETRIES, XTENSAD_LICENSE_FILE, ICECC_VERSION,COMPILER_PREFIX]
+buildScript: |
+   makeParallel()
+   {
+      if [ x"$MAKE_JOBS" = xnproc ] ; then
+         MAKE_JOBS="$(nproc)"
+      fi
+      if [ "${MAKE_LOAD_LIMIT:- }" = nproc ] ; then
+         MAKE_LOAD_LIMIT="$(nproc)"
+      fi
+      make -j $MAKE_JOBS -l ${MAKE_LOAD_LIMIT:- } "$@"
+   }

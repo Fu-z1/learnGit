@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::tsd-common-dev
+  - system::ext-optee::client-dev
+  - system::tsd-tee-she-dev
+  - libs::ext-openssl-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::ext-optee::client-target
+      - system::tsd-tee-she-target
+      - libs::ext-openssl-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.csm.git
+   dir: tsd.csm
+   tag: mqb_sop1_eu-2.9.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   ? ""
+   :  buildScript: |
+         export OPTEE_CLIENT_EXPORT=${BOB_DEP_PATHS["system::ext-optee::client-dev"]}
+         buildenvBuildAll
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "csm" \
+                  -p "emmc.system.tee.client" \
+                  -o "system.tee.client:tsd-csm " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   testapp:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.csm.app.test \
+            tsd.csm.app.fod_test
+      packageScript: |
+         buildenvPackageTarget
+

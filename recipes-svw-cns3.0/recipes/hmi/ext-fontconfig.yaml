@@ -1,0 +1,65 @@
+inherit: [autotools, patch, packing-module]
+
+environment:
+   PKG_VERSION: "2.12.0"
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "2.12.0"
+   PKG_NAME: "fontconfig"
+   PKG_PATCH_VERSION: "1.0.0"
+   PKG_RESPONSIBLE: "MMI-HMI"
+
+depends:
+  - libs::ext-libxml2-dev
+  - hmi::ext-freetype-dev
+  - system::ext-expat-dev
+  - use: []
+    depends:
+      - system::ext-expat-target
+      - libs::ext-libxml2-target
+      - hmi::ext-freetype-target
+
+checkoutVars: [PKG_VERSION]
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-fontconfig/fontconfig-${PKG_VERSION}.tar.bz2
+   digestSHA1: "4170b4d11816b10ff739e1b8ce35fae15a45894b"
+
+checkoutDeterministic: true
+checkoutScript: |
+   cd fontconfig-${PKG_VERSION}
+   patchApplySeries $<<ext-fontconfig/*.patch>>
+
+buildScript: |
+   rsync -a --delete $1/fontconfig-${PKG_VERSION}/ ${PWD}
+   autoreconf -f -i
+   autotoolsBuild .
+
+   rm -f dist/etc/fonts/fonts.conf
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageVars: [LIBDIR]
+      packageScript: |
+         autotoolsPackageDev -DTSD_HACK_FONTCONFIG --with-cache-dir=/var/hmi/fontconfig
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l fontconfig -d ext.libxml2 ext.fontconfig
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget -DTSD_HACK_FONTCONFIG --with-cache-dir=/var/hmi/fontconfig
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         mkdir -p $d/var/hmi/fonts_cache
+         buildSwupModule -n "ext-fontconfig" \
+            -p "emmc.hmi" \
+            -o "hmi:ext-fontconfig " \
+            -m "display,display,0770,/var/hmi$" \
+            -m "display,display,0770,/var/hmi/.*" \
+            -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::system-lifecycle::tsd-systemstate-manager-proxy-dev
+  - carcom::tsd-peripheral-controller-proxy-dev
+  - vehicle-connectivity::canstack::tsd-canstack-psd-proxy-dev
+  - engineering::diagnostic-management::tsd-uds-mib3-proxy-dev
+  - communication::ext-commonapi-runtime-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - system::system-lifecycle::tsd-systemstate-manager-proxy-target
+      - carcom::tsd-peripheral-controller-proxy-target
+      - vehicle-connectivity::canstack::tsd-canstack-psd-proxy-target
+      - engineering::diagnostic-management::tsd-uds-mib3-proxy-target
+      - communication::ext-commonapi-runtime-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd.carcom.proxy.mib3.git
+    dir: tsd.carcom.proxy.mib3
+    tag: mqb_sop1_eu-2.6.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "carcom-proxy-mib3" \
+            -p "emmc.carcom" \
+            -o "carcom:tsd-carcom-proxy-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

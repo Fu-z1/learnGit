@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<platform-capabilities xmlns="http://www.opensynergy.com/xml/coqoshv-configuration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.opensynergy.com/xml/coqoshv-configuration ../schema/coqoshv-configuration.xsd"
+	model-version="v0.1"
+	parent-capabilities="r8a7795-pcc-zr3-soc-model.xml"
+	name="r8a7795-pcc-zr3">
+
+<!-- for HW_RAM_VARIANT == 6 -->
+	<memory name="memory@9c000000" paddr="0x000000009c000000" size="0x0000000004000000" flags="EC"/>
+
+	<memory name="memory@48000000" paddr="0x0000000048000000" size="0x0000000054000000" flags="EC"/>
+	<memory name="memory@480000000" paddr="0x0000000480000000" size="0x0000000060000000" flags="EC"/>
+	<memory name="memory@500000000" paddr="0x0000000500000000" size="0x0000000060000000" flags="EC"/>
+	<memory name="memory@580000000" paddr="0x0000000580000000" size="0x0000000060000000" flags="EC"/>
+	<memory name="memory@e6304000" paddr="0x00000000e6304000" size="0x0000000000060000" flags="EC"/>
+
+	<memory name="memory@047fd7000" paddr="0x0000000047fd7000" size="0x0000000000001000" flags="EC"/>
+	<!-- Memory region shared with OP-TEE -->
+	<memory name="memory@47e00000" paddr="0x0000000047e00000" size="0x0000000000100000" flags="EC"/>
+</platform-capabilities>

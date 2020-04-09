@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - audio::audiomanager::tsd-audio-common-dev
+  - audio::amplifiercontroller::tsd-audio-ampcontrol-api-dev
+  - system::tsd-drivers-dev
+  - system::ext-boost-dev
+   # runtime dependecies
+  - use: []
+    depends:
+      - audio::audiomanager::tsd-audio-common-target
+      - system::tsd-drivers-target
+      - system::ext-boost-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.ampcontrol.git
+    dir: tsd.audio.ampcontrol
+#    tag: 1.4.3
+    branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - '*-dev'
+
+   unittests:
+      buildScript: |
+         buildenvTestTargets tsd.audio.ampcontrol.test
+      packageScript: |
+         buildenvPackageTests
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ampcontrol" \
+            -p "emmc.audio.amplifierclr" \
+            -o "audio.amplifiercontroller:tsd-audio-ampcontrol " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - '*-target'
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,36 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+# - system::tsd-common-dev
+  - name: system::ext-cppunit-google-mock-dev
+    if: "$(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+# - system::tsd-common-guid-dev
+# - use: []
+#   depends:
+#    - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.settings.api.git
+    dir: tsd.settings.api
+    #tag: mqb_sop1_eu-1.5.0
+    #branch: master_mqb_sop1_eu
+    branch: main/svw_cns3.0_1520_dev
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+#
+#   unittests:
+#      buildScript: |
+#         buildenvTestAll
+#      packageScript: |
+#         buildenvPackageTests
+#         buildenvPackageTarget
+

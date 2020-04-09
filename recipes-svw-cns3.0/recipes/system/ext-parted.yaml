@@ -1,0 +1,53 @@
+inherit: [autotools, patch,packing-module]
+
+depends:
+   - system::ext-util-linux-dev
+   - libs::ext-readline-dev
+   - use: []
+     depends:
+       - system::ext-util-linux-target
+       - libs::ext-readline-target
+
+  
+
+environment:
+   PKG_VERSION: "3.2"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: http://jenkins-system.carradio.technisat-digital/public/CNS/parted-${PKG_VERSION}.tar.xz
+   digestSHA1: "78db6ca8dd6082c5367c8446bf6f7ae044091959"
+
+checkoutDeterministic: True
+checkoutScript: |
+   pushd parted-${PKG_VERSION}
+      patchApplySeries -p1 $<<ext-parted/*.patch>>
+   popd
+
+buildVars: [PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+    rsync -a --delete $1/parted-${PKG_VERSION}/ .
+    autoreconf -i --force
+    autotoolsBuild . \
+       --disable-device-mapper
+
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageTarget
+      provideDeps: ['*-dev']
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-parted" \
+               -p "emmc.system" \
+               -o "system:ext-parted " -f $d -- \
+               -U "Partition=rootfs_ro"
+         rm -rf $d
+
+      provideDeps: ['*-target'] 
+

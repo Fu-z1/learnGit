@@ -1,0 +1,170 @@
+scmOverrides:
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.traffic.api.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.traffic.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.common.api.git"
+       #del: [commit, tag, branch]
+       set:
+         branch: feature/EcologicalRouting
+   -
+       match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.clouddecoder.api.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 87.0.1
+   -
+       match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.clouddecoder.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 87.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.pathfinder.api.git"
+       #del: [commit, tag, branch]
+       set:
+         branch: feature/EcologicalRouting
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.pathfinder.git"
+       del: [commit, tag, branch]
+       set:
+         branch: feature/EcologicalRouting
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.git"
+       #del: [commit, tag, branch]
+       set:
+          tag: 4.9.0
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-integration/tsd.buildenv.git"
+       #del: [commit, tag, branch]
+       set:
+          tag: 2.8.0
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.middleware.interface.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 95.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.middleware.nds.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 95.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.updatemanager*.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.updatemanager.here*.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.service.trafficdecoder.git"
+       #del: [commit, tag, branch]
+       set:
+          branch: snapshot
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.configdata.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.codec.nds.cpp.2.5.1.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.codec.nds.cpp.2.5.2.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.common.mib3*.git"
+       del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mapdataservice.mib3.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-navigation/tsd.nav.sdk.mapdataservice.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-navigation/tsd.nav.sdk.mapdataservice.api.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mapdataservice.mib3.cloud.git"
+       #del: [commit, tag, branch]
+       set:
+          tag: v0.1.0
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mapdataservice.mib3.api.git"
+       #del: [commit, tag, branch]
+       set:
+         tag: 89.0.1
+   -
+       match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.routing.cloud.mib3.git"
+       del: [commit, tag, branch]
+       set:
+         branch: feature/EcologicalRouting
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.service.penaltymapprovider.git"
+       del: [commit, tag, branch]
+       set:
+          branch: snapshot
+   -
+       match:
+          url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.publicservices.api.git
+       #del: [commit, branch, tag]
+       set:
+         branch: feature/mbition
+   -
+       match:
+          url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.common.cpp.git
+       del: [commit, branch, tag]
+       set:
+          branch: snapshot
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.service.routecalcworker.git"
+       del: [commit, tag, branch]
+       set:
+          branch: feature/mbition

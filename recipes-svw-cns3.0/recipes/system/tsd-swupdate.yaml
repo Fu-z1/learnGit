@@ -1,0 +1,149 @@
+inherit: [buildenv, packing-module, packing-image]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+   PKG_ARTEFACT_TYPE: "Application"
+
+environment:
+   SW_SWUP_DEVELOPER_SOFTWARE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),1,0)"
+   SW_SWUP_CNS_SOFTWARE: "$(if-then-else,$(or,$(flagIsSet,${VARIANTS},Region,CHINA), \
+                                              $(flagIsSet,${VARIANTS},Region,TAIWAN), \
+                                              $(flagIsSet,${VARIANTS},Region,HONGKONG_MACAO)),1,0)"
+#   SW_SWUP_HMI: "2"              # 0=None, 1=OEM, 2=Engineering
+#   SW_SWUP_MAINUNIT_UPDATE: "1"  # 0=Off,  1=On
+
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-swupdate-client-dev
+  - system::tsd-swupdate-client-pkg-dev
+  - system::tsd-swupdate-client-flash-dev
+  - system::tsd-swupdate-client-pwc-dev
+  - system::tsd-swupdate-client-can-dev
+  - system::tsd-swupdate-client-eth-dev
+  - system::tsd-swupdate-client-copy-dev
+  - system::tsd-swupdate-viewcontroller-dev
+  - system::tsd-swupdate-diagnosis-dev
+  - system::tsd-swupdate-client-android_ota-dev
+  - system::tsd-infotainmentrecorder-api-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - basic-services::systeminfo::tsd-systeminformation-features-static-dev
+  - media::mountingservice::tsd-media-mount-status-api-dev
+  - name: basic-services::systeminfo::tsd-systeminformation-hardware-static-dev
+    if: "$(eq,${SW_SWUP_MAINUNIT_UPDATE:-0},1)"
+  - name: system::tsd-swupdate-defaulthmi-dev
+    if: "$(eq,${SW_SWUP_HMI:-1},0)"
+  - name: system::tsd-swupdate-rsihmiclient-dev
+    if: "$(eq,${SW_SWUP_HMI:-1},1)"
+  - name: system::tsd-swupdate-systemhmi-dev
+    if: "$(eq,${SW_SWUP_HMI:-1},2)"
+  - name: system::tsd-swapsf-api-dev
+    if: "$(eq,${SW_SWUP_HMI:-1},2)"
+  - name: system::tsd-swupdate-testinterface-dev
+    if: "$(eq,${SW_SWUP_MAINUNIT_UPDATE:-0},0)"
+  - name: system::tsd-swupdate-conn-dev
+    if: "$(eq,${SW_SWUP_MAINUNIT_UPDATE:-0},0)"
+  - name: system::tsd-swupdate-control-api-dev
+    if: "$(eq,${SW_SWUP_MAINUNIT_UPDATE:-0},0)"
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - system::tsd-swupdate-client-target
+      - system::tsd-swupdate-client-pkg-target
+      - system::tsd-swupdate-client-flash-target
+      - system::tsd-swupdate-client-pwc-target
+      - system::tsd-swupdate-client-can-target
+      - system::tsd-swupdate-client-eth-target
+      - system::tsd-swupdate-viewcontroller-target
+      - system::tsd-swupdate-client-copy-target
+      - system::tsd-swupdate-diagnosis-target
+      - system::tsd-swupdate-client-android_ota-target
+      - system::tsd-infotainmentrecorder-api-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - media::mountingservice::tsd-media-mount-status-api-target
+      - name: system::tsd-swupdate-defaulthmi-target
+        if: "$(eq,${SW_SWUP_HMI:-1},0)"
+      - name: system::tsd-swupdate-rsihmiclient-target
+        if: "$(eq,${SW_SWUP_HMI:-1},1)"
+      - name: system::tsd-swupdate-systemhmi-target
+        if: "$(eq,${SW_SWUP_HMI:-1},2)"
+      - name: system::tsd-swapsf-api-target
+        if: "$(eq,${SW_SWUP_HMI:-1},2)"
+      - name: system::tsd-swupdate-testinterface-target
+        if: "$(eq,${SW_SWUP_MAINUNIT_UPDATE:-0},0)"
+      - name: system::tsd-swupdate-conn-target
+        if: "$(eq,${SW_SWUP_MAINUNIT_UPDATE:-0},0)"
+      - name: system::tsd-swupdate-control-api-target
+        if: "$(eq,${SW_SWUP_MAINUNIT_UPDATE:-0},0)"
+
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.git
+   dir: tsd.swupdate
+   #tag: mqb_sop1_eu-12.132.0
+   #branch: master_mqb_sop1_eu
+   #branch: main/svw_cns3.0_1520_dev
+   branch: feature/cns_oru
+
+buildVars: [SW_SWUP_HMI, SW_SWUP_ONLINE_SUPPORT, SW_SWUP_CUSTOMER_UPDATE, SW_SWUP_ETHERNET_UPDATE,
+        SW_SWUP_CAN_UPDATE, SW_SWUP_MAINUNIT_UPDATE, SW_SWUP_DEVELOPER_SOFTWARE, SW_SWUP_CNS_SOFTWARE]
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DSW_SWUP_HMI=${SW_SWUP_HMI:-1} \
+            -DSW_SWUP_ONLINE_SUPPORT=${SW_SWUP_ONLINE_SUPPORT:-0} \
+            -DSW_SWUP_CUSTOMER_UPDATE=${SW_SWUP_CUSTOMER_UPDATE:-0} \
+            -DSW_SWUP_ETHERNET_UPDATE=${SW_SWUP_ETHERNET_UPDATE:-0} \
+            -DSW_SWUP_CAN_UPDATE=${SW_SWUP_CAN_UPDATE:-0} \
+            -DSW_SWUP_MAINUNIT_UPDATE=${SW_SWUP_MAINUNIT_UPDATE:-0} \
+            -DSW_SWUP_DEVELOPER_SOFTWARE=${SW_SWUP_DEVELOPER_SOFTWARE:-0} \
+            -DSW_SWUP_CNS_SOFTWARE=${SW_SWUP_CNS_SOFTWARE:-0}
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildVars: [SW_SWUP_HMI, SW_SWUP_ONLINE_SUPPORT, SW_SWUP_CUSTOMER_UPDATE, SW_SWUP_ETHERNET_UPDATE,
+         SW_SWUP_CAN_UPDATE, SW_SWUP_MAINUNIT_UPDATE, SW_SWUP_DEVELOPER_SOFTWARE]
+      buildScript: |
+         buildenvBuildAll -DSW_SWUP_HMI=${SW_SWUP_HMI:-1} \
+            -DSW_SWUP_ONLINE_SUPPORT=${SW_SWUP_ONLINE_SUPPORT:-0} \
+            -DSW_SWUP_CUSTOMER_UPDATE=${SW_SWUP_CUSTOMER_UPDATE:-0} \
+            -DSW_SWUP_ETHERNET_UPDATE=${SW_SWUP_ETHERNET_UPDATE:-0} \
+            -DSW_SWUP_CAN_UPDATE=${SW_SWUP_CAN_UPDATE:-0} \
+            -DSW_SWUP_MAINUNIT_UPDATE=${SW_SWUP_MAINUNIT_UPDATE:-0} \
+            -DSW_SWUP_DEVELOPER_SOFTWARE=${SW_SWUP_DEVELOPER_SOFTWARE:-0} \
+            -DSW_SWUP_CNS_SOFTWARE=${SW_SWUP_CNS_SOFTWARE:-0}
+
+         mkdir -p dist/etc/swup
+         rsync -a --delete $1/tsd.swupdate/etc/swup/commonapi.ini dist/etc/swup/commonapi.ini
+         rsync -a --delete $1/tsd.swupdate/usr/bin/ip.sh dist/usr/bin/ip.sh
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   app-pkg:
+      depends:
+        - use: [result]
+          depends:
+            - system::tsd-swupdate-target
+      buildScript: |
+         cp  ${BOB_DEP_PATHS['system::tsd-swupdate-target']}/usr/bin/tsd.swupdate .
+      packageScript: |
+         buildSwupImage --packageName "app" \
+               --file $1/tsd.swupdate \
+               --hw_index "0" \
+               -U Installer=copy \
+               -U Destination='/usr/bin/tsd.swupdate.install' \
+               -U Mode='autostart'

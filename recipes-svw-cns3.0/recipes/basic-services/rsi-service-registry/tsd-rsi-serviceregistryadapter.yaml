@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+
+depends:
+  - libs::ext-openssl-vkms-engine-dev
+  - system::tsd-common-dev
+  - basic-services::rsi-service-registry::ext-vw-rsi-serviceregistry-dev
+  - basic-services::car-function-management::tsd-carssw-generaladapters-dev
+  - system::tsd-tcpprocinfo-dev
+
+  - use: []
+    depends:
+      - libs::ext-openssl-vkms-engine-target
+      - system::tsd-common-target
+      - basic-services::car-function-management::tsd-carssw-generaladapters-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.rsi.serviceregistryadapter.git
+    dir: tsd.rsi.serviceregistryadapter
+    tag: mqb_sop1_eu-2.2.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "rsi-serviceregistryadapter" \
+            -p "emmc.basic-svcs.rsi-service-registry" \
+            -o "basic-services.rsi-service-registry:tsd-rsi-serviceregistryadapter " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

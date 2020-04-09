@@ -1,0 +1,99 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - audio::audiomanager::ext-lmx-dev
+ - onlineservices::tsd-onlineservices-downloadmanager-dev
+ - basic-services::rsi-library::tsd-rsi-common-dev
+ - system::tsd-common-dev
+ - system::tsd-common-daemon-dev
+ - system::tsd-swupdate-conn-api-dev
+ - system::tsd-swupdate-rsihmiserver-api-dev
+ - system::tsd-vkms-api-dev
+ - system::tsd-vkms-service-dev
+ - onlineservices::tsd-onlineservices-framework-dev
+ - onlineservices::tsd-onlineservices-common-dev
+ - onlineservices::tsd-onlineservices-remoteupdate-api-dev
+ - system::system-lifecycle::tsd-systemstate-manager-api-dev
+ - vehicle-connectivity::canstack::tsd-canstack-api-dev
+ - hmi::tsd-hmi-language-client-mib3-dev
+ - system::ext-libarchive-dev
+ - use: []
+   depends:
+    - onlineservices::tsd-onlineservices-remoteupdate-api-target
+    - onlineservices::tsd-onlineservices-framework-target
+    - onlineservices::tsd-onlineservices-downloadmanager-target
+    - system::tsd-common-target
+    - system::tsd-common-daemon-target
+    - system::tsd-swupdate-conn-api-target
+    - system::tsd-swupdate-rsihmiserver-api-target
+    - system::tsd-vkms-api-target
+    - vehicle-connectivity::canstack::tsd-canstack-api-target
+    - hmi::tsd-hmi-language-client-mib3-target
+    - system::ext-libarchive-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.remoteupdate.git
+   dir: tsd.onlineservices.remoteupdate
+   #branch: fix/CNSDEFECT-15733
+   branch: main/svw_cns3.0_1520_dev
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+         # -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+         rsync -a $1/tsd.onlineservices.remoteupdate/depl ${PWD}
+
+      packageScript: |
+         buildenvPackageDev
+         mkdir -p etc/tsd.onlineservices.remoteupdate/
+         rsync -a --delete $1/depl/* etc/tsd.onlineservices.remoteupdate/
+      provideDeps: ["*-dev"]
+   target:
+      buildScript: |
+         buildenvBuildAll \
+           -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+           -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+         rsync -a $1/tsd.onlineservices.remoteupdate/depl ${PWD}
+
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p etc/tsd.onlineservices.remoteupdate/
+         rsync -a --delete $1/depl/* etc/tsd.onlineservices.remoteupdate/
+         mkdir -p var/lib/tsd.onlineservices.remoteupdate
+         mkdir -p var/spool/update
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-remoteupdate" \
+            -p "emmc.onlineservices" \
+            -m 'remoteupdate,update,0770,/var/spool/update$'                          \
+            -m 'remoteupdate,update,0770,/var/spool/update/.*'                        \
+            -m 'remoteupdate,update,0700,/var/lib/tsd.onlineservices.remoteupdate$'   \
+            -m 'remoteupdate,update,0700,/var/lib/tsd.onlineservices.remoteupdate/.*' \
+            -o "onlineservices:tsd-onlineservices-remoteupdate " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.onlineservices.remoteupdate.app.RemoteUpdateAPITest
+      packageScript: buildenvPackageTarget
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+

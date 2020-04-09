@@ -1,0 +1,6 @@
+depends:
+   -
+      name: swi::update-container-utils
+      use: [tools]
+
+buildTools: [resolve-wildcards]

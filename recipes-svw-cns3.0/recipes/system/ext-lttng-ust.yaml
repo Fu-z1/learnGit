@@ -1,0 +1,58 @@
+inherit: [autotools, packing-module,patch]
+
+metaEnvironment:
+   PKG_LICENSE: "(LGPL-2.1 AND MIT AND GPL-2.0)"
+   PKG_VERSION: "2.9.3"
+   PKG_NAME: "lttng-ust"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-liburcu-dev
+  - libs::ext-libxml2-dev
+  - system::ext-libpopt-dev
+  - system::ext-util-linux-dev
+  - use: []
+    depends:
+      - libs::ext-liburcu-target
+      - libs::ext-libxml2-target
+      - system::ext-libpopt-target
+      - system::ext-util-linux-target
+
+checkoutVars: [PKG_NAME,PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-lttng/${PKG_NAME}-${PKG_VERSION}.tar.bz2
+   digestSHA1: 29355e077fb4cae5ae022eb3029c75901ee5ede9
+
+checkoutDeterministic: True
+checkoutScript: |
+   pushd lttng-ust-${PKG_VERSION}
+   patchApplySeries -p1 $<<ext-lttng-ust/*.patch>>
+   popd
+
+buildScript: |
+   rsync -a $1/ .
+   autotoolsBuild ${PKG_NAME}-${PKG_VERSION} --disable-man-pages --disable-examples
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageVars: [LIBDIR]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l lttng-ust ext.lttng-ust
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-lttng-ust" \
+            -p "emmc.system" \
+            -o "system:ext-lttng-ust " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+      provideDeps: ["*-target"]
+

@@ -1,0 +1,107 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_NAME: "update_manager_0.89"
+   PKG_VERSION: "0.89"
+   PKG_NAME_LG: "update_manager_0.76_LG"
+   PKG_VERSION_LG: "0.76_LG"
+   PKG_LICENSE: "proprietary"
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+depends:
+  - tip::ext-icu-dev
+  - libs::ext-sqlite-nds-dev
+  - use: []
+    depends:
+        - libs::ext-openssl-target
+        - tip::ext-icu-target
+        - libs::ext-sqlite-nds-target
+
+
+privateEnvironment:
+   PKG_NAME: "update_manager_0.89"
+   PKG_LOCATION: "ext-here-ndsdm/"
+   PKG_CHECKSUM: "61a42a891eed79e481af2463c79cfb8529e5130c"
+   PKG_ROOT_DIR: "here_ndsdm/"
+   PKG_NAME_LG: "update_manager_0.76_LG"
+   PKG_LOCATION_LG: "ext-here-ndsdm/LGE/"
+   PKG_CHECKSUM_LG: "5b04535d86711210b6a39cc7fbcb9b553f159030"
+   PKG_ROOT_DIR_LG: "here_ndsdm_lg/installdir/"
+
+checkoutVars: [PKG_NAME, PKG_LOCATION, PKG_NAME_LG, PKG_LOCATION_LG]
+checkoutSCM:
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/${PKG_LOCATION}${PKG_NAME}.tgz
+    digestSHA1: ${PKG_CHECKSUM}
+    fileName: "${PKG_NAME}.tgz"
+    dir: here_ndsdm
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/${PKG_LOCATION_LG}${PKG_NAME_LG}.tgz
+    digestSHA1: ${PKG_CHECKSUM_LG}
+    fileName: "${PKG_NAME_LG}.tgz"
+    dir: here_ndsdm_lg
+
+buildVars: [OBJCPY, PKG_ROOT_DIR, PKG_ROOT_DIR_LG]
+buildScript: |
+   copy_shared_lib() {
+      mkdir -p dist/usr/${LIBDIR}/.debug
+      if [[ "${AUTOCONF_HOST}" =~ aarch64-linux.* ]]; then
+         LIBRARY_DIR=aarch64-poky-renesas
+         ROOT_DIR=${PKG_ROOT_DIR}
+      elif [[ "${AUTOCONF_HOST}" =~ aarch64-agl-linux ]]; then
+         LIBRARY_DIR=lib
+         ROOT_DIR=${PKG_ROOT_DIR_LG}
+      elif [[ "${AUTOCONF_HOST}" =~ x86_64-linux-.*  ]]; then
+         LIBRARY_DIR=host-linux-x86_64
+         ROOT_DIR=${PKG_ROOT_DIR}
+      else
+         (>&2 echo "Unknown architecture")
+         exit 1
+      fi
+      cp $1/${ROOT_DIR}$LIBRARY_DIR/libndsdm.so dist/usr/${LIBDIR}/libndsdm.so
+      # TODO: can be activated as soon as the debug exists
+      if [[ "${LIBRARY_DIR}" != "lib" ]]; then
+         cp $1/${ROOT_DIR}$LIBRARY_DIR/libndsdm.so.debug libndsdm.so.debug
+         $OBJCPY --add-gnu-debuglink=libndsdm.so.debug dist/usr/${LIBDIR}/libndsdm.so
+         mv libndsdm.so.debug dist/usr/${LIBDIR}/.debug/libndsdm.so.debug
+      fi
+   }
+
+multiPackage:
+
+   dev:
+      buildVars: [AUTOCONF_HOST]
+      buildScript: |
+         mkdir -p dist/usr/lib/cmake/ext.here.ndsdm
+         mkdir -p dist/usr/include/ndsdm
+         if [[ "${AUTOCONF_HOST}" =~ aarch64-linux.* ]]; then
+           ROOT_DIR=${PKG_ROOT_DIR}
+         elif [[ "${AUTOCONF_HOST}" =~ aarch64-agl-linux ]]; then
+           ROOT_DIR=${PKG_ROOT_DIR_LG}
+         elif [[ "${AUTOCONF_HOST}" =~ x86_64-linux-.*  ]]; then
+           ROOT_DIR=${PKG_ROOT_DIR}
+         else
+           (>&2 echo "Unknown architecture")
+           exit 1
+         fi
+         cp -a $1/${ROOT_DIR}include/ndsdm/*     dist/usr/include/ndsdm/
+         copy_shared_lib $@
+
+      packageTools: [buildenv]
+      packageScript: |
+         buildenvPackageDev install
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l ndsdm -I include ext.here.ndsdm
+
+   target:
+      buildVars: [AUTOCONF_HOST]
+      buildScript: copy_shared_lib $@
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-here-ndsdm" \
+            -p "emmc.navigation" \
+            -o "navigation:ext-here-ndsdm " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

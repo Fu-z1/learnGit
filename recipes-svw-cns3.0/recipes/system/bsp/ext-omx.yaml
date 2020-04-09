@@ -1,0 +1,80 @@
+inherit: [autotools, packing-module]
+
+depends:
+  - system::bsp::ext-renesas-h3-bsp
+  - system::bsp::ext-mmngr-mmngr-dev
+  - system::bsp::ext-kmod-uvcs-dev
+  - system::bsp::ext-vspm-dev
+  - use: []
+    depends:
+      - system::bsp::ext-mmngr-mmngr-target
+      - system::bsp::ext-kmod-uvcs-target
+      - system::bsp::ext-vspm-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/yocto/omx_V3017_debug.tar.gz
+   digestSHA1: e7f3ac8583f4e3d273c1fe96adc87569396d0319
+   dir: debug_libs
+
+buildVars: [LIBDIR]
+buildScript: |
+   rm -rf build dist
+   mkdir -p build dist/usr
+   pushd build
+
+   # OMX libs
+   for i in RTM0AC0000XCMCTL30SL41C RTM0AC0000XVCMND30SL41C RTM0AC0000XVCMNE30SL41C \
+            RTM0AC0000XV264D30SL41C RTM0AC0000XV264E30SL41C
+   do
+      tar xf $2/${i}.tar.bz2 --strip-components=1
+   done
+
+   # add debug symbols
+   cp $1/debug_libs/omx/lib/* lib/
+
+   # create soname symlinks
+   pushd lib
+   for i in *.so.3.* ; do
+      soname="$(readelf -d "$i" | sed -n '/SONAME/s/.*\[\(.*\)\]/\1/p')"
+      ln -sf "$i" "$soname"
+      ln -sf "$i" "${i%.so.*}.so"
+   done
+   popd
+
+   # build some modules
+   export OMXR_DEFAULT_CONFIG_FILE_NAME="/etc/omxr/omxr_config_base.txt"
+   pushd src
+   ln -sf ../include
+   ./autogen.sh
+   autotoolsBuild .
+   popd
+
+   popd
+
+   # create dist
+   mkdir -p dist/etc/omxr
+   cp -al build/config/*.txt dist/etc/omxr/
+   cp -al build/include dist/usr/
+   cp -al build/lib dist/usr/$LIBDIR
+   cp -af build/src/dist/* dist/
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         installPackageDev "$1/dist"
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l omxr_core -I include ext.renesas.omx
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         installPackageTarget "$1/dist"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-omx" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-omx" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

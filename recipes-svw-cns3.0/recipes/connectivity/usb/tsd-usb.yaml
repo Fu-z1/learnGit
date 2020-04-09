@@ -1,0 +1,57 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+depends:
+   # build dependencies
+ - connectivity::usb::tsd-usb-common-dev
+ - system::tsd-activation-api-dev
+   # runtime dependencies
+ - use: []
+   depends:
+    - connectivity::usb::tsd-usb-common-target
+    - system::tsd-activation-api-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.usb.git
+   dir: tsd.usb
+   branch: main/svw_cns3.0_1480_dev
+multiPackage:
+   ? ""
+   :  depends:
+       - system::tsd-tee-cpstate-dev
+       - use: []
+         depends:
+          - system::tsd-tee-cpstate-target
+
+      buildVars: [SW_DEV_ACCESS]
+      buildScript: buildenvBuildAll -DCMAKE_SW_DEV_ACCESS=${SW_DEV_ACCESS}
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "usb" \
+                  -p "emmc.connectivity.usb" \
+                  -o "connectivity.usb:tsd-usb " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestTargets tsd.usb.test
+      packageScript: buildenvPackageTests

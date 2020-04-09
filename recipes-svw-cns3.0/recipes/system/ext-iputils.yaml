@@ -1,0 +1,77 @@
+inherit: [install, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later OR BSD-3-Clause OR BSD-4-Clause)"
+   PKG_VERSION: "s20161105"
+   PKG_NAME: "iputils"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-libcap-dev
+  - libs::ext-openssl-dev
+  - use: []
+    depends:
+      - system::ext-libcap-target
+      - libs::ext-openssl-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}/src/ext-iputils/iputils-${PKG_VERSION}.tar.gz
+   digestSHA1: "d6fb34d3798eb042dd18a49c66a9680cc13e28ca"
+
+buildVars: [CC, LIBDIR, PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -av $1/iputils-${PKG_VERSION}/ .
+   INCDIR=usr/include
+   LIBDIR=usr/$LIBDIR
+   COMPILE_FLAGS="-I${BOB_DEP_PATHS[system::ext-libcap-dev]}/$INCDIR -I${BOB_DEP_PATHS[libs::ext-openssl-dev]}/$INCDIR"
+   export CFLAGS+=$COMPILE_FLAGS
+   export CPPFLAGS+=$COMPILE_FLAGS
+   export LDFLAGS+="-L${BOB_DEP_PATHS[system::ext-libcap-dev]}/$LIBDIR -L${BOB_DEP_PATHS[libs::ext-openssl-dev]}/$LIBDIR"
+   make USE_IDN=no USE_NETTLE=no all
+
+packageScript: |
+   installBin()
+   {
+      rsync -av "$1" bin/
+      installStripAll .
+      d=$(mktemp -d)
+      rsync -a --delete --exclude ".debug" ./ $d
+      buildSwupModule -n "ext-iputils-$2" \
+         -p "emmc.system" \
+         -o "system:ext-iputils " -f $d -- \
+         -U "Partition=rootfs_ro"
+      rm -rf $d
+   }
+
+
+multiPackage:
+   ping:
+      packageScript: |
+         mkdir -p bin
+         ln -s /bin/ping bin/ping6
+         installBin $1/ping "ping"
+   tracepath:
+      packageScript: |
+         installBin $1/tracepath "tracepath"
+   traceroute:
+      packageScript: |
+         installBin $1/traceroute6 "traceroute6"
+   clockdiff:
+      packageScript: |
+         installBin $1/clockdiff "clockdiff"
+   rdisc:
+      packageScript: |
+         installBin $1/rdisc "rdisc"
+   arping:
+      packageScript: |
+         installBin $1/arping "arping"
+   tftpd:
+      packageScript: |
+         installBin $1/tftpd "tftp"
+   rarpd:
+      packageScript: |
+         installBin $1/rarpd "rarpd"
+
+provideDeps: ["*-target"]

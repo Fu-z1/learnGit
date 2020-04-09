@@ -1,0 +1,78 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Service Cloud"
+
+depends:
+  - libs::ext-curl-dev
+  - libs::ext-nghttp2-dev
+  - libs::ext-protobuf-dev
+  - navigation::tsd-nav-cloud-comm-client-api-dev
+  - navigation::tsd-nav-cloud-publicservices-api-dev
+  - navigation::tsd-nav-cloud-service-mapupdatesync-dev
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-utils-api-dev
+  - navigation::tsd-nav-cloud-service-destinationinput-dev
+  - navigation::tsd-nav-cloud-service-routecalc-dev
+  - navigation::tsd-nav-cloud-service-poi-dev
+  - navigation::tsd-nav-cloud-service-charging-dev
+  - navigation::tsd-nav-cloud-service-fuel-dev
+  - navigation::tsd-nav-cloud-service-housenumberresolving-dev
+  - system::ext-boost-filesystem-dev
+  - system::ext-boost-system-dev
+  - system::tsd-common-dev
+  - navigation::tsd-nav-configdata-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.comm.client.git
+   dir: tsd.nav.cloud.comm.client
+   tag: mqb_sop1_eu-150.0.1        #navi-src (src of the navigation)
+
+buildScript: |
+   buildNavi()
+   {
+      if [ -d "$1/tsd.nav.cloud.comm.client/.git" ]; then
+         # get the real version from git
+         pushd $1/tsd.nav.cloud.comm.client
+         GIT_VERSION=$(git describe --abbrev=4 --dirty --always --tags | cut -f1 -d".")
+         echo "GIT_VERSION=$GIT_VERSION"
+         popd
+      else
+         # we are in sandbox and can take the git tag checked output
+         GIT_VERSION="0.0.0"
+         echo "WARNING: GIT_VERSION=\"0.0.0\""
+      fi
+      buildenvBuildAll -DGIT_VERSION=$GIT_VERSION -DTSD_BUILDENV_ENABLE_APP_TARGETS=0
+   }
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     multiPackage:
+       dev:
+        buildScript: |
+           buildNavi $@
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+       app-target:
+         buildScript: |
+            buildenvBuildAll -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DTSD_BUILDENV_ENABLE_APP_TARGETS=1
+         packageScript: |
+            buildenvPackageDev install
+         provideDeps: ['*-dev']
+
+  unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+  doc:
+      buildScript: |
+          buildenvBuildDocAll -DTSD_BUILDENV_DOC=1
+      packageScript: |
+          buildenvPackageDoc

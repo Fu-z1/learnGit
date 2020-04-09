@@ -1,0 +1,89 @@
+inherit: [buildenv, packing-image]
+
+depends:
+  - system::tsd-pwc-mib3-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/mib3-pwc-updater.git
+   dir: tsd.pwc.mib3.updater
+   tag: 2.9.3
+   branch: master_mqb_sop1_eu
+
+metaEnvironment:
+   #MODULE_VERSION: "1.22.14" # has to be the same as tsd-pwc-mib3-image tag!
+   #PACKAGE_VERSION: "1.22.14" # has to be the same as tsd-pwc-mib3-image tag!
+   MODULE_VERSION: "2.02.10" # has to be the same as tsd-pwc-mib3-image tag!
+   PACKAGE_VERSION: "2.02.10" # has to be the same as tsd-pwc-mib3-image tag!
+
+multiPackage:
+   updater:
+      buildScript: |
+         buildenvBuildAll -DCMAKE_EXE_LINKER_FLAGS="-static"
+
+      packageVars: [TSD_PWC_MIB3_UPDATER_PREFIX]
+      packageScript: |
+         if [[ ${TSD_PWC_MIB3_UPDATER_PREFIX:+true} ]] ; then
+            mkdir -p $TSD_PWC_MIB3_UPDATER_PREFIX
+            rsync -a --delete $1/dist/usr/bin/ $TSD_PWC_MIB3_UPDATER_PREFIX
+         else
+            buildenvPackageTarget
+         fi
+
+   firmware-pkg:
+      multiPackage:
+         ? ""
+         :  depends:
+              - system::tsd-pwc-mib3-image-app1
+              - system::tsd-pwc-mib3-image-app2
+
+            buildScript: |
+               # get bootloader, config blobs and app1 from first input file, remove crc placeholders, write into outfile...
+               srec_cat ${BOB_DEP_PATHS["system::tsd-pwc-mib3-image-app1"]}/tsd.pwc.mib3.app1.srec -fill 0xFF 0x0000 0x8400 -crop 0x0000 0x0040 0x0050 0x08C0 0x08D0 0x8400 -o tsd.pwc.mib3
+
+               # get app2 from second input file, remove crc placeholders, append to outfile...
+               srec_cat ${BOB_DEP_PATHS["system::tsd-pwc-mib3-image-app2"]}/tsd.pwc.mib3.app2.srec -fill 0xFF 0x8400 0x10000 -crop 0x8400 0x84C0 0x84D0 0x10000 tsd.pwc.mib3 -o tsd.pwc.mib3
+
+               # calculate crc of bootloader vectors block, append to outfile...
+               srec_cat tsd.pwc.mib3 -crop 0x0000 0x0040 -l-e-crc32 0x0040 -crop 0x0040 0x0044 tsd.pwc.mib3 -o tsd.pwc.mib3
+               srec_cat tsd.pwc.mib3 -crop 0x0000 0x0040 -l-e-crc32 0x0044 -crop 0x0044 0x0048 tsd.pwc.mib3 -o tsd.pwc.mib3
+
+               # calculate crc of bootloader text block, append to outfile...
+               srec_cat tsd.pwc.mib3 -crop 0x0080 0x0400 -l-e-crc32 0x0048 -crop 0x0048 0x004C tsd.pwc.mib3 -o tsd.pwc.mib3
+               srec_cat tsd.pwc.mib3 -crop 0x0080 0x0400 -l-e-crc32 0x004C -crop 0x004C 0x0050 tsd.pwc.mib3 -o tsd.pwc.mib3
+
+               # calculate crc of app1 vectors block, append to outfile...
+               srec_cat tsd.pwc.mib3 -crop 0x0800 0x08C0 -l-e-crc32 0x08C0 -crop 0x08C0 0x08C4 tsd.pwc.mib3 -o tsd.pwc.mib3
+               srec_cat tsd.pwc.mib3 -crop 0x0800 0x08C0 -l-e-crc32 0x08C4 -crop 0x08C4 0x08C8 tsd.pwc.mib3 -o tsd.pwc.mib3
+
+               # calculate crc of app1 text block, append to outfile...
+               srec_cat tsd.pwc.mib3 -crop 0x0900 0x8400 -l-e-crc32 0x08C8 -crop 0x08C8 0x08CC tsd.pwc.mib3 -o tsd.pwc.mib3
+               srec_cat tsd.pwc.mib3 -crop 0x0900 0x8400 -l-e-crc32 0x08CC -crop 0x08CC 0x08D0 tsd.pwc.mib3 -o tsd.pwc.mib3
+
+               # calculate crc of app2 vectors block, append to outfile...
+               srec_cat tsd.pwc.mib3 -crop 0x8400 0x84C0 -l-e-crc32 0x84C0 -crop 0x84C0 0x84C4 tsd.pwc.mib3 -o tsd.pwc.mib3
+               srec_cat tsd.pwc.mib3 -crop 0x8400 0x84C0 -l-e-crc32 0x84C4 -crop 0x84C4 0x84C8 tsd.pwc.mib3 -o tsd.pwc.mib3
+
+               # calculate crc of app2 text block, append to outfile...
+               srec_cat tsd.pwc.mib3 -crop 0x8500 0x10000 -l-e-crc32 0x84C8 -crop 0x84C8 0x84CC tsd.pwc.mib3 -o tsd.pwc.mib3
+               srec_cat tsd.pwc.mib3 -crop 0x8500 0x10000 -l-e-crc32 0x84CC -crop 0x84CC 0x84D0 tsd.pwc.mib3 -o tsd.pwc.mib3
+
+               # merge complete.
+
+               # convert output to binary data...
+               srec_cat tsd.pwc.mib3 -o tsd.pwc.mib3.bin -binary
+
+               # delete temporary output
+               rm -f tsd.pwc.mib3
+
+            packageVars: [MODULE_VERSION, PACKAGE_VERSION]
+            packageScript: |
+               mkdir -p _flashcontainer/pwc
+               cp -anu $1/tsd.pwc.mib3.bin _flashcontainer/pwc
+
+               buildSwupImage --packageName="firmware" \
+                  --file $1/tsd.pwc.mib3.bin
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

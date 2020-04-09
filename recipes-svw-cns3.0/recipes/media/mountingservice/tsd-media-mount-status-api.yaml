@@ -1,0 +1,61 @@
+inherit: [buildenv, packing-module, capigen]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   - scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mount.status.api.git
+     dir: tsd.media.mount.status.api
+     tag: mqb_sop1_eu-1.0.4
+     # see link for change prozess: https://wiki-automotive.server.technisat-digital/display/MIB3SERIE/Schnittstellen+Navigation
+   - if: "${CONFIG_CAPI_MOCKS:-0}"
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mount.status.client.git
+     dir: tsd.media.mount.status.client
+     branch: master_mqb_sop1_eu
+   - if: "${CONFIG_CAPI_MOCKS:-0}"
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mount.status.service.git
+     dir: tsd.media.mount.status.service
+     branch: master_mqb_sop1_eu
+
+checkoutDeterministic: True
+checkoutScript: CapiGenProcessFIDLFiles tsd.media.mount.status.api
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "mount-status-api" \
+            -p "emmc.media.mountingsvc" \
+            -o "media.mountingservice:tsd-media-mount-status-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

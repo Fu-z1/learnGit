@@ -1,0 +1,51 @@
+inherit: [autotools, packing-module]
+
+environment:
+   PKG_VERSION: "1.32.1"
+
+depends:
+  - libs::ext-openssl-dev
+  - libs::ext-zlib-dev
+  - system::ext-boost-dev
+  - system::ext-boost-system-dev
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+      - libs::ext-zlib-target
+      - system::ext-boost-target
+
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libnghttp2/nghttp2-${PKG_VERSION}.tar.gz
+   digestSHA1: "f9a099efc94e7f5c49d35a62ea9badf88824fc22"  
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/nghttp2-${PKG_VERSION} \
+      --enable-lib-only \
+      --with-boost-asio=boost_system \
+      --with-boost-system=boost_system \
+      --enable-asio-lib
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageVars: [LIBDIR]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l nghttp2 -I include \
+            -d ext.openssl -d ext.zlib ext.nghttp2
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-nghttp2" \
+            -p "emmc.libs" \
+            -o "libs:ext-nghttp2 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

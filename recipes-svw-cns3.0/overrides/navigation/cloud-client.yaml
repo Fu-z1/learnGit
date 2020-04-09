@@ -1,0 +1,15 @@
+scmOverrides:
+#cloud sources for the target
+   -
+     match:
+       url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.comm.client*.git"
+     del: [commit, tag]
+     set:
+        branch: develop_mqb_sop1_eu
+   -
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.publicservices.api.git"
+     del: [commit, tag]
+     set:
+        branch: develop_mqb_sop1_eu
+

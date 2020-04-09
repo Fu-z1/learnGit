@@ -1,0 +1,36 @@
+inherit: [make]
+
+shared: True
+
+environment:
+   PKG_VERSION: "v6_11_1_patched_openssl_1_1_0_e"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-nodejs/nodejs_${PKG_VERSION}.tar.gz
+   digestSHA256: '0b10c0465863844a39236abed6b519b9c921806a386fa82c7829b8f3509a282b'
+
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/* ${PWD}
+   ./configure
+   makeParallel
+
+packageScript: |
+   mkdir -p usr/bin
+   mkdir -p usr/lib/node
+
+   rsync $1/out/Release/node usr/bin/
+   rsync $1/deps/npm/bin/npm-cli.js usr/bin/npm
+   rsync -a --delete $1/deps/npm/lib/* usr/lib
+   rsync -a $1/deps/npm/node_modules/ usr/lib/node
+
+   sed -i "1 s@.*@#\!/usr/bin/env node@" usr/bin/npm
+
+   echo {\"name\": \"zr3/toolchain::nodejs\",\"version\": \"1.0.0\"} > ${PWD}/usr/package.json
+
+
+provideTools:
+   npm:
+      path: "usr/bin"
+

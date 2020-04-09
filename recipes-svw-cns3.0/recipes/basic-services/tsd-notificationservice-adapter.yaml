@@ -1,0 +1,49 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-tcpprocinfo-dev
+  - basic-services::ext-vw-rsi-notificationservice-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+# same as serviceregistry         - basic-services::ext-vw-rsi-notificationservice-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.notificationservice.adapter.git
+    dir: tsd.notificationservice.adapter
+    tag: mqb_sop1_eu-2.7.0
+    branch: master_mqb_sop1_eu
+
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "notificationservice-adapter" \
+            -p "emmc.basic-svcs" \
+            -o "basic-services:tsd-notificationservice-adapter " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

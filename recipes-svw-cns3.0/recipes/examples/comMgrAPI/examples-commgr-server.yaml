@@ -1,0 +1,41 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+   - system::tsd-common-dev
+   - examples::comMgrAPI::examples-commgr-api-dev
+   - communication::tsd-communication-dev
+   - communication::tsd-communication-runtime-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-architecture/tsd.example.root.git
+      dir: tsd.example.root
+      branch: develop
+
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:jens.baumann/examples.commgr.server.git
+      dir: examples.commgr.server
+      branch: master
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+         - system::tsd-common-dev
+         - examples::comMgrAPI::examples-commgr-api-dev
+         - communication::tsd-communication-dev
+         - communication::tsd-communication-runtime-dev
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget

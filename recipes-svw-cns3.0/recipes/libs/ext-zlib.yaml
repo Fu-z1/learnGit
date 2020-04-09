@@ -1,0 +1,53 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "Zlib"
+   PKG_VERSION: "1.2.8"
+   PKG_NAME: "zlib"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-zlib/zlib-${PKG_VERSION}.tar.gz
+   digestSHA1: "a4d316c404ff54ca545ea71a27af7dbc29817088"
+   extract: no
+
+buildVars: [CC, LIBDIR, CONFIG_OPTIONS, PKG_VERSION]
+buildScript: |
+   tar --strip-components=1 -xzf $1/zlib-${PKG_VERSION}.tar.gz
+    # without autotools due to unknnown option '--build'
+   ./configure --prefix=/usr --libdir=/usr/${LIBDIR} ${CONFIG_OPTIONS:-}
+   autotoolsBuildOnly
+
+multiPackage:
+   ? ""
+   :  environment:
+         CONFIG_OPTIONS: ""
+      multiPackage:
+         dev: &dev
+            packageTools: [buildenv]
+            packageScript: |
+               autotoolsPackageDev
+               tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l z ext.zlib
+
+         target:
+            packageScript: |
+               autotoolsPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-zlib" \
+                  -p "emmc.libs" \
+                  -o "libs:ext-zlib " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+
+   static:
+      environment:
+         CONFIG_OPTIONS: "--static"
+      multiPackage:
+         dev: *dev
+
+         target:
+            packageScript: |
+            # NOP
+

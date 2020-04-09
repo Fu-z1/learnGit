@@ -1,0 +1,43 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL"
+   PKG_VERSION: "8.20.0.59"
+   PKG_NAME: "zulu"
+   PKG_PATCH_VERSION: "1.0.0"
+   PKG_RESPONSIBLE: "MMI-HMI"
+
+depends:
+  - hmi::ext-oracle-mcfobjectreader
+  - hmi::ext-oracle-objectswapper
+  - hmi::ext-oracle-xiploader
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.zulu.git
+   dir: ext.zulu
+   tag: mqb_sop1_eu-1.13.0
+
+buildScript: |
+   buildenvBuildAll
+   mkdir -p dist/java
+   cp -a $1/ext.zulu/target/bin   dist/java
+   cp -a $1/ext.zulu/target/lib   dist/java
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-zulu" \
+            -p "emmc.hmi" \
+            -m 'display,display,0755,/java$'    \
+            -m 'display,display,0755,/java/.*'  \
+            -o "hmi:ext-zulu " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

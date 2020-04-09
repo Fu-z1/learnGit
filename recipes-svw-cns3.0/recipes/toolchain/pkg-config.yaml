@@ -1,0 +1,28 @@
+inherit: [autotools, patch]
+shared: True
+
+privateEnvironment:
+    PKG_CONFIG_VERSION: "0.29.1"
+
+checkoutSCM:
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/pkg-config/pkg-config-${PKG_CONFIG_VERSION}.tar.gz
+    digestSHA1: "271ce928f6d673cc16cbced2bfd14a5f2e5d3d37"
+
+checkoutDeterministic: True
+checkoutVars: [PKG_CONFIG_VERSION]
+checkoutScript: |
+   cd pkg-config-${PKG_CONFIG_VERSION}
+   patchApplySeries $<<pkg-config/*.patch>>
+
+buildScript: |
+   autotoolsBuild $1/pkg-config-${PKG_CONFIG_VERSION} \
+      --disable-host-tool \
+      --with-internal-glib \
+      --enable-define-prefix # Tweak for Bob: redefine prefix in .pc files
+
+packageScript: |
+   autotoolsPackageTarget --include-shared
+
+provideTools:
+    pkg-config: usr/bin

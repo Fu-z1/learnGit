@@ -1,0 +1,169 @@
+inherit: [strip]
+
+environment:
+   TOOLCHAIN_NAME: "gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu"
+   TOOLCHAIN_HASH: "f7da494abbe84c744e7981162cb6059d0502b277"
+   URL:            "${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/gcc-linaro/"
+   ARM_ROOTFS:     "aarch64-linux-gnu/libc"
+
+shared: True
+
+checkoutSCM:
+   scm: url
+   url: ${URL}${TOOLCHAIN_NAME}.tar.xz
+   digestSHA1: ${TOOLCHAIN_HASH}
+   extract: no
+
+buildScript: |
+   ln -sf $1/*tar.xz .
+
+packageVars: [TOOLCHAIN_NAME, ARM_ROOTFS]
+packageVarsWeak: [KLOCWORK_BIN_PATH]
+packageScript: |
+   if [ ! -e .extracted ] ; then
+      tar xJf $1/*tar.xz
+
+      # remove deprecation warning from std::auto_ptr
+      sed -i -e 's/_GLIBCXX_DEPRECATED//' $TOOLCHAIN_NAME/aarch64-linux-gnu/include/c++/*/backward/auto_ptr.h
+
+      # strip all target binaries
+      stripAll $TOOLCHAIN_NAME/aarch64-linux-gnu/libc/ \
+         $PWD/$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-objcopy
+
+      # done
+      touch .extracted
+   fi
+
+   # add sysroot for compiler and linker
+   mkdir -p bin
+   for i in ld ld.bfd; do
+      cat > bin/aarch64-linux-gnu-$i <<EOF
+   #!/bin/sh
+   \${0%/*}/../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-$i --sysroot=\${0%/*}/../$TOOLCHAIN_NAME/$ARM_ROOTFS "\$@"
+   EOF
+      chmod a+x bin/aarch64-linux-gnu-$i
+   done
+   for i in gcc g++ cpp; do
+      cat > bin/aarch64-linux-gnu-$i <<EOF
+   #!/bin/sh
+   \${COMPILER_PREFIX:- } \${0%/*}/../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-$i --sysroot=\${0%/*}/../$TOOLCHAIN_NAME/$ARM_ROOTFS "\$@"
+   EOF
+      chmod a+x bin/aarch64-linux-gnu-$i
+   done
+
+   # just symlink the rest
+   pushd bin
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-ar
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-as
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-gcc-ar
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-gcc-nm
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-gcc-ranlib
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-gdb
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-nm
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-objcopy
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-objdump
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-ranlib
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-readelf
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-size
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-strings
+   ln -sf ../$TOOLCHAIN_NAME/bin/aarch64-linux-gnu-strip
+   popd
+
+   # create toolchain file
+   cat > aarch64-linux-gnu.toolchain <<EOF
+   # tell cmake the name of our target system
+   set (CMAKE_SYSTEM_NAME "Linux")
+
+   # set compiler
+   SET(CMAKE_C_COMPILER   "aarch64-linux-gnu-gcc")
+   SET(CMAKE_CXX_COMPILER "aarch64-linux-gnu-g++")
+
+   # set root path
+   SET(CMAKE_SYSROOT "\${CMAKE_CURRENT_LIST_DIR}/${TOOLCHAIN_NAME}/${ARM_ROOTFS}")
+
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY CACHE INTERNAL "")
+   EOF
+
+   cat > aarch64-linux-gnu-klocwork.toolchain <<EOF
+   # kw wrapper toolchain
+   SET( KLOCWORK_BIN_PATH "\$ENV{KLOCWORK_BIN_PATH}" )
+   IF( NOT KLOCWORK_BIN_PATH )
+   SET( KLOCWORK_BIN_PATH "/opt/install/klocwork/bin" )
+   ENDIF()
+
+   IF( NOT WORKSPACE )
+   SET(WORKSPACE "\$ENV{WORKSPACE}")
+   ENDIF()
+
+   FIND_PROGRAM(
+   KWWRAP_PATH
+   kwwrap
+   PATHS "\${KLOCWORK_BIN_PATH}"
+   )
+
+   SET(KLOCWORK_LOGFILE "\${WORKSPACE}/klocwork-buildtrace.log")
+
+   SET(CMAKE_C_COMPILER   "aarch64-linux-gnu-gcc")
+   SET(CMAKE_CXX_COMPILER "aarch64-linux-gnu-g++")
+   SET(CMAKE_SYSTEM_NAME "Linux")
+
+   # override defaults for build profiles
+   SET(CMAKE_C_FLAGS_MINSIZEREL "-g -Os" CACHE STRING "C MinSizeRel Flags")
+   SET(CMAKE_C_FLAGS_RELWITHDEBINFO "-g -O2" CACHE STRING "C RelWithDebInfo Flags")
+   SET(CMAKE_CXX_FLAGS_MINSIZEREL "-g -Os" CACHE STRING "C++ MinSizeRel Flags")
+   SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2" CACHE STRING "C++ RelWithDebInfo Flags")
+
+   # set root path
+   SET(CMAKE_SYSROOT "\${CMAKE_CURRENT_LIST_DIR}/${TOOLCHAIN_NAME}/${ARM_ROOTFS}")
+
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY CACHE INTERNAL "")
+
+   SET(GCC_KW_WRAPPER_PATH "\${WORKSPACE}/gcc-kw-wrapper.sh")
+   SET(GXX_KW_WRAPPER_PATH "\${WORKSPACE}/gxx-kw-wrapper.sh")
+   FILE(WRITE "\${GCC_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_C_COMPILER} \"\$@\"")
+   FILE(WRITE "\${GXX_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_CXX_COMPILER} \"\$@\"")
+   execute_process(COMMAND chmod 754 "\${GCC_KW_WRAPPER_PATH}")
+   execute_process(COMMAND chmod 754 "\${GXX_KW_WRAPPER_PATH}")
+
+   SET(CMAKE_C_COMPILER "\${GCC_KW_WRAPPER_PATH}")
+   SET(CMAKE_CXX_COMPILER "\${GXX_KW_WRAPPER_PATH}")
+   EOF
+
+provideVars:
+   # architecture
+   ARCH: arm64
+   AUTOCONF_HOST:   "aarch64-linux-gnu"
+   AUTOCONF_TARGET: "aarch64-linux-gnu"
+   CROSS_COMPILE:   "aarch64-linux-gnu-"
+   TARGET_TYPE: "embedded"
+
+   # compiler settings
+   CMAKE_TARGET_FILE: "armv8_linux.cmake"
+   CMAKE_TOOLCHAIN_FILE: $(if-then-else,$(eq,${CONFIG_KLOCWORK:-0},1),"../aarch64-linux-gnu-klocwork.toolchain","../aarch64-linux-gnu.toolchain")
+   CFLAGS: "-Os -g -pipe -feliminate-unused-debug-types -march=armv8-a -mtune=cortex-a57.cortex-a53 -ffunction-sections -fdata-sections -Wno-error=deprecated -Wno-error=implicit-fallthrough"
+   CXXFLAGS: "-Os -g -pipe -feliminate-unused-debug-types -march=armv8-a -mtune=cortex-a57.cortex-a53 -ffunction-sections -fdata-sections -std=c++11 -Wno-error=deprecated -Wno-error=implicit-fallthrough"
+   LDFLAGS: "-Wl,-O1 -Wl,--hash-style=gnu -Wl,--gc-sections"
+   LIBDIR: lib
+   SYSROOT: "../${TOOLCHAIN_NAME}/${ARM_ROOTFS}"
+
+   # tools
+   AR:     "aarch64-linux-gnu-gcc-ar"
+   AS:     "aarch64-linux-gnu-as"
+   CC:     "aarch64-linux-gnu-gcc"
+   CPP:    "aarch64-linux-gnu-cpp"
+   CXX:    "aarch64-linux-gnu-g++"
+   GDB:    "aarch64-linux-gnu-gdb"
+   LD:     "aarch64-linux-gnu-ld"
+   NM:     "aarch64-linux-gnu-gcc-nm"
+   OBJCPY: "aarch64-linux-gnu-objcopy"
+   OBJDMP: "aarch64-linux-gnu-objdump"
+   RANLIB: "aarch64-linux-gnu-gcc-ranlib"
+   STRIP:  "aarch64-linux-gnu-strip"
+
+provideTools:
+   toolchain:
+      path: "bin"

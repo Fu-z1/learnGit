@@ -1,0 +1,91 @@
+inherit: [packing-module,
+   "sds::asr::resources-origin-nlu",
+   "sds::asr::resources-origin-hmi",
+   "sds::asr::resources-origin-pcc",
+   "sds::asr::lang-sets"]
+
+buildVars: [LANGS, PCC_RES_VARIANT, WUP_VARIANT]
+buildScript: |
+
+   isNLU=0
+   containsElement()
+   {
+      local e
+      for e in "${@:2}"; do [[ "$e" == "$1" ]] && isNLU=1 && return 0; done
+      isNLU=0
+   }
+
+   # contex resources are language dependant
+   # param1: the combined language code e.g. "de_DE:ged"
+   copyContextRes()
+   {
+      code=$1          # e.g. "de_DE:ged"
+      c1=${code:0:5}
+      c2=${code:6:3}
+
+      rm -fr ${c1}/context
+
+      echo "Copy context resources for ${code}"
+
+      # do not copy NLU resources if this is not a NLU language
+      # the NLU meta info files
+      meta="${c1}/context/nlu/guest_context_metadata.json"
+      slotmap="${c1}/context/nlu/slotMap.json"
+      thresholds="${c1}/context/nlu/thresholds.txt"
+
+      containsElement $c2 "${LANGS_NLU[@]}"
+      if [ $isNLU -eq 1 ]; then
+         copyContextResFromNLU ${c1} ${c2}
+
+         ${PCC_CONFIG_GEN_TOOL}/scripts/generate_slot_map.sh ${PCC_CONFIG_GEN_TOOL}/templates \
+            ${slotmap} ${c2} ${c1}/context/nlu/slotMapping.json
+      else
+         echo "skipping NLU resources for ${c1}"
+         meta="-"
+         slotmap="-"
+         thresholds="-"
+      fi
+
+      copyContextResFromHMI ${c1} ${c2}
+      copyContextResFromPCC ${c1}
+
+      ${PCC_CONFIG_GEN_TOOL}/scripts/generate_context_config.sh ${PCC_CONFIG_GEN_TOOL}/templates \
+         ${PCC_CONFIG_GEN_TOOL_CFGS}/${c1}/config_templates ${c1} ${code} ${PCC_RES_VARIANT,,} ${WUP_VARIANT^^} \
+         ${meta} ${c1}/context/config.json
+
+      ${PCC_CONFIG_GEN_TOOL}/scripts/verify_contexts.sh ${c1}/context/ ${c1}/context/config.json
+
+      ${PCC_CONFIG_GEN_TOOL}/scripts/generate_confidence_filter.sh ${PCC_CONFIG_GEN_TOOL}/templates \
+         ${thresholds} ${code} ${c1}/context/confidenceFilter.json
+
+      # delete NLU meta info files
+      if [ "${meta}" != "-" ]; then
+         rm ${meta}
+      fi
+      if [ "${slotmap}" != "-" ]; then
+         rm ${slotmap}
+      fi
+      if [ "${thresholds}" != "-" ]; then
+         rm ${thresholds}
+      fi
+   }
+
+   rm -rf *
+   eval _LANGS=(${LANGS})
+   for lang in ${_LANGS[*]}; do copyContextRes ${lang}; done
+
+packageVars: [VARIANT_LIST, NO_PACKAGE, HMI_RES_VARIANT]
+packageScript: |
+   if [[ ${NO_PACKAGE:-False} == False ]]; then
+      mkdir -p tmp/var/speech/asr/lang/
+      cp -r $1/* tmp/var/speech/asr/lang/
+      buildSwupModule -n "sds-asr-resources-context" -p "emmc.sds.asr" -v ${HMI_RES_VARIANT} -o 'sds::asr::resources' -f tmp \
+          -m 'asr,asr,0770,/var/speech/asr$'      \
+          -m 'asr,asr,0770,/var/speech/asr/.*' -- \
+          --variantList $VARIANT_LIST \
+          -U "Partition=rootfs_ro"
+      rm -rf tmp
+   else
+      mkdir -p var/speech/asr/lang/
+      cp -r $1/* var/speech/asr/lang/
+   fi

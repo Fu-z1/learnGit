@@ -1,0 +1,87 @@
+inherit: [install, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later AND LGPL-3.0-or-later)"
+   PKG_VERSION: "0.169"
+   PKG_NAME: "elfutils"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-zlib-dev
+  - use: []
+    depends:
+      - libs::ext-zlib-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-elfutils/elfutils-${PKG_VERSION}.tar.bz2
+   digestSHA1: "4977019aece471362dbdd28a27ef1030471dff84"
+
+buildVars: [LIBDIR, PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/elfutils-${PKG_VERSION} \
+      --disable-static
+
+   # separate artifacts
+   mkdir -p dist-libelf/usr/$LIBDIR/pkgconfig dist-libelf/usr/include/elfutils \
+            dist-libdw/usr/$LIBDIR/pkgconfig  dist-libdw/usr/include/elfutils
+
+   # libelf
+   mv dist/usr/$LIBDIR/libelf* dist-libelf/usr/$LIBDIR
+   mv dist/usr/include/{gelf.h,libelf.h,nlist.h} dist-libelf/usr/include
+   mv dist/usr/include/elfutils/{elf-knowledge.h,version.h} dist-libelf/usr/include/elfutils
+   mv dist/usr/$LIBDIR/pkgconfig/libelf.pc dist-libelf/usr/$LIBDIR/pkgconfig
+
+   # libdw
+   mv dist/usr/$LIBDIR/libdw* dist-libdw/usr/$LIBDIR
+   mv dist/usr/include/dwarf.h dist-libdw/usr/include
+   mv dist/usr/include/elfutils/{known-dwarf.h,libdw.h,libdwelf.h,libdwfl.h} dist-libdw/usr/include/elfutils
+   mv dist/usr/$LIBDIR/pkgconfig/libdw.pc dist-libdw/usr/$LIBDIR/pkgconfig
+
+multiPackage:
+   libelf:
+      multiPackage:
+         dev:
+            packageScript: installPackageDev $1/dist-libelf
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               installPackageTarget $1/dist-libelf
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-elfutils-libelf" \
+                   -p "emmc.libs" \
+                   -o "libs" -f $d -- \
+                   -U "Partition=rootfs_ro"
+               rm -rf $d
+
+            provideDeps: ["*-target"]
+
+   libdw:
+      depends:
+         # if some other pacakge is building with libdw it has to get libelf to
+         # compile and link. Therefore we have to track and provide the
+         # dependency. But libdw must not actually use it while building.
+        - use: []
+          depends:
+            - libs::ext-elfutils-libelf-dev
+            - libs::ext-elfutils-libelf-target
+
+      multiPackage:
+         dev:
+            packageScript: installPackageDev $1/dist-libdw
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               installPackageTarget $1/dist-libdw
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-elfutils-libdw" \
+                   -p "emmc.libs" \
+                   -o "libs" -f $d -- \
+                   -U "Partition=rootfs_ro"
+               rm -rf $d
+
+            provideDeps: ["*-target"]

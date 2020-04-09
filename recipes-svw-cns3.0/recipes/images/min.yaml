@@ -1,0 +1,104 @@
+inherit: [rootfs, bl2]
+
+environment:
+  CONFIG_TARGET: "normalmin"
+
+depends:
+  -
+     name: toolchain::aarch64-linux-gnu
+     use: [tools, environment]
+     forward: True
+  - system::ext-busybox
+  - system::tsd-config-normal-mib3-target
+  - system::ext-optee::client-target
+  - system::tsd-roothash-ta
+  - system::tsd-config-buildcfg # not copied to target. see buildScript
+  - system::ext-cryptsetup-min
+  - system::ext-e2fsprogs-static
+
+buildVarsWeak: [TFTP]
+buildTools: [mkimage]
+buildVars: [STRIP]
+buildScript: |
+  declare -A tocopy
+
+  for key in ${!BOB_DEP_PATHS[@]}; do
+     tocopy[$key]=${BOB_DEP_PATHS[$key]}
+  done
+  unset tocopy[system::tsd-config-buildcfg]
+  unset tocopy[system::bsp::ext-linux-modules]
+  unset tocopy[system::ext-e2fsprogs-static]
+  unset tocopy[min]
+
+  rm -rf tmp symbols flash
+  mkdir -p tmp symbols flash
+
+  # copy/overwrite target specific files
+  for dep in ${tocopy[@]} ; do
+     rsync -a --exclude _swupdata ${dep}/ tmp/
+  done
+
+  # copy rootfs from SDK
+  copyFromFile ${BOB_DEP_PATHS["system::tsd-config-buildcfg"]}/rootfs-arm64.txt tmp
+
+  # add fsck
+  mkdir -p tmp/usr/sbin
+  cp ${BOB_DEP_PATHS['system::ext-e2fsprogs-static']}/usr/sbin/fsck.ext4 tmp/usr/sbin
+
+  pushd tmp
+  # remove libmount.
+  rm -rf usr/lib/libmount.so*
+  popd
+
+  move_symbols tmp symbols
+
+  # find missing dependencies
+  checkSharedLibraries tmp
+
+  fakeroot bash <<- EOF
+  # inherit shell settings and traps
+  $(set +o)
+  $(trap -p)
+
+  # add default directories and special files
+  pushd tmp
+  mkdir -p etc
+  ln -s /proc/mounts etc/mtab
+  mkdir -p data/tee
+  mkdir -p dev/pts
+  mkdir -p lib
+  mkdir -p proc
+  mkdir -p root
+  mkdir -p rootfs/sys
+  mkdir -p rootfs/var
+  mkdir -p sys
+  mkdir -p tmp
+  mkdir -p var
+  mknod dev/console c 5 1
+  popd
+
+  # add users
+  echo "root:gdOF8VqEfQxto:0:0:root:/root:/bin/sh" >  tmp/etc/passwd
+  echo "root:x:0:root"                             >  tmp/etc/group
+  echo -n "PATH=/bin:/sbin:/usr/bin:/usr/sbin:"    >  tmp/etc/profile
+  chmod 644 tmp/etc/passwd
+  chmod 644 tmp/etc/group
+
+  # create ramdisk. This will be loaded by BL2 so no u-boot header is
+  # needed.
+  rm -rf swupdate-min.cpio
+  pushd tmp
+
+  # Afterwards remove gzip.
+  find . | cpio -H newc -o > ../min.cpio
+  popd
+
+  # clean up
+  #rm -rf tmp
+  EOF
+
+packageScript: |
+  cp $1/min.cpio initrd
+  bl2_compress initrd
+
+  tar -C $1/symbols -czf symbols.tgz .

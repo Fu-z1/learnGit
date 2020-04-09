@@ -1,0 +1,36 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-3.0-or-later"
+   PKG_VERSION: "3.1.2"
+   PKG_NAME: "rsync"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-acl-dev
+  - use: []
+    depends:
+      - system::ext-acl-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-rsync/rsync-${PKG_VERSION}.tar.gz
+   digestSHA1: "0d4c7fb7fe3fc80eeff922a7c1d81df11dbb8a1a"
+
+buildVars: [PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -av $1/rsync-${PKG_VERSION}/ .
+   autotoolsBuild .
+
+packageScript: |
+   autotoolsPackageTarget --include-shared
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-rsync" \
+      -p "emmc.system" \
+      -o "system:ext-rsync " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps: ["*-target"]

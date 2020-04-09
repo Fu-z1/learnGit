@@ -1,0 +1,245 @@
+inherit: [packing-module, bl2]
+
+multiPackage:
+   ? ""
+   :  checkoutSCM:
+         scm: git
+         url: git@${DEFAULT_JPCC_GIT_SERVER}:sys/tsd.config.mib3.git
+         #tag: mqb_sop1_eu-5.7.0
+         branch: main/svw_cns3.0_1480_dev
+
+      packageScript: |
+         cp -a $1/* .
+
+      multiPackage:
+         # create script for GPIO-settings
+         gpio:
+            inherit: [install]
+            buildVars: [CONFIG_BOARD, CONFIG_TARGET, CC]
+            buildTools: [toolchain]
+            buildScript: |
+               mkdir -p sbin etc usr/bin
+               case $CONFIG_TARGET in
+                  demo)
+                     python $1/tools/gpio.py -o sbin $1/${CONFIG_BOARD}/linux/${CONFIG_TARGET}/buildcfg/gpio.dat
+                     cp $1/${CONFIG_BOARD}/linux/${CONFIG_TARGET}/buildcfg/gpio.dat etc/
+                     ;;
+                  *)
+                     python $1/tools/gpio.py -o sbin $1/${CONFIG_BOARD}/linux/normal/buildcfg/gpio.dat
+                     cp $1/${CONFIG_BOARD}/linux/normal/buildcfg/gpio.dat etc/
+                     ;;
+               esac
+               rm -f sbin/gpio.pre
+               chmod ug+x sbin/gpio.sh
+               $CC -Wall -Wextra -Os -g $1/tools/gpio.c -o usr/bin/tsd.config.gpio
+            packageScript: |
+               installStripAll .
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "config-gpio" \
+                  -p "emmc.system" \
+                  -o "system:tsd-config " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+
+         generator:
+            buildScript: |
+               rm -rf *
+               cp -au $1/tools/genConf.py .
+            packageScript: |
+               cp -au $1/genConf.py .
+
+         dev:
+            buildTools: [buildenv]
+            buildScript: |
+               rm -rf usr/include
+               mkdir -p usr/include
+               cp $1/device-tree/include/*.h usr/include
+               tsd-buildenv-create-shim.sh -p usr -I include tsd.config
+
+         kernelconfig:
+            buildVars: [CONFIG_BOARD, CONFIG_TARGET]
+            buildScript: |
+               case $CONFIG_TARGET in
+                  normal*)
+                     rsync -a --delete $1/$CONFIG_BOARD/linux/kernelconfig/ .
+                     ;;
+                  demo)
+                     rsync -a --delete $1/$CONFIG_BOARD/linux/kernelconfig/ .
+                     ;;
+                  rescue)
+                     rsync -a --delete $1/$CONFIG_BOARD/linux/kernelconfig/swupdate/ .
+                     ;;
+                  swupdate*)
+                     rsync -a --delete $1/$CONFIG_BOARD/linux/kernelconfig/swupdate/ .
+                     ;;
+               esac
+         emmc-layout:
+            buildScript: |
+               mkdir -p etc
+               cp $1/zr3/linux/normal/target/emmc-layout.sfdisk etc
+               cp $1/zr3/linux/normal/target/emmc-layout-small.sfdisk etc
+               cp $1/zr3/linux/normal/target/android-layout.sfdisk etc
+            packageScript: |
+               rsync -a -H --delete $1/ .
+
+# files that are put on top of the update container
+         devicetree:
+            multiPackage:
+               ? ""
+               :  privateEnvironment:
+                     VARIANT_INFOS: "$(queryVariantFlags,${VARIANTS},'Variant Info\
+                        \ String','HW_MATCH')"
+
+                  buildVars: [CONFIG_BOARD]
+                  buildScript: |
+                     rsync -a --delete $1/${CONFIG_BOARD} .
+                     rsync -a --delete $1/device-tree .
+
+                  packageTools: [dtc, host-toolchain]
+                  packageVars: [CONFIG_BOARD, CONFIG_TARGET, KERNEL_DTB, VARIANT_INFOS]
+                  packageVarsWeak: [TFTP]
+                  packageScript: |
+                     buildDTModule() {
+                        SYSTEM_VARIANT=$2
+                        HW_MATCH_STRING=$(echo $3 | tr -d '[]()"' | tr '\ ' ';')
+                        declare -A HW_MATCH
+                        IFS=';' read -ra VARIANTS <<< $HW_MATCH_STRING
+                        for VARIANT_VERSION in ${!VARIANTS[@]}; do
+                           IFS='=' read -ra VARIANT <<< ${VARIANTS[$VARIANT_VERSION]}
+                           HW_MATCH[${VARIANT[0]}]=${VARIANT[1]}
+                        done
+                        INFO_STRING=$4
+
+                        for HW_VARIANT in "${!HW_MATCH[@]}"; do
+                           IFS=',' read -ra HW_VERSIONS <<< "${HW_MATCH[$HW_VARIANT]}"
+                           for HW_VERSION in "${HW_VERSIONS[@]}"; do
+                              while read LINE; do
+                                 if [[ ! $LINE == \#* && ! $LINE == '' ]]; then
+                                    rm -rf tmp && mkdir -p tmp
+                                    IFS=',' read -ra DT_VARIANT <<< "$LINE"
+                                    _HW_VERSION="$(echo -e "${DT_VARIANT[0]}" | tr -d '[:space:]')"
+                                    _HW_VARIANT="$(echo -e "${DT_VARIANT[1]}" | tr -d '[:space:]')"
+                                    if [[ ${HW_VARIANT} != ${_HW_VARIANT} ]]; then
+                                       continue
+                                    fi
+                                    if [[ ${HW_VERSION} != ${_HW_VERSION} ]]; then
+                                       continue
+                                    fi
+                                    # at this point we have all we need to know:
+                                    # systemvariant, variantstring and matching hw_variant(s)
+                                    BASE_NAME=${KERNEL_DTB##*/}
+                                    gcc -E -nostdinc -I$1/device-tree/include -undef -D__DTS__ -x assembler-with-cpp \
+                                       ${DT_VARIANT[2]} \
+                                       -o ${BASE_NAME}.dts.tmp \
+                                       $1/device-tree/${KERNEL_DTB}.dts
+                                    dtc -p 1024 -O dtb -o Image-${BASE_NAME}_${_HW_VERSION}_${HW_VARIANT}.dtb ${BASE_NAME}.dts.tmp
+                                    bl2_compress Image-${BASE_NAME}_${_HW_VERSION}_${HW_VARIANT}.dtb
+                                    echo "${_HW_VERSION} ${HW_VARIANT} ${SYSTEM_VARIANT} ${INFO_STRING} Image-${BASE_NAME}_${_HW_VERSION}_${HW_VARIANT}.dtb" >> dt_variants.txt
+                                    rm ${BASE_NAME}.dts.tmp
+                                 fi
+                              done < "$1/${CONFIG_BOARD}/linux/${CONFIG_TARGET}/buildcfg/devicetree_variants.txt"
+                           done
+                        done
+                     }
+                     mkdir -p _flashcontainer/flash
+                     rm -f dt_variants.txt
+                     #split VARIANT_INFO string and build devicetree
+                     IFS=';' read -ra VARIANT_INFO_ARRAY <<< "$VARIANT_INFOS"
+                     for VARIANT in "${VARIANT_INFO_ARRAY[@]}"; do
+                        while IFS=':' read -ra V; do
+                           # V[0] -> system variant
+                           # V[1] -> comma seperated list of key value pairs
+                           SYSTEM_VARIANT=${V[0]}
+                           IFS='#' read -ra SYSTEM_VARIANT_FLAGS <<< "${V[1]}"
+                           for FLAG in "${SYSTEM_VARIANT_FLAGS[@]}"; do
+                              if [[ ${FLAG} == 'Variant Info String'* ]]; then
+                                 INFO_STRING=${FLAG#*=}
+                              fi
+                              if [[ ${FLAG} == 'HW_MATCH'* ]]; then
+                                 HW_MATCH=${FLAG#*=}
+                              fi
+                           done
+                           buildDTModule $1 "$SYSTEM_VARIANT" "$HW_MATCH" "$INFO_STRING"
+                        done <<< ${VARIANT}
+                     done
+
+                  multiPackage:
+                     swupdate:
+                        privateEnvironment:
+                           KERNEL_DTB: '${NORMAL_DTB}'
+                     normal:
+                        privateEnvironment:
+                           KERNEL_DTB: "$(if-then-else,$(eq,${CONFIG_HYPERVISOR:-1},1),${HYPERVISOR_DTB},${NORMAL_DTB})"
+                     android:
+                        privateEnvironment:
+                           KERNEL_DTB: '${ANDROID_DTB}'
+
+# copy relevant configurations for supplier
+         src:
+            buildVars: [KERNEL_DTB, CONFIG_BOARD]
+            buildScript: |
+               mkdir -p device-tree
+               rsync -a --delete $1/device-tree/include device-tree
+               mkdir -p device-tree/$(dirname $KERNEL_DTB)
+               cp -au $1/device-tree/${KERNEL_DTB}.dts device-tree/${KERNEL_DTB}.dts
+
+               mkdir -p kernelconfig
+               rsync -a --delete $1/$CONFIG_BOARD/linux/kernelconfig/ kernelconfig
+   buildcfg:
+      depends:
+        - if: "$(eq,${CONFIG_TARGET:-},manufacturing)"
+          depends:
+            - system::tsd-config-manufacturing-mib3-buildcfg
+
+        - if: "$(or,$(match,${CONFIG_TARGET:-},normal),$(eq,${CONFIG_TARGET:-},rescue),$(eq,${CONFIG_TARGET:-},demo))"
+          depends:
+            - system::tsd-config-normal-mib3-buildcfg
+
+        - if: "$(match,${CONFIG_TARGET:-},swupdate)"
+          depends:
+            - system::tsd-config-swdl-mib3-buildcfg
+      buildScript: |
+         for i in "${!BOB_DEP_PATHS[@]}"; do
+            rsync -a -H "${BOB_DEP_PATHS[$i]}"/ .
+         done
+      packageScript: |
+         rsync -a -H --delete $1/ .
+
+   target:
+      depends:
+        - if: "$(eq,${CONFIG_TARGET:-},manufacturing)"
+          name: system::tsd-config-manufacturing-mib3-target
+        - if: "$(or,$(eq,${CONFIG_TARGET:-},rescue),$(eq,${CONFIG_TARGET:-},demo))"
+          name: system::tsd-config-normal-mib3-target
+        - if: "$(match,${CONFIG_TARGET:-},swupdate)"
+          name: system::tsd-config-swdl-mib3-target
+        - if: "$(match,${CONFIG_TARGET:-},swupdate)"
+          name: system::tsd-config-emmc-layout
+      buildVars: [CONFIG_TARGET]
+      buildScript: |
+         for i in "${!BOB_DEP_PATHS[@]}"; do
+            rsync -a -H "${BOB_DEP_PATHS[$i]}"/ .
+         done
+
+      packageScript: |
+         rsync -a -H --delete $1/ .
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "config" \
+            -p "emmc.system" \
+            -o "system:tsd-config " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   pkg:
+      depends:
+        - name: system::tsd-config-normal-mib3-pkg
+
+      buildScript: |
+         rm -rf *
+         for i in "${!BOB_DEP_PATHS[@]}"; do
+            rsync -a -H "${BOB_DEP_PATHS[$i]}"/ .
+         done
+      packageScript: |
+         rsync -a -H --delete $1/ .

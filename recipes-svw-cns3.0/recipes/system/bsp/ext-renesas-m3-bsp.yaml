@@ -1,0 +1,40 @@
+inherit: [packing-module]
+environment:
+   PKG_VERSION: "SV00_Yocto3901Software"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/yocto/${PKG_VERSION}.tgz
+    digestSHA1: 211140327e8b3276c25e758c33f58d8ca343eec2
+    extract: false
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   rm -rf build dist
+   mkdir -p build dist
+   pushd build
+   mkdir software
+   pushd software
+   tar xzf $1/${PKG_VERSION}.tgz
+   popd
+   for i in software/*.zip; do unzip -o $i ; done
+   popd
+
+   pushd dist
+   ls -la ../build/
+   for i  in ../build/RCG3VUDRL4101ZDO_3_0_15 \
+             ../build/RCM3G001L4101ZDO_2_0_5 \
+             ../build/RCM3G002L4101ZNI_2_0_5 \
+             ../build/RTM0AC* \
+             ../build/RTM0RC7796GLPG0001SL41C_2_0_5
+   do
+   mv $i/*/Software/* .
+   done
+
+   popd
+
+   rm -rf build
+
+packageScript: |
+   rsync -a --delete $1/dist/ .

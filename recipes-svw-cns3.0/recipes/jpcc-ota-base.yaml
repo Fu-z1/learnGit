@@ -1,0 +1,37 @@
+privateEnvironment:
+    ANDROID_VARIANTS: "$(if-then-else,$(match,${VARIANTS},'301001'),'VW_CHN',\
+                       $(if-then-else,$(match,${VARIANTS},'301002'),'VW_HM',\
+                       $(if-then-else,$(match,${VARIANTS},'301003'),'VW_TW',\
+                       $(if-then-else,$(match,${VARIANTS},'301004'),'SK_TW',\
+                       $(if-then-else,$(match,${VARIANTS},'301005'),'SK_CHN',\
+                       'VW_CHN')))))"
+
+
+checkoutSCM:
+
+ # - if: $(eq,${CONFIG_ANDROID_SYSTEM},"1")
+  -
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}/src/cns/tmp/tmp_v1.zip 
+    digestSHA1: b2d39c046ed979b477998c4efe21956b9f4f792d
+    extract: false
+
+  -
+#  - if: $(eq,${CONFIG_ANDROID_SYSTEM},"0")
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}/src/cns/tmp/tmp_v2.zip 
+    digestSHA1: b2d39c046ed979b477998c4efe21956b9f4f792d
+    extract: false
+
+buildScript: |
+
+    rm -rf ota_base.conf
+    for file in `ls $1/*.zip`
+    do
+        echo ${file##*/} >> ota_base.conf
+        ln -s $file ${file##*/}
+    done
+
+packageScript: |
+
+    rsync -a --delete $1/* ${PWD}

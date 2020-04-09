@@ -1,0 +1,47 @@
+inherit: [buildenv, packing-module, werror]
+
+packageTools: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+
+multiPackage:
+   dev:
+      #buildScript: buildenvBuildAll
+      packageScript: |
+         #buildenvPackageDev
+         tsd-buildenv-create-shim.sh \
+            -p . \
+            -D TARGET_BRAND_SKODA="SK" \
+            -D TARGET_BRAND_VOLKSWAGEN="VW" \
+            -D TARGET_BRAND_AUDI="AU" \
+            -D TARGET_BRAND_BENTLEY="BY" \
+            -D TARGET_BRAND_MAN="MN" \
+            -D TARGET_BRAND_SEAT="SE" \
+            -D TARGET_BRAND_PORSCHE="PO" \
+            -D TARGET_BRAND_VWNFY="VW" \
+            tsd.sal.carplay.brands
+
+   target:
+      #buildScript: buildenvBuildAll
+      packageScript: |
+         #buildenvPackageTarget
+         tsd-buildenv-create-shim.sh \
+            -p . \
+            -D TARGET_BRAND_SKODA="SK" \
+            -D TARGET_BRAND_VOLKSWAGEN="VW" \
+            -D TARGET_BRAND_AUDI="AU" \
+            -D TARGET_BRAND_BENTLEY="BY" \
+            -D TARGET_BRAND_MAN="MN" \
+            -D TARGET_BRAND_SEAT="SE" \
+            -D TARGET_BRAND_PORSCHE="PO" \
+            -D TARGET_BRAND_VWNFY="VW" \
+            tsd.sal.carplay.brands
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "sal-carplay-brands" \
+            -p "emmc.sal" \
+            -o "sal:tsd-sal-carplay-brands " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

@@ -1,0 +1,48 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-or-later"
+   PKG_VERSION: "2.3.1a"
+   PKG_NAME: "slang"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-zlib-dev
+  - use: []
+    depends:
+      - libs::ext-zlib-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-slang/slang-${PKG_VERSION}.tar.bz2
+   digestSHA1: "a8ea7f1b5736160a94efb67b137a0f5b9916bdf2"
+
+buildVars: [PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/slang-${PKG_VERSION}/ .
+   MAKE_JOBS=1 autotoolsBuild . \
+      --without-pcre \
+      --without-png \
+      --with-z=${BOB_DEP_PATHS["libs::ext-zlib-dev"]} \
+      --with-iconv=no
+
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-slang" \
+            -p "emmc.libs" \
+            -o "libs:ext-slang " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+

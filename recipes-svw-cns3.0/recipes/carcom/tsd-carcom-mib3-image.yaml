@@ -1,0 +1,57 @@
+inherit: [buildenv, bl2, werror]
+
+environment:
+   TARGET_OS: "freertos"
+   CMAKE_TARGET_FILE: "armv7_cr7_freertos.cmake"
+   CMAKE_BUILD_TYPE: "MinSizeRel"
+   SW_CAN_PLATFORM: "$(getUniqueFeatureFromList,${VARIANTS},SW_CAN_PLATFORM)"
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Image"
+
+depends:
+  - name: toolchain::arm-bare_newlib_cr7-eabi
+    use: [tools, environment]
+    forward: true
+    #if: "$(eq,${SOC_FAMILY},r8a7796)"
+    if: "$(or,$(eq,${SOC_FAMILY},r8a7796),$(eq,${SOC_FAMILY},r8a7795))"
+
+  - vehicle-connectivity::canstack::tsd-canstack-mib3-dev
+  - system::system-lifecycle::tsd-systemstate-manager-app-dev
+  - basic-services::car-function-management::ext-vw-carssw-dev
+  - basic-services::car-function-management::tsd-carssw-caninterface-dev
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - system::tsd-drivers-dev
+  - system::tsd-pwc-mib3-api-dev
+  - engineering::diagnostic-management::tsd-uds-mib3-dev
+  - basic-services::persistence::tsd-persistence-service-mib3-dev
+  - carcom::tsd-carcom-config-api-dev
+  - carcom::tsd-carcom-api-mib3-dev
+  - system::system-lifecycle::tsd-pwc-proxy-dev
+  - carcom::tsd-peripheral-controller-dev
+  - system::system-lifecycle::tsd-systemstate-guard-mib3-dev
+  - system::tsd-logging-r7-dev
+  - system::tsd-clock-service-mib3-cr7
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd.carcom.image.mib3.git
+   dir: tsd.carcom.image.mib3
+   #tag: mqb_sop1_eu-4.8.0
+   #branch: master_mqb_sop1_eu
+   branch: rebase/mqb_sop1_eu-1480-rc4
+
+buildVars: [SW_CAN_PLATFORM]
+buildScript: |
+   buildenvBuildModules -DSW_CAN_PLATFORM=${SW_CAN_PLATFORM} tsd.carcom.image.mib3
+
+packageVars: [OBJCPY]
+packageScript: |
+   mkdir -p .debug
+   cp $1/dist/usr/bin/tsd.carcom.image.mib3 .debug/tsd.carcom.image.mib3.elf
+
+   $OBJCPY -O binary $1/dist/usr/bin/tsd.carcom.image.mib3 tsd.carcom.image.mib3.bin
+
+   bl2_compress tsd.carcom.image.mib3.bin

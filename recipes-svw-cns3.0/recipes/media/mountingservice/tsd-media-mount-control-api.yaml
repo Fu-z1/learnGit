@@ -1,0 +1,60 @@
+inherit: [buildenv, packing-module, capigen]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   - scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mount.control.api.git
+     dir: tsd.media.mount.control.api
+     tag: mqb_sop1_eu-1.0.2
+   - if: "${CONFIG_CAPI_MOCKS:-0}"
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mount.control.client.git
+     dir: tsd.media.mount.control.client
+     branch: master_mqb_sop1_eu
+   - if: "${CONFIG_CAPI_MOCKS:-0}"
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mount.control.service.git
+     dir: tsd.media.mount.control.service
+     branch: master_mqb_sop1_eu
+
+checkoutDeterministic: True
+checkoutScript: CapiGenProcessFIDLFiles tsd.media.mount.control.api
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "mount-control-api" \
+            -p "emmc.media.mountingsvc" \
+            -o "media.mountingservice:tsd-media-mount-control-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

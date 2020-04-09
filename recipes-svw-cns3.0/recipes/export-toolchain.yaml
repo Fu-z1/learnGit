@@ -1,0 +1,92 @@
+inherit: [root]
+
+environment:
+   TARGET_OS: "linux"
+   CONFIG_BOARD: zr3
+   CONFIG_TARGET: "${CONFIG_TARGET:-normal}"
+   SOC_FAMILY: r8a7795
+   SOC_NAME: H3N
+   KERNEL_BRANCH: v4.14+rcar-3.7.3+git5090444+pcc
+   KERNEL_BOARD: tsd-zr3-h3n
+   KERNEL_DTB: "renesas/r8a7796-pcc-zr3"
+
+depends:
+   -
+      name: toolchain::aarch64-linux-gnu
+      use: [tools, environment, result]
+      forward: True
+
+   - system::bsp::ext-linux-src
+   - system::tsd-config-src
+
+   - audio::audiorouter::ext-alsa-lib-dev
+   - hmi::ext-pango-dev
+   - libs::ext-cairo-dev
+   - libs::ext-curl-dev
+   - libs::ext-libpng-dev
+   - libs::ext-ncurses-dev
+   - libs::ext-openssl-dev
+   - libs::ext-protobuf-dev
+   - libs::ext-readline-dev
+   - libs::ext-zlib-dev
+   - libs::ext-libgif-dev
+   - libs::ext-libjpeg-dev
+   - connectivity::usb::ext-libusb-dev
+   - system::bsp::ext-mmngr-mmngr-dev
+   - system::bsp::ext-mmngr-mmngrbuf-dev
+   - system::bsp::ext-omx-dev
+   - system::bsp::ext-vspm-dev
+   - system::bsp::ext-weston-dev
+   - system::ext-acl-dev
+   - system::ext-boost-date-time-dev
+   - system::ext-boost-dev
+   - system::ext-boost-program-options-dev
+   - system::ext-boost-system-dev
+   - system::ext-lzo
+   - system::ext-opengles-dev
+   - system::ext-poco-dev
+   - system::ext-systemd-dev
+   - system::ext-util-linux-dev
+   - system::ext-xz-dev
+
+buildTools: [toolchain, dtc]
+buildVars: [AR, ARCH, AS, AUTOCONF_BUILD, AUTOCONF_HOST, AUTOCONF_TARGET, CC,
+   CFLAGS, CPP, CROSS_COMPILE, CXX, CXXFLAGS, GDB, LD, LDFLAGS, NM, OBJCPY,
+   OBJDMP, RANLIB, STRIP, SYSROOT]
+buildScript: |
+   rm -rf *
+   mkdir -p pcc-zr3-sdk
+   pushd pcc-zr3-sdk
+
+   # create directories
+   mkdir -p toolchain src $AUTOCONF_TARGET
+
+   # toolchain(s)
+   cp -a ${BOB_DEP_PATHS[toolchain::aarch64-linux-gnu]}/*aarch64-linux-gnu/* toolchain/
+   cp -a ${BOB_TOOL_PATHS[dtc]}/../* toolchain/
+
+   # sources
+   cp -a ${BOB_DEP_PATHS[system::bsp::ext-linux-src]}/* src/
+   cp -a ${BOB_DEP_PATHS[system::tsd-config-src]}/* src/
+
+   # target packages
+   cp -a ${BOB_TOOL_PATHS[toolchain]}/$SYSROOT/* ${AUTOCONF_TARGET}/
+   for i in "${@:5}" ; do
+      cp -a "$i"/* ${AUTOCONF_TARGET}/
+   done
+
+   # copy in templates
+   cp $<<export-toolchain/README>> README
+   cp $<<export-toolchain/setup.sh>> setup.sh
+   for i in AR ARCH AS AUTOCONF_BUILD AUTOCONF_HOST AUTOCONF_TARGET CC CFLAGS \
+            CPP CROSS_COMPILE CXX CXXFLAGS GDB LD LDFLAGS NM OBJCPY OBJDMP \
+            RANLIB STRIP
+   do
+      sed -i -e "s/%${i}%/${!i}/g" setup.sh
+   done
+   chmod +x setup.sh
+
+   popd
+
+packageScript: |
+   tar zcf pcc-zr3-sdk.tgz -C $1 pcc-zr3-sdk

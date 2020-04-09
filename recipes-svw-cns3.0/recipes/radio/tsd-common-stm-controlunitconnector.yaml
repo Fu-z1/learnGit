@@ -1,0 +1,53 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Application and Services"
+
+depends:
+  - radio::tsd-common-networksvr-dev
+  - radio::tsd-radio-core-system-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - radio::tsd-common-networksvr-target
+      - radio::tsd-radio-core-system-target
+      - system::tsd-common-target
+
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-libs/tsd.common.stm.controlunitconnector.git
+   dir: tsd.common.stm.controlunitconnector
+   branch: cns_mqb_sop1
+
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps:
+        - radio::tsd-common-networksvr-dev
+        - radio::tsd-radio-core-system-dev
+        - system::tsd-common-dev
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "common-stm-controlunitconnector" \
+            -p "emmc.radio" \
+            -o "radio:tsd-common-stm-controlunitconnector " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

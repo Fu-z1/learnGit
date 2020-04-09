@@ -1,0 +1,42 @@
+inherit: [autotools, patch, packing-module]
+
+environment:
+   PKG_VERSION: "1.14"
+
+metaEnvironment:
+   PKG_LICENSE: "LGPL"
+   PKG_VERSION: "1.14"
+   PKG_NAME: "libiconv"
+   PKG_PATCH_VERSION: "1.0.0"
+   PKG_RESPONSIBLE: "MMI-HMI"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libiconv/libiconv-${PKG_VERSION}.tar.gz
+   digestSHA1: "be7d67e50d72ff067b2c0291311bc283add36965"
+
+checkoutDeterministic: true
+checkoutScript: |
+   pushd libiconv-${PKG_VERSION}
+   patchApplySeries -p1 $<<ext-libiconv/*.patch>>
+
+buildScript: |
+   export CFLAGS="-std=gnu99"
+   autotoolsBuild $1/libiconv-${PKG_VERSION}
+
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageDev
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libiconv" \
+            -p "emmc.hmi" \
+            -o "hmi:ext-libiconv " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

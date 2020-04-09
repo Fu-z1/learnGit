@@ -1,0 +1,45 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:MXnavi/tsd.nav.production.api.git
+   dir: tsd.nav.production.api
+   branch: feature/NavProduction #navi-interface (interface to externel contractors)
+   # see link for change prozess: https://wiki-automotive.server.technisat-digital/display/MIB3SERIE/Schnittstellen+Navigation
+   dir: tsd.nav.production.api
+
+checkoutDeterministic: true
+checkoutScript: CapiGenProcessFIDLFiles tsd.nav.production.api
+
+buildScript: |
+   buildenvBuildAll
+
+# No warning-as-error for generated code
+packageVars: [LIBDIR]
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+   target: # Shared-lib (FIDL)
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "prod-api" \
+            -p "emmc.navigation" \
+            -o "navigation:tsd-nav-production-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

@@ -1,0 +1,143 @@
+inherit: [buildenv , packing-module]
+
+depends:
+   - libs::ext-openssl-dev
+   - libs::ext-libpng-dev
+   - libs::ext-bzip2-dev
+   - onlineservices::tsd-onlineservices-backendcomcore-dev
+   - system::tsd-common-dev
+   - system::tsd-common-daemon-dev
+   - system::tsd-dataformats-dev
+   - onlineservices::tsd-onlineservices-common-dev
+   - basic-services::rsi-library::tsd-rsi-client-dev
+   - basic-services::rsi-library::tsd-rsi-server-dev
+   - basic-services::persistence::tsd-persistence-client-mib3-dev
+   - communication::ext-commonapi-runtime-dev
+   - communication::tsd-communication-binding-dev
+   - system::tsd-common-guid-dev
+   - basic-services::rsi-library::tsd-rsi-common-dev
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-common-dev
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+   - onlineservices::tsd-onlineservices-mosquitto-dev
+   - system::ext-boost-dev
+   - system::ext-boost-regex-dev
+   - system::ext-boost-thread-dev
+   - system::ext-boost-system-dev
+   - media::mountingservice::tsd-media-mount-status-api-dev
+   - connectivity::networking::tsd-networking-api-dev
+   - system::system-lifecycle::tsd-systemstate-manager-api-dev
+   - audio::audiorouter::tsd-audio-audiorouter-client-api-dev
+   - navigation::tsd-nav-pos-gps-api-dev
+   - navigation::tsd-nav-pos-sensors-api-dev
+   - hmi::tsd-hmi-language-client-mib3-dev
+   - vehicle-connectivity::canstack::tsd-canstack-api-dev
+   - navigation::tsd-nav-vehiclestatus-api-dev
+   - system::tsd-swupdate-testinterface-dev
+   - use: []
+     depends:
+         - libs::ext-openssl-target
+         - libs::ext-libpng-target
+         - libs::ext-bzip2-target
+         - onlineservices::tsd-onlineservices-backendcomcore-target
+         - system::tsd-common-target
+         - system::tsd-common-daemon-target
+         - system::tsd-dataformats-target
+         - basic-services::persistence::tsd-persistence-client-mib3-target
+         - basic-services::rsi-library::tsd-rsi-client-target
+         - system::ext-boost-target
+         - communication::ext-commonapi-runtime-target
+         - communication::tsd-communication-binding-target
+         - communication::tsd-communication-target
+         - onlineservices::tsd-onlineservices-mosquitto-target
+         - media::mountingservice::tsd-media-mount-status-api-target
+         - connectivity::networking::tsd-networking-api-dev
+         - system::system-lifecycle::tsd-systemstate-manager-api-target
+         - audio::audiorouter::tsd-audio-audiorouter-client-api-target
+         - navigation::tsd-nav-pos-gps-api-target
+         - navigation::tsd-nav-pos-sensors-api-target
+         - hmi::tsd-hmi-language-client-mib3-target
+         - vehicle-connectivity::canstack::tsd-canstack-api-target
+         - navigation::tsd-nav-vehiclestatus-api-target
+         - system::tsd-swupdate-testinterface-target
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:onlineservice/cns-applications.git
+   dir: tsd.onlineservices.applications
+   branch: main/svw_cns3.0_1520_dev
+
+multiPackage:
+   dev:
+      buildScript:   |
+               buildenvBuildModules \
+               tsd.onlineservices.applications \
+               -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+               -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+               tsd.onlineservices.applications.app.service
+      packageScript: |
+            buildenvPackageDev install
+      provideDeps: [ "*-dev" ]
+      
+   target:
+      privateEnvironment:
+               SW_MQB: $(flagIsSet,${VARIANTS},SW_HMI_PROJECT,MQB)
+               SW_37W: $(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W)
+
+      buildVars: [SW_37W, SW_MQB]
+
+      buildScript: |
+               if [[ $SW_37W == "True" ]]; then
+                    SW_CIF_DSI="DSI_37W"
+               elif [[ $SW_MQB == "True" ]]; then
+                    SW_CIF_DSI="DSI_MQB"
+               fi
+  
+
+               buildenvBuildModules \
+               -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+               -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+               -DSW_CIF_DSI=${SW_CIF_DSI} \
+               tsd.onlineservices.applications \
+               tsd.onlineservices.applications.app.service 
+               chmod +x dist/sbin/internet.sh
+
+      packageScript: |
+         buildenvPackageTarget 
+
+         mkdir -p etc/tsd.onlineservices.application/
+         mkdir -p var/log/datacollection/
+         mkdir -p var/log/onlineservice/
+
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlinesvcs.apps.app.service" \
+            -p "emmc.onlinesvcs" \
+            -m 'onlineapp,online,0777,/var/log/datacollection$' \
+            -m 'onlineapp,online,0777,/var/log/datacollection/.*' \
+            -m 'onlineapp,online,0777,/var/log/onlineservice$' \
+            -m 'onlineapp,online,0777,/var/log/onlineservice/.*' \
+            -m 'onlineapp,online,0777,/var/lib/onlineapplication$' \
+            -m 'onlineapp,online,0777,/var/lib/onlineapplication/.*' \
+            -m 'onlineapp,online,0777,/var/nfs$' \
+            -m 'onlineapp,online,0777,/var/nfs/.*' \
+            -m 'onlineapp,online,0777,/var/lib/logging$' \
+            -m 'onlineapp,online,0777,/var/lib/logging/.*' \
+            -o "onlineservices:tsd.onlineservices.applications.app.service" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+      provideDeps: [ "*-target" ]
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+#            tsd.onlineservices.applications.app
+      packageScript: buildenvPackageTarget
+
+#         chmod +x dist/onlineservices/cns-applications-target/sbin/internet.sh

@@ -1,0 +1,51 @@
+shared: True
+
+environment:
+   RELEASE: "stretch"
+   VERSION: "20171103"
+
+checkoutVars: [RELEASE, VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/sandbox/debian-${RELEASE}-amd64-rootfs-${VERSION}.tgz
+   digestSHA1: "a1475c0805d8d55a5a607cc725206ea1428f29a8"
+   extract: False
+
+buildScript: |
+   tar -xf $1/debian-${RELEASE}-amd64-rootfs-${VERSION}.tgz --exclude=./dev
+   ### TODO: remove this lines once we build a new sandbox
+   pushd toolchain/gcc-6.4.0/bin
+   mv c++ _c++
+   cat > c++ << EOF
+   #!/bin/sh
+   /toolchain/gcc-6.4.0/bin/_c++ -idirafter /toolchain/usr/include -idirafter /toolchain/usr/include/x86_64-linux-gnu \$@
+   EOF
+   chmod a+x c++
+
+   # fix quotes in wrapper scripts
+   for i in  c++ gcc g++ cpp x86_64-pc-linux-gnu-gcc x86_64-pc-linux-gnu-g++ x86_64-pc-linux-gnu-c++; do
+      sed -i "s/\$@/\"\$@\"/g" $i
+   done
+   popd
+
+   sed -i -e 's/_GLIBCXX_DEPRECATED//' toolchain/gcc-6.4.0/include/c++/*/backward/auto_ptr.h
+   ## END TODO
+
+packageScript: |
+   for DIR in bin etc lib lib64 opt sbin toolchain usr var; do
+      if [[ -d $1/${DIR} ]];then
+         cp -al $1/${DIR} ${PWD}
+      fi
+   done
+
+provideVars:
+   HOME: "/tmp"
+
+provideSandbox:
+   paths: [ "/bin", "/usr/bin", "/sbin"]
+   mount:
+        # mount proc fs. autogen needs this
+       - "/etc/resolv.conf"
+       - [ "/proc", "/proc" ]
+       - [ "\\$HOME/.ssh", "/nonexistent/.ssh"]
+       - [ "\\$SSH_AUTH_SOCK", "\\$SSH_AUTH_SOCK", [nojenkins, nofail] ]

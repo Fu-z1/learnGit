@@ -1,0 +1,82 @@
+inherit: [cmake, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_VERSION: "4.13.B200"
+   PKG_NAME: "ViWi NavSD Client"
+   PKG_PATCH_VERSION: "4.13.B200"
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - libs::ext-openssl-dev
+  - system::ext-poco-dev
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+      - system::ext-poco-target
+      - system::tsd-common-target
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.carssw.viwinavsdclient.git
+    dir: ext.vw.carssw.viwinavsdclient
+    tag: SOP1_v4.13.0562
+    branch: master_mqb_sop1_eu
+
+buildScript: |
+   CMAKE_SRC_PATH="$1/ext.vw.carssw.viwinavsdclient"
+   cmakeConfigure -DSHARED_LIBRARY_VERSION=00
+   makeParallel
+   cmakeInstall install
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+
+         # for debug there is a postfix
+         DbgPostFix=""
+         if [ "${CMAKE_BUILD_TYPE:-}" == "Debug" ]; then
+            DbgPostFix="d"
+         fi
+
+         rsync -a --delete $1/dist/ .
+         if [ "${LIBDIR:-}" != "lib" ]; then
+            mv ./usr/lib ./usr/${LIBDIR}
+         fi
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR}        \
+                                        -l MIBBapLib${DbgPostFix}          \
+                                        -l MIBClientLib${DbgPostFix}       \
+                                        -l MIBNavSDClientLib${DbgPostFix}  \
+                                        -l MIBSecurityLib${DbgPostFix}     \
+                                        -l MIBServiceLib${DbgPostFix}      \
+                                        -l MIBUtilLib${DbgPostFix}         \
+                                        ext.vw.carssw.viwinavsdclient
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         # the following libs are already build with ServiceRegistry or CarService, dont't distribute again
+         find ./usr/${LIBDIR}/ -name "*MIBSecurityLib*"       -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceLib*"        -delete
+         find ./usr/${LIBDIR}/ -name "*MIBUtilLib*"           -delete
+         find ./usr/${LIBDIR}/ -name "*MIBBapLib*"            -delete
+         find ./usr/${LIBDIR}/ -name "*MIBMappingServiceLib*" -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceDataLib*"    -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceDBLib*"      -delete
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-vw-carssw-viwinavsdclt" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:ext-vw-carssw-viwinavsdclient " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

@@ -1,0 +1,54 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - if: "$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},1)"
+    depends:
+      - system::tsd-swupdate-ta-stub
+  - system::tsd-common-dev
+  - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer)"
+    depends:
+      - system::tsd-swupdate-common-developer-dev
+  - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Customer)"
+    depends:
+      - system::tsd-swupdate-common-customer-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer)"
+        depends:
+          - system::tsd-swupdate-common-developer-target
+      - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Customer)"
+        depends:
+          - system::tsd-swupdate-common-customer-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.viewcontroller.git
+   dir: tsd.swupdate.viewcontroller
+   tag: 3.0.0
+   branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-viewcontroller" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-viewcontroller " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

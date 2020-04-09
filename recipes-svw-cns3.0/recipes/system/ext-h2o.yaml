@@ -1,0 +1,55 @@
+inherit: [cmake, patch, packing-module]
+
+environment:
+   PKG_VERSION: "2.0.1"
+
+depends:
+  - libs::ext-openssl-dev
+  - libs::ext-zlib-dev
+  - system::ext-libuv-dev
+  - system::ext-wslay-dev
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-h2o/v${PKG_VERSION}.tar.gz
+   digestSHA1: "836ba9d36f3bf6878d5c6afaaccba8a767097380"
+
+checkoutDeterministic: true
+checkoutScript: |
+   pushd h2o-${PKG_VERSION}
+   patchApplySeries -p0 $<<ext-h2o/*.patch>>
+   popd
+
+buildVars: [PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/h2o-${PKG_VERSION}/ ${PWD}
+   CMAKE_SRC_PATH="${PWD}"
+   cmakeConfigure -DWITH_BUNDLED_SSL=0 -DBUILD_SHARED_LIBS=1 -DWITH_MRUBY=0
+   makeParallel
+   cmakeInstall install
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l h2o -I include \
+            -d ext.openssl -d ext.zlib -d ext.libuv -d ext.wslay ext.h2o
+      provideDeps:
+        - libs::ext-openssl-dev
+        - libs::ext-zlib-dev
+        - system::ext-libuv-dev
+        - system::ext-wslay-dev
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-h2o" \
+            -p "emmc.system" \
+            -o "system:ext-h2o " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

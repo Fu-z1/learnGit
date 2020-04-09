@@ -1,0 +1,102 @@
+inherit: [packing-image, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Application and Services"
+
+environment:
+   DB_EU_NAME: "VW_STL_DB_EU"
+   DB_EU_VERSION: "1.30.11"
+   DB_ASIA_NAME: "VW_STL_DB_ASIA"
+   DB_ASIA_VERSION: "5.22.19"
+   DB_CHN_NAME: "VW_STL_DB_CHN"
+   DB_CHN_VERSION: "1.19.21"
+   DY_NAME: "VW_STL_DEFAULT_DYNAMIC_DB"
+   DY_VERSION: "1.2.0"
+   DB_INSTALL_PATH: "var/lib/tsd.stationdb.app"
+   DB_OWNER_USER: "stationdb"
+   DB_OWNER_GROUP: "stationdb"
+   DB_ENCRYPTION_MODE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),Developer,Customer_tmpfix)"
+   DB_ENCRYPTION_KEY: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),1,1)"
+   DB_EU_SHA: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),19beb2eff299a5663c2c38b07e7db7374da2cea8,a8a779177ceff00bd816121ded027d948e397a06)"
+   DB_ASIA_SHA: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),a95046e9adb6262a80be2aa0ed4439cf85269ffe,753babd3046f47691a86f229fd2d16d966aed6a0)"
+   DB_CHN_SHA: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),f3f606ae94e3ae5efcc0264188fdab195aea1fcc,e86e93ed64c828966aa238aeccc6bf18b0fb177e)"
+   DY_SHA: "a4c4f6354d19887ca465f0a1b36de4194b8caf14"
+
+checkoutSCM:
+  # EU database
+  - if: "$(or,$(flagIsSet,${VARIANTS},SW_HMI_REGION,eu), \
+              $(flagIsSet,${VARIANTS},SW_HMI_REGION,rdw))"
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/radio-sqlitedb/${DB_ENCRYPTION_MODE}/${DB_EU_NAME}_${DB_EU_VERSION}.sqlite
+    digestSHA1: ${DB_EU_SHA}
+    dir: ${DB_EU_NAME}_${DB_EU_VERSION}
+  # ASIA database
+  - if: "$(or,$(flagIsSet,${VARIANTS},SW_HMI_REGION,tw), \
+              $(flagIsSet,${VARIANTS},SW_HMI_REGION,jp), \
+              $(flagIsSet,${VARIANTS},Region,HONGKONG_MACAO), \
+              $(flagIsSet,${VARIANTS},SW_HMI_REGION,kr))"
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/radio-sqlitedb/${DB_ENCRYPTION_MODE}/${DB_ASIA_NAME}_${DB_ASIA_VERSION}.sqlite
+    digestSHA1: ${DB_ASIA_SHA}
+    dir: ${DB_ASIA_NAME}_${DB_ASIA_VERSION}
+  # CHN database
+  - if: "$(flagIsSet,${VARIANTS},Region,CHINA)"
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/radio-sqlitedb/${DB_ENCRYPTION_MODE}/${DB_CHN_NAME}_${DB_CHN_VERSION}.sqlite
+    digestSHA1: ${DB_CHN_SHA}
+    dir: ${DB_CHN_NAME}_${DB_CHN_VERSION}
+  # DYNAMIC database
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/radio-sqlitedb/${DY_NAME}_${DY_VERSION}.sqlite
+    digestSHA1: ${DY_SHA}
+    dir: ${DY_NAME}_${DY_VERSION}
+
+
+buildVars: [DY_NAME, DY_VERSION]
+buildScript: |
+   rsync -a --delete $1/*/* $PWD/
+   mv $PWD/${DY_NAME}_${DY_VERSION}.sqlite $PWD/${DY_NAME}.sqlite
+packageVars: [DB_INSTALL_PATH,DB_EU_NAME,DB_ASIA_NAME,DB_CHN_NAME,DB_EU_VERSION,DB_ASIA_VERSION,DB_CHN_VERSION,DB_OWNER_USER,DB_OWNER_GROUP,DB_ENCRYPTION_KEY]
+packageScript: |
+   mkdir -p ${DB_INSTALL_PATH}
+   rsync -a --delete $1/ ${DB_INSTALL_PATH}/
+   chmod -R +r ${DB_INSTALL_PATH}/
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+
+multiPackage:
+   target:
+      packageScript: |
+         buildSwupModule -n "ext-stationdb-sqlitedb" \
+            -p "emmc.radio" \
+            -o "radio:ext-stationdb-sqlitedb " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   dynamic-target:
+      packageScript: |
+           buildSwupImage \
+               --packageName ext-stationdb-sqlitedb-dynamic \
+               --file ${d}/${DB_INSTALL_PATH}/${DY_NAME}.sqlite \
+               -U "Destination=/${DB_INSTALL_PATH}" \
+               -U "User=${DB_OWNER_USER}" \
+               -U "Group=${DB_OWNER_GROUP}" \
+               -U "Partition=rootfs_ro"
+            rm -rf $d
+   base-target:
+       packageScript: |
+            if [ -f  ${d}/${DB_INSTALL_PATH}/${DB_EU_NAME}_${DB_EU_VERSION}.sqlite ]; then
+               DB_FULL_NAME=${DB_EU_NAME}_${DB_EU_VERSION}
+            elif [ -f ${d}/${DB_INSTALL_PATH}/${DB_ASIA_NAME}_${DB_ASIA_VERSION}.sqlite ]; then
+               DB_FULL_NAME=${DB_ASIA_NAME}_${DB_ASIA_VERSION}
+            elif [ -f ${d}/${DB_INSTALL_PATH}/${DB_CHN_NAME}_${DB_CHN_VERSION}.sqlite ]; then
+               DB_FULL_NAME=${DB_CHN_NAME}_${DB_CHN_VERSION}
+            fi
+            buildSwupImage \
+               --packageName ext-stationdb-sqlitedb-base \
+               --file ${d}/${DB_INSTALL_PATH}/${DB_FULL_NAME}.sqlite \
+               -U "Destination=/${DB_INSTALL_PATH}" \
+               -U "User=${DB_OWNER_USER}" \
+               -U "Group=${DB_OWNER_GROUP}" \
+               -U "Encryption=${DB_ENCRYPTION_KEY}" \
+               -U "Partition=rootfs_ro"
+            rm -rf $d

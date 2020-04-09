@@ -1,0 +1,30 @@
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.dtc.git
+   tag: 'v1.4.1'
+
+multiPackage:
+   # compile and package the dtc compiler
+   compiler:
+     shared: True
+     buildTools: [host-toolchain]
+     buildScript: |
+        mkdir -p build install
+        pushd build
+        cp -a $1/* .
+        make PREFIX=/usr
+        make install PREFIX=/usr DESTDIR=$PWD/../install
+        popd
+     packageScript: |
+        cp -a $1/install/* .
+
+   # package dtc compiler source code
+   src:
+     buildScript: |
+        mkdir -p src
+        rsync --include "core" --cvs-exclude -a --delete $1/ src
+     packageScript: |
+        rsync -a --delete $1/src/ .
+
+provideTools:
+   dtc: usr/bin

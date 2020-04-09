@@ -1,0 +1,34 @@
+inherit: [root]
+
+environment:
+   TARGET_OS: "linux"
+   TSD_COMMON_LINK_SHARED: "1"
+   CMAKE_BUILD_TYPE: "Debug"
+   VARIANTS: "301001"
+
+depends:
+   - swi::binarytests-swi__pcc-swi-testapp-host
+   - swi::binarytests-swi__pcc-swi-testapp-target
+
+# not yet on master configured
+#
+#   - swi::binarytests-media__mediaapplication__tsd-media-mib3-target
+#
+#   - swi::binarytests-radio__tsd-radio-target
+#
+#   - swi::binarytests-phone__phonemanager__tsd-phonemanager-host
+#
+#   - swi::binarytests-navigation__tsd-nav-rsi-viwi-host
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      # only make links to all dependencies
+      ln -s ${BOB_DEP_PATHS[$dep]} $dep
+   done
+
+packageScript: |
+   cp -a $1/* .
+
+provideDeps:
+   - "*"

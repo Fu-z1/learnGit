@@ -1,0 +1,43 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+  - communication::tsd-communication-dev
+  - libs::ext-libxml2-dev
+  - libraries::ext-openssl-dev
+  - libs::ext-curl-dev
+  - onlineservices::tsd-onlineservices-api-dev
+  - onlineservices::tsd-onlineservices-dataexchange-dev
+  - onlineservices::tsd-onlineservices-framework-dev
+  - system::tsd-common-dev
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.core.git
+    dir: tsd.onlineservices.core
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-core" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-core " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

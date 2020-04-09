@@ -1,0 +1,52 @@
+inherit: [packing-module]
+
+environment:
+   PKG_VERSION: "Yocto_3.15.0_gfx_2.0.9_fix_pvr_crash_190814"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+  - scm: url
+    #url: "http://download.swi.technisat-digital/src/toolchain/yocto/${PKG_VERSION}.tgz"
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/yocto/${PKG_VERSION}.tgz
+    digestSHA1: 526a5b3cafb7a23978627e2e9a3b9a3e85c2cc87
+    extract: false
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   rm -rf build dist
+   mkdir -p build dist
+   pushd build
+   mkdir software
+   pushd software
+   tar xzf $1/${PKG_VERSION}.tgz
+   popd
+   find . -name "*.zip" -exec unzip -o {} \;
+   popd
+
+   # H3
+   pushd dist
+   ls -la ../build/
+   for i  in ../build/RCG3VUDRL4101ZDO_3_0_17 \
+             ../build/RCH3G001L4101ZDO_2_0_9 \
+             ../build/RCH3G002L4101ZNI_2_0_9 \
+             ../build/RTM0AC* \
+             ../build/RTM0RC7795GLPG0001SL41C_2_0_9
+   do
+   mv $i/*/Software/* .
+   done
+
+   popd
+
+   rm -rf build
+
+packageScript: |
+   rsync -a --delete $1/dist/ .
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-renesas-h3-bsp" \
+      -p "emmc.system.bsp" \
+      -o "system.bsp:ext-renesas-h3-bsp " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+inherit:
+  - packing-module

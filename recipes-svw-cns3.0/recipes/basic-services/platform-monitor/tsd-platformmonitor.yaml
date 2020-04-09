@@ -1,0 +1,62 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - connectivity::networking::tsd-networking-api-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-common-dev
+  - system::tsd-common-guid-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+  - system::system-lifecycle::tsd-pwc-proxy-api-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - system::tsd-swupdate-testinterface-api-dev
+  - name: system::ext-pvrscope-dev
+    if: "$(ne,${TARGET_TYPE},host)"
+  - use: []
+    depends:
+      - connectivity::networking::tsd-networking-api-target
+      - system::tsd-common-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-server-target
+      - system::system-lifecycle::tsd-pwc-proxy-api-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - system::tsd-swupdate-testinterface-api-target
+      - name: system::ext-pvrscope-target
+        if: "$(ne,${TARGET_TYPE},host)"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.platformmonitor.git
+   dir: tsd.platformmonitor
+   #tag: mqb_sop1_eu-3.6.0
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1520_dev
+
+multiPackage:
+   target:
+      buildScript: |
+         buildenvBuildAll
+         rsync -a $1/tsd.platformmonitor/depl ${PWD}
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p etc/tsd.platformmonitor/
+         rsync -a --delete $1/depl/* etc/tsd.platformmonitor/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "platformmonitor" \
+            -p "emmc.basic-svcs" \
+            -o "basic-services.platform-monitor:tsd-platformmonitor " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

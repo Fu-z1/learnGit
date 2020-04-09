@@ -1,0 +1,137 @@
+inherit: [install, make]
+
+buildVars: [AUTOCONF_BUILD, AUTOCONF_HOST, LIBDIR, CFLAGS, CXXFLAGS, LDFLAGS, TSD_BUILDENV_ENABLE_TEST_TARGETS]
+buildTools: [pkg-config, toolchain]
+buildScript: |
+   _AUTOTOOLS_DEP_PATHS=( "$@" )
+
+   autogenOrConfigure()
+   {
+       eval $1 \
+           ${AUTOCONF_BUILD:+--build=${AUTOCONF_BUILD}} \
+           ${AUTOCONF_HOST:+--host=${AUTOCONF_HOST}} \
+           ${AUTOCONF_TARGET:+--target=${AUTOCONF_TARGET}} \
+           --prefix="/usr" \
+           --libdir="/usr/${LIBDIR}" \
+           --sysconfdir="/etc" \
+           --localstatedir="/var" \
+           --enable-shared --disable-static \
+           --disable-python \
+           --disable-gtk-doc \
+           --disable-gtk-doc-html \
+           --disable-gtk-doc-pdf \
+           --disable-doc \
+           --disable-docs \
+           --disable-documentation \
+           --disable-debug \
+           --with-xmlto=no \
+           --with-fop=no \
+           --disable-dependency-tracking \
+           "${@:2}"
+   }
+
+   # $1 : source path
+   autotoolsConfigureOnly()
+   {
+      local i
+
+      CFLAGS="${CFLAGS:+$CFLAGS}"
+      CXXFLAGS="${CXXFLAGS:+$CXXFLAGS}"
+      LDFLAGS="${LDFLAGS:+$LDFLAGS}"
+
+      # Gather all include and library paths.
+      for i in "${_AUTOTOOLS_DEP_PATHS[@]:1}" ; do
+          if [[ -d "$i/usr/include" ]] ; then
+             CFLAGS+=" -I$i/usr/include"
+             CXXFLAGS+=" -I$i/usr/include"
+          fi
+          if [[ -d "$i/${LIBDIR}" ]] ; then
+              if [[ ${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0} != 0 ]]; then
+                  LDFLAGS+=" -L$i/${LIBDIR} -Wl,-rpath-link=$i/${LIBDIR},-rpath=$i/${LIBDIR} -Wl,--disable-new-dtags"
+              else
+                  LDFLAGS+=" -L$i/${LIBDIR} -Wl,-rpath-link=$i/${LIBDIR}"
+              fi
+          fi
+          if [[ -d "$i/usr/${LIBDIR}" ]] ; then
+              if [[ ${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0} != 0 ]]; then
+                  LDFLAGS+=" -L$i/usr/${LIBDIR} -Wl,-rpath-link=$i/usr/${LIBDIR},-rpath=$i/usr/${LIBDIR} -Wl,--disable-new-dtags"
+              else
+                  LDFLAGS+=" -L$i/usr/${LIBDIR} -Wl,-rpath-link=$i/usr/${LIBDIR}"
+              fi
+          fi
+          if [[ -d "$i/usr/${LIBDIR}/pkgconfig" ]] ; then
+              PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/${LIBDIR}/pkgconfig"
+          fi
+          if [[ -d "$i/usr/share/pkgconfig" ]] ; then
+              PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/share/pkgconfig"
+          fi
+      done
+
+      [ -z "${CFLAGS:+true}" ] || export CFLAGS
+      [ -z "${CXXFLAGS:+true}" ] || export CXXFLAGS
+      [ -z "${LDFLAGS:+true}" ] || export LDFLAGS
+      [ -z "${PKG_CONFIG_PATH:+true}" ] || export PKG_CONFIG_PATH
+
+      if [[ ! -e $1/configure && -e $1/autogen.sh ]]; then
+          pushd $1
+          autogenOrConfigure ./autogen.sh "${@:2}"
+          popd
+      fi
+
+      if [[ ! -e config.log || $(tail -1 config.log | grep -c "exit 0") = "0" ]]; then
+          autogenOrConfigure $1/configure "${@:2}"
+      fi
+   }
+
+   # Cleansup libtool.
+   autotoolsFixLibtool()
+   {
+      # Nothing to do?
+      if [[ ! -f libtool || -f libtool.orig ]]; then
+         return
+      fi
+
+      # Remove libs from the build system as dependencies.
+      local AWK_SCRIPT=$(mktemp autotoolsFixLibtool_awk_XXXX)
+      cat <<'EOF' > $AWK_SCRIPT
+      /\$ECHO[[:space:]]*>[[:space:]]*\$output/ {
+        print "dependency_libs=`echo $dependency_libs | ${SED} -r 's;[= ]/usr/[^ ]+\\.la;;g'`"
+        print;
+        next;
+        }
+      { print; }
+   EOF
+      mv libtool libtool.orig
+      gawk -f $AWK_SCRIPT libtool.orig > libtool
+      chmod +x libtool
+      rm $AWK_SCRIPT
+   }
+
+   autotoolsBuildOnly()
+   {
+      mkdir -p ${PWD}/dist
+
+      makeParallel
+      make install DESTDIR=${PWD}/dist
+   }
+
+   # $1 : source path
+   autotoolsBuild()
+   {
+      autotoolsConfigureOnly "$@"
+      autotoolsFixLibtool
+      autotoolsBuildOnly
+   }
+
+packageScript: |
+   _AUTOTOOLS_BUILD_PATH=$1
+
+   autotoolsPackageDev()
+   {
+      installPackageDev "${_AUTOTOOLS_BUILD_PATH}/dist" "$@"
+   }
+
+   autotoolsPackageTarget()
+   {
+      installPackageTarget "${_AUTOTOOLS_BUILD_PATH}/dist" "$@"
+   }

@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-personalization/tsd.personalization.client.api.git"
+     del: [commit, tag]
+     set:
+        branch: "develop"
+        commit: "5573399d7033483152e02026acffdf62aa12b452"

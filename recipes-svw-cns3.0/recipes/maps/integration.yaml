@@ -1,0 +1,37 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+# Test by calling bob dev -v zr3/zr3-variant-VW_JP|KR|EU/maps::integration/maps::ext-....-livecache.pkg
+depends:
+   - use: [environment]
+     depends:
+         - if: "$(eq,${MAP_VARIANT:-1},DACHCZ)"
+           depends:
+              - maps::ext-here-map-dachcz-livecache-pkg
+         - if: "$(ne,${MAP_VARIANT:-1},DACHCZ)"
+           depends:
+             - if: "$(flagIsSet,${VARIANTS},Map Variant,EU1)"
+               depends:
+                  - maps::ext-here-map-eu1-livecache-pkg
+             - if: "$(flagIsSet,${VARIANTS},Map Variant,EU2)"
+               depends:
+                  - maps::ext-here-map-eu2-livecache-pkg
+             - if: "$(flagIsSet,${VARIANTS},Map Variant,RDW1)"
+               depends:
+                  - maps::ext-here-map-rdw1-livecache-pkg
+             - if: "$(flagIsSet,${VARIANTS},Map Variant,RDW2)"
+               depends:
+                  - maps::ext-here-map-rdw2-livecache-pkg
+             - if: "$(flagIsSet,${VARIANTS},Map Variant,RDW2_INDIEN)"
+               depends:
+                  - maps::ext-here-map-rdw2-indien-livecache-pkg
+             - if: "$(flagIsSet,${VARIANTS},Map Variant,JP)"
+               depends:
+                  - maps::ext-autonavi-map-jp-livecache-pkg
+             - if: "$(flagIsSet,${VARIANTS},Map Variant,KR)"
+               depends:
+                  - maps::ext-autonavi-map-kr-livecache-pkg
+
+provideDeps: ['*']
+provideVars:
+   TRAIN_PKG_VERSION: ${TRAIN_PKG_VERSION}

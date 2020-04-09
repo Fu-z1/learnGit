@@ -1,0 +1,45 @@
+inherit: [packing-module, patch]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-Vorintegration"
+
+multiPackage:
+   high-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "high"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_REGION=eu,SW_HMI_BRAND=sk,HW_DISPLAY_VARIANT=1280640,SW_HMI_PROJECT=MQB)"
+
+      checkoutSCM:
+         scm: url
+         url: ${DEFAULT_DOWNLOAD_SCM_URL}src/hmi/hmi_deliveries/HMI_H40.73.65/ext.skoda.eu.high.tar.gz
+         digestSHA1: "1ff0c87f0c5e5234e78546ec13937f3f208d5a89"
+
+   low-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "low"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_REGION=eu,SW_HMI_BRAND=sk,HW_DISPLAY_VARIANT=800480,SW_HMI_PROJECT=MQB)"
+
+      checkoutSCM:
+         scm: url
+         url: ${DEFAULT_DOWNLOAD_SCM_URL}src/hmi/hmi_deliveries/HMI_H40.73.65/ext.skoda.eu.low.tar.gz
+         digestSHA1: "1e46b37b22841b525aa2903d42119bec2ae0d456"
+
+checkoutDeterministic: true
+
+buildScript: |
+   rm -rf *
+   ln -sf $1/* .
+
+packageVars: [VARIANT_NAME, VARIANT_LIST]
+packageScript: |
+   mkdir -p tmp/tsd
+   rsync -a --delete $1/ext.skoda.eu.${VARIANT_NAME}/tsd/* tmp/tsd
+   mkdir -p tmp/var/lib/hmi
+   buildSwupModule -n "pcc-hmi-sk-eu" -p "emmc.hmi" -v "${VARIANT_NAME}" \
+       -m 'display,display,0700,/var/lib/hmi$'    \
+       -m 'display,display,0700,/var/lib/hmi/.*'  \
+       -o 'hmi::pcc-hmi-sk-eu' -f tmp -- \
+       --variantList $VARIANT_LIST \
+       --requiredBy '{"Packages":[{"PackageName":"prescripts.hmi-delete","Flags":"Selected"},{"PackageName":"scripts.set-hmi-files","Flags":"Selected"},{"PackageName":"emmc.hmi.ext-zulu","Flags":"Selected"}]}' \
+       -U "Partition=rootfs_ro"
+   rm -rf tmp

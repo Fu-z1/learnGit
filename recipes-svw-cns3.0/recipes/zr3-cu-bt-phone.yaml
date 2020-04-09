@@ -1,0 +1,176 @@
+inherit: [packing-device, packing-release]
+
+depends:
+   - keys::devkeys::devkeys-updatecontainer
+   - name: toolchain::aarch64-linux-gnu
+     use: [tools, environment]
+     forward: True
+
+   - phone::bt-phone::tsd-bt-phone-mib3-target
+   - phone::bt-devicemanagement::tsd-bt-management-mib3-target
+   - phone::bt-handsfree::tsd-bt-handsfree-mib3-target
+   - phone::bt-handsfree::tsd-bt-handsfree-target
+   - phone::bt-mediacontroller::tsd-bt-media-mib3-target
+   - phone::bt-messaging::tsd-bt-messaging-mib3-target
+   - phone::bt-middleware::tsd-blueware-mib3-bluego-target
+   - phone::bt-middleware::tsd-blueware-bluego-target
+   - phone::bt-middleware::ext-bluego-target
+   - phone::bt-organizer::tsd-organizer-mib3-target
+   - customerupdate-meta-bt-phone
+
+privateEnvironment:
+   SANDBOX: "$(is-sandbox-enabled)"
+   PLATFORM: "MQB"
+
+buildVars:
+   - MU_VERSION
+   - TRAIN_NUMBER
+   - UPDATE_VARIANTS
+   - VARIANTS #important to save in the audit-trail
+   - SIGNATURE
+   - SANDBOX
+   - DEVELOPMENT_FLAGS
+   - PLATFORM
+   - CONFIG_FDS
+
+buildVarsWeak:
+   - MAJOR
+   - DELIVERY
+   - BUILDREF
+
+environment:
+   DEVELOPMENT_FLAGS: "true"
+   PACKAGE_VERSION: "${MAJOR}.${DELIVERY}.${BUILDREF}"
+   MODULE_VERSION:  "${MAJOR}.${DELIVERY}.${BUILDREF}"
+
+buildScript: |
+   rm -rf *
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[zr3-cu-bt-phone]
+   unset tocopy[packing::packing-scripts]
+   unset tocopy[keys::devkeys::devkeys-updatecontainer]
+
+   copy_and_check_modules() {
+      modules=""
+      for key in $@; do
+         if [ ${tocopy[$key]+isset} ]; then
+            modules="$modules --module ${tocopy[$key]}/_swupdata"
+            unset tocopy[$key]
+         else
+            echo "ERROR: while building device: $key not found in tocopy!"
+         fi
+      done
+   }
+
+   # We don't want all the transitive dependencies, so we have to list the relevant packages again.
+   list_of_packages=(
+      "phone::bt-phone::tsd-bt-phone-mib3-target"
+      "phone::bt-devicemanagement::tsd-bt-management-mib3-target"
+      "phone::bt-handsfree::tsd-bt-handsfree-mib3-target"
+      "phone::bt-handsfree::tsd-bt-handsfree-target"
+      "phone::bt-mediacontroller::tsd-bt-media-mib3-target"
+      "phone::bt-messaging::tsd-bt-messaging-mib3-target"
+      "phone::bt-middleware::tsd-blueware-mib3-bluego-target"
+      "phone::bt-middleware::tsd-blueware-bluego-target"
+      "phone::bt-middleware::ext-bluego-target"
+      "phone::bt-organizer::tsd-organizer-mib3-target"
+   )
+
+   _PKGS=""
+   for key in ${list_of_packages[@]}; do
+      _PKGS+=" --submodule ${key%::*}=${BOB_DEP_PATHS[$key]}/_swupdata"
+   done
+
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+    --packageType="device" --packageName="emmc" \
+    --outputDir UpdateContainer \
+    --diagnosticAddress=0 \
+    --deviceType=MU \
+    ${_PKGS//::/.}
+
+   # create customerupdates device
+   customerupdateModules="customerupdate-meta-bt-phone"
+
+   copy_and_check_modules $customerupdateModules
+
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+      --packageType="device" --packageName="customerupdates" \
+      --outputDir UpdateContainer \
+      --diagnosticAddress=0 \
+      --deviceType=MU \
+      $modules
+
+   SUPPORTED_TRAINS_STRING=""
+   if [[ "${PLATFORM}"  == "MQB" ]]; then
+      SUPPORTED_TRAINS_STRING="[\"*_?080*\",\"*_?081*\",\"*_?082*\",\"*_?083*\",\"*_?084*\",\"*_?085*\",\"*_?086*\",\"*_?087*\",\"*_?088*\",\"*_?089*\",\"*_?090*\",\"*_?091*\",\"*_?092*\",\"*_?093*\",\"*_?094*\",\"*_?095*\",\"*_?096*\",\"*_?097*\",\"*_?098*\",\"*_?099*\",\"*_?100*\",\"*_?101*\",\"*_?102*\",\"*_?103*\",\"*_?104*\",\"*_?106*\",\"*_?107*\",\"*_?108*\"]"
+   elif [[ "${PLATFORM}"  == "37W" ]]; then
+      SUPPORTED_TRAINS_STRING="[\"*_?100*\",\"*_?104*\",\"*_?108*\",\"*_?110*\",\"*_?112*\",\"*_?116*\"]"
+      RELASE_MANIFEST_NAME+=" --manifestFilename=auto"
+   fi
+
+   # set development flags for development software
+   _DEVFLAGS=""
+   if [ $DEVELOPMENT_FLAGS == true ]; then
+      _DEVFLAGS+=" --devFlag SkipCheckManifestChecksum=false"
+      _DEVFLAGS+=" --devFlag SkipCheckInstallerChecksum=false"
+      _DEVFLAGS+=" --devFlag SkipCheckVariant=false"
+   fi
+
+
+   buildSwupRelease --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+    --packageType="main" --packageName=${TRAIN_NUMBER} \
+    --updateContainerDir UpdateContainer --release ${TRAIN_NUMBER} \
+    --muVersion ${MU_VERSION} --variant ${UPDATE_VARIANTS} \
+    --buildRef ${BUILDREF} \
+    --device emmc \
+    --device customerupdates \
+    --flag CustomerUpdate=true \
+    --flag RebootBeforeCU=true \
+    --supportedTrains ${SUPPORTED_TRAINS_STRING} \
+    --devKey ${BOB_DEP_PATHS['keys::devkeys::devkeys-updatecontainer']}/dev/MetainfoDevKey-MIB3/config_FDSProject_${CONFIG_FDS:0}_E/keys/FDSProject_${CONFIG_FDS:0}_E.p8 \
+    --sandboxEnabled ${SANDBOX} \
+    ${_DEVFLAGS}
+
+
+
+packageScript: |
+   rsync -a --delete $1/ .
+
+multiPackage:
+   # Variant package fragment generated by genZr3CuVariants.py Do not waste your
+   # time with editing. Re-generate variant data from and with pure::variants
+   # JSON export and genZr3CuVariants.py
+   #
+   # The lines below are intended to be used as multiPackage elements in
+   # zr3-cu-*.yaml.
+   mqb:
+      environment:
+         MU_VERSION: "D${MAJOR}"
+         TRAIN_NUMBER: "CNS3_JPCC_MQB_CU_BT_PHONE_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "301001,301002,301003,301004,301005"
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-SK-MQB-PC,FM3-S-NWBY4-CN-VW-MQB-PC,FM3-S-NWBY4-HM-VW-MQB-PC,FM3-S-NWBY4-TW-SK-MQB-PC,FM3-S-NWBY4-TW-VW-MQB-PC"
+   mqb-sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_JPCC_MQB_CU_BT_PHONE_R${MAJOR}${DELIVERY}J"
+         VARIANTS: "311001,311002,311003,311004,311005"
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-SK-MQB-PC,FM3-S-NWBY4-CN-VW-MQB-PC,FM3-S-NWBY4-HM-VW-MQB-PC,FM3-S-NWBY4-TW-SK-MQB-PC,FM3-S-NWBY4-TW-VW-MQB-PC"
+         SIGNATURE: "false"
+         SECURE_DEVELOPMENT_FLAGS: "true"
+   37w:
+      environment:
+         MU_VERSION: "D${MAJOR}"
+         TRAIN_NUMBER: "CNS3_JPCC_37W_CU_BT_PHONE_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "701001,701002,701003,701004,701005"
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-SK-MQ2-PC,FM3-S-NWBY4-CN-VW-MQ2-PC,FM3-S-NWBY4-HM-VW-MQ2-PC,FM3-S-NWBY4-TW-SK-MQ2-PC,FM3-S-NWBY4-TW-VW-MQ2-PC"
+   37w-sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_JPCC_37W_CU_BT_PHONE_R${MAJOR}${DELIVERY}J"
+         VARIANTS: "711001,711002,711003,711004,711005"
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-SK-MQ2-PC,FM3-S-NWBY4-CN-VW-MQ2-PC,FM3-S-NWBY4-HM-VW-MQ2-PC,FM3-S-NWBY4-TW-SK-MQ2-PC,FM3-S-NWBY4-TW-VW-MQ2-PC"
+         SIGNATURE: "false"
+         SECURE_DEVELOPMENT_FLAGS: "true"

@@ -1,0 +1,61 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+  - system::ext-boost-dev
+  - system::ext-boost-system-dev
+  - system::ext-boost-date-time-dev
+  - system::ext-boost-regex-dev
+  - system::ext-boost-thread-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - basic-services::rsi-library::tsd-rsi-common-dev
+  - basic-services::rsi-library::tsd-rsi-client-dev
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-utils-api-dev
+  - navigation::tsd-nav-sdk-utils-dev
+  - navigation::tsd-nav-configdata-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.rsi.viwi.git
+   dir: tsd.nav.rsi.viwi
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildVars:
+  - TARGET_TYPE
+  - RSI_STAT
+  - TSD_NAV_RSI_VIWI_NAVCLIENTS
+
+multiPackage:
+   ? ""
+   :
+      # RSI_STAT enables the print out of RSI statistics
+      # TSD_NAV_RSI_VIWI_NAVCLIENTS compiles the RSI clients that are required to test the navigation
+      # TSD_NAV_RSI_VIWI_EASYCOMPONENTCONSTRUCTION allows the easy construction of the navigation RSI component
+      buildVars: [TSD_NAV_RSI_VIWI_NAVCLIENTS,TSD_NAV_RSI_VIWI_EASYCOMPONENTCONSTRUCTION,TSD_BUILDENV_ENABLE_TEST_TARGETS,TSD_BUILDENV_IS_SWITTEST,TSD_BUILDENV_IS_SWITTESTWHITE]
+      privateEnvironment:
+         TSD_NAV_RSI_VIWI_EASYCOMPONENTCONSTRUCTION: "$(if-then-else,$(or,$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-},1),$(eq,${TSD_BUILDENV_IS_SWITTEST:-},1),$(eq,${TSD_BUILDENV_IS_SWITTESTWHITE:-},1)),1,0)"
+      buildScript: buildenvBuildAll ${RSI_STAT:+-DRSI_STAT=${RSI_STAT}} ${TSD_BUILDENV_IS_SWITTEST:+-DTSD_NAV_RSI_VIWI_NAVCLIENTS=${TSD_BUILDENV_IS_SWITTEST}} -DTSD_NAV_RSI_VIWI_EASYCOMPONENTCONSTRUCTION=${TSD_NAV_RSI_VIWI_EASYCOMPONENTCONSTRUCTION}
+      inherit: [navi_compflags_werror_sanitize]
+      multiPackage:
+        dev:
+
+          packageScript: |
+            buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+   swittests:
+      buildVars: [TSD_NAV_RSI_VIWI_NAVCLIENTS]
+      buildScript: |
+         buildenvBuildAll -DTSD_NAV_RSI_VIWI_NAVCLIENTS=${TSD_BUILDENV_IS_SWITTEST}
+         #buildenvTestAll
+      packageScript: |
+         buildenvPackageDev install
+         #buildenvPackageTests

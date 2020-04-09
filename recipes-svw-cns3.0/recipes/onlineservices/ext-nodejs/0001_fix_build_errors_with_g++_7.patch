@@ -1,0 +1,89 @@
+From 2bbee49e6f170a5d6628444a7c9a2235fe0dd929 Mon Sep 17 00:00:00 2001
+From: Ben Noordhuis <info@bnoordhuis.nl>
+Date: Thu, 13 Apr 2017 13:48:01 +0200
+Subject: [PATCH] v8: fix build errors with g++ 7
+
+This is a local patch because upstream fixed it differently by moving
+large chunks of code out of objects.h.  We cannot easily back-port
+those changes due to their size and invasiveness.
+
+Fixes: https://github.com/nodejs/node/issues/10388
+PR-URL: https://github.com/nodejs/node/pull/12392
+Reviewed-By: Anna Henningsen <anna@addaleax.net>
+Reviewed-By: Benjamin Gruenbaum <benjamingr@gmail.com>
+Reviewed-By: Daniel Bevenius <daniel.bevenius@gmail.com>
+Reviewed-By: James M Snell <jasnell@gmail.com>
+---
+diff -Nurp nodejs_org/deps/v8/src/objects-body-descriptors.h nodejs/deps/v8/src/objects-body-descriptors.h
+--- nodejs_org/deps/v8/src/objects-body-descriptors.h	2018-10-24 13:26:06.843670524 +0200
++++ nodejs/deps/v8/src/objects-body-descriptors.h	2018-10-24 13:26:35.963671066 +0200
+@@ -99,7 +99,7 @@ class FixedBodyDescriptor final : public
+ 
+   template <typename StaticVisitor>
+   static inline void IterateBody(HeapObject* obj, int object_size) {
+-    IterateBody(obj);
++    IterateBody<StaticVisitor>(obj);
+   }
+ };
+ 
+diff -Nurp nodejs_org/deps/v8/src/objects.h nodejs/deps/v8/src/objects.h
+--- nodejs_org/deps/v8/src/objects.h	2018-10-24 13:26:06.843670524 +0200
++++ nodejs/deps/v8/src/objects.h	2018-10-24 13:26:35.967671066 +0200
+@@ -3261,22 +3261,10 @@ class HashTableBase : public FixedArray
+ template <typename Derived, typename Shape, typename Key>
+ class HashTable : public HashTableBase {
+  public:
+-  // Wrapper methods
+-  inline uint32_t Hash(Key key) {
+-    if (Shape::UsesSeed) {
+-      return Shape::SeededHash(key, GetHeap()->HashSeed());
+-    } else {
+-      return Shape::Hash(key);
+-    }
+-  }
+-
+-  inline uint32_t HashForObject(Key key, Object* object) {
+-    if (Shape::UsesSeed) {
+-      return Shape::SeededHashForObject(key, GetHeap()->HashSeed(), object);
+-    } else {
+-      return Shape::HashForObject(key, object);
+-    }
+-  }
++  // Wrapper methods.  Defined in src/objects-inl.h
++  // to break a cycle with src/heap/heap.h.
++  inline uint32_t Hash(Key key);
++  inline uint32_t HashForObject(Key key, Object* object);
+ 
+   // Returns a new HashTable object.
+   MUST_USE_RESULT static Handle<Derived> New(
+diff -Nurp nodejs_org/deps/v8/src/objects-inl.h nodejs/deps/v8/src/objects-inl.h
+--- nodejs_org/deps/v8/src/objects-inl.h	2018-10-24 13:26:06.843670524 +0200
++++ nodejs/deps/v8/src/objects-inl.h	2018-10-24 13:26:35.967671066 +0200
+@@ -36,6 +36,27 @@
+ namespace v8 {
+ namespace internal {
+ 
++template <typename Derived, typename Shape, typename Key>
++uint32_t HashTable<Derived, Shape, Key>::Hash(Key key) {
++  if (Shape::UsesSeed) {
++    return Shape::SeededHash(key, GetHeap()->HashSeed());
++  } else {
++    return Shape::Hash(key);
++  }
++}
++
++
++template <typename Derived, typename Shape, typename Key>
++uint32_t HashTable<Derived, Shape, Key>::HashForObject(Key key,
++                                                       Object* object) {
++  if (Shape::UsesSeed) {
++    return Shape::SeededHashForObject(key, GetHeap()->HashSeed(), object);
++  } else {
++    return Shape::HashForObject(key, object);
++  }
++}
++
++
+ PropertyDetails::PropertyDetails(Smi* smi) {
+   value_ = smi->value();
+ }

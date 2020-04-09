@@ -1,0 +1,77 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - system::tsd-common-dev
+  - communication::ext-commonapi-runtime-dev
+  - audio::amplifiercontroller::tsd-audio-ampcontrol-dev
+  - audio::amplifiercontroller::tsd-audio-ampcontrol-api-dev
+  - system::tsd-common-daemon-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - carcom::tsd-peripheral-controller-api-dev
+  - communication::tsd-communication-runtime-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - system::ext-boost-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - communication::ext-commonapi-runtime-target
+      - audio::amplifiercontroller::tsd-audio-ampcontrol-target
+      - audio::amplifiercontroller::tsd-audio-ampcontrol-api-target
+      - carcom::tsd-peripheral-controller-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - communication::tsd-communication-runtime-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.ampcontrol.mib3.git
+    dir: tsd.audio.ampcontrol.mib3
+#    tag: 1.4.3
+    branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.audio.ampcontrol.mib3
+      packageScript: |
+         buildenvPackageTarget
+      provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: |
+         buildenvTestTargets tsd.audio.ampcontrol.mib3.test
+      packageScript: |
+         buildenvPackageTests
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ampcontrol-mib3" \
+            -p "emmc.audio.amplifierclr" \
+            -o "audio.amplifiercontroller:tsd-audio-ampcontrol-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

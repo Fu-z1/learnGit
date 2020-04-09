@@ -1,0 +1,23 @@
+privateEnvironment:
+   TOOLCHAIN_NAME: "jdk-8u201-linux-x64.tar.gz"
+   TOOLCHAIN_HASH: "22a7415c1c87883d9e50e515d4bc51d3298cb2e8"
+   URL:            "${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/java/"
+
+shared: True
+
+checkoutSCM:
+   scm: url
+   url: ${URL}${TOOLCHAIN_NAME}
+   digestSHA1: ${TOOLCHAIN_HASH}
+   extract: no
+
+buildVars: [TOOLCHAIN_NAME]
+buildScript: |
+   ln -sf $1/${TOOLCHAIN_NAME} .
+
+packageScript: |
+   tar xzf $1/${TOOLCHAIN_NAME}
+
+provideTools:
+   openjdk:
+      path: "jdk1.8.0_201"

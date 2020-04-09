@@ -1,0 +1,21 @@
+shared: True
+
+environment:
+   PKG_VERSION: "1.6.1"
+   PKG_SHA1_SUM: "3cb573c7bb602c178e21f51330da68939aa1590f"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/lcov2cobertura/lcov2cobertura-${PKG_VERSION}.tgz
+   digestSHA1: ${PKG_SHA1_SUM}
+   extract: no
+
+buildScript: |
+   ln -sf $1/lcov*.tgz .
+
+packageScript: |
+   tar xzf $1/lcov*.tgz
+
+provideTools:
+   lcov2cobertura:
+      path: "bin"

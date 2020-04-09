@@ -1,0 +1,81 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later AND BSD-4-Clause AND LGPL-2.1-or-later AND BSD-3-Clause)"
+   PKG_VERSION: "2.32"
+   PKG_NAME: "util-linux"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-zlib-dev
+  - use: []
+    depends:
+      - libs::ext-zlib-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-util-linux/util-linux-${PKG_VERSION}.tar.xz
+   digestSHA1: "4a21387d51f73bab44230c3bf9fe5a291e761111"
+
+buildVars: [PKG_VERSION, CONFIG_OPTIONS,LIBDIR]
+buildScript: |
+   autotoolsBuild $1/util-linux-${PKG_VERSION} \
+      --enable-libuuid \
+      --enable-libblkid \
+      --enable-libmount \
+      --enable-libuuid \
+      --enable-libblkid \
+      --enable-libsmartcols \
+      --enable-libfdisk \
+      --disable-wall \
+      --disable-mount \
+      --without-python \
+      --without-systemd \
+      --without-systemdsystemunitdir \
+      --without-ncursesw \
+      --without-ncurses \
+      ${CONFIG_OPTIONS:-}
+   # remove unused programs (this is neccessary because the buildsystem of
+   # util-linux is broken: you cannot disable all programms and enable only fdisk...)
+   mv dist dist.org
+   mkdir -p dist
+   pushd dist
+   mkdir -p sbin
+   cp -aur ../dist.org/sbin/fdisk sbin
+   mkdir -p usr/include
+   cp -aur ../dist.org/usr/include usr
+   mkdir -p usr/lib
+   cp -aur ../dist.org/usr/${LIBDIR} usr
+   mkdir -p usr/bin
+   cp -aur ../dist.org/usr/bin/taskset usr/bin
+
+multiPackage:
+   ? ""
+   :  environment:
+         CONFIG_OPTIONS: "--enable-schedutils"
+      multiPackage:
+         dev: &dev
+            packageScript: autotoolsPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               autotoolsPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-util-linux" \
+                  -p "emmc.system" \
+                  -o "system:ext-util-linux " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   static:
+      environment:
+         CONFIG_OPTIONS: "--enable-static"
+      multiPackage:
+         dev: *dev
+         target:
+            packageScript: |
+               # NOP
+

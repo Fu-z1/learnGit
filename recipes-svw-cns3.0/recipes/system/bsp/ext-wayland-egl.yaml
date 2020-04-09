@@ -1,0 +1,41 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(MIT AND Apache-2.0)"
+   PKG_VERSION: "647165f57a500595a424edf0fc061b261a92fd56"
+   PKG_NAME: "wayland-egl"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-wayland-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.wayland.egl.git
+   branch: master_mqb_sop1_eu
+   commit: 647165f57a500595a424edf0fc061b261a92fd56
+
+buildScript: |
+   rsync -a --delete $1/ .
+   autoreconf -i
+   autotoolsBuild $PWD
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include -L $LIBDIR \
+            -d ext.wayland.client -l wayland-egl ext.wayland.egl
+      provideDeps: ["*-dev"]
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-wayland-egl" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-wayland-egl " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

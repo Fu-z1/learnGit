@@ -1,0 +1,28 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT OR MIT WITH Happy Bunny Exception"
+   PKG_NAME: "OpenGL Mathematics"
+   PKG_VERSION: "0.9.7.3"
+   PKG_RESPONSIBLE: "Navigation-Kartendarstellung"
+
+# no dependecies so far
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/ext.glm.git
+   dir: ext.glm
+   tag: '1.0.0'
+
+buildScript: |
+   buildenvBuildAll
+   # TODO: fix it - copy only *.inl files
+   rsync -a --delete $1/ext.glm/src/glm dist/usr/include
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageVars: [LIBDIR]
+      packageScript: |
+         buildenvPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} ext.glm

@@ -1,0 +1,53 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - phone::tsd-parser-vobject-api-dev
+ - system::tsd-common-dev
+ - system::tsd-threadmessages-dev
+ - use: []
+   depends:
+    - phone::tsd-parser-vobject-api-target
+    - system::tsd-common-target
+    - system::tsd-threadmessages-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.blueware.api.git
+   dir: tsd.blueware.api
+   branch: main/cns3.0_sop1.0_1413_dev
+#  tag: mqb_sop1_eu-1.145.2
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps:
+       - phone::tsd-parser-vobject-api-dev
+       - system::tsd-common-dev
+       - system::tsd-threadmessages-dev
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "blueware-api" \
+            -p "emmc.phone.bt-middleware" \
+            -o "phone.bt-middleware:tsd-blueware-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

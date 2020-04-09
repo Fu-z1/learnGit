@@ -1,0 +1,51 @@
+inherit: [buildenv, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+   - system::tsd-common-dev
+
+checkoutSCM:
+   - scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.soundproc.blocklibrary.git
+     dir: tsd.audio.soundproc.blocklibrary
+#     tag: 1.5.14
+     branch: release/cns_mqb
+   - if: "${CONFIG_AUDIO_TEST:-False}"
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.soundproc.blocklibrary.test.git
+     remote-gerrit: http://esxi-amb1-slave-gerrit.mib3.technisat-digital:8080/tsd.audio.soundproc.blocklibrary.test
+     dir: tsd.audio.soundproc.blocklibrary.test
+     branch: master
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildModules \
+            -DCMAKE_C_FLAGS=-std=c99 -DCMAKE_CXX_FLAGS=-std=c++98 \
+            tsd.audio.soundproc.blocklibrary \
+
+      packageScript: |
+         buildenvPackageDev
+
+   unittests:
+      depends:
+         - audio::soundprocessing::ext-kissfft
+      buildScript: |
+         buildenvTestTargets -DCMAKE_C_FLAGS=-std=c99 -DCMAKE_CXX_FLAGS=-std=c++98 tsd.audio.soundproc.blocklibrary.test
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   app:
+      buildScript: |
+         buildenvBuildModules \
+            -DCMAKE_C_FLAGS=-std=c99 -DCMAKE_CXX_FLAGS=-std=c++98 \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.audio.soundproc.blocklibrary \
+            tsd.audio.soundproc.blocklibrary.app

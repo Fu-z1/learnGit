@@ -1,0 +1,171 @@
+inherit: [packing-utils, packing-common]
+
+packageTools: [pkg, mib3-packing]
+packageVarsWeak: [MODULE_VERSION, PACKAGE_VERSION, CONFIG_SKIP_SWUPDATE_PKG_BUILD]
+packageVars: [MANIFEST_VERSION, CHECKSUM]
+packageScript: |
+   # build a swup module.
+   # Modules are packaged using pkg tool. default
+   # userdata added:
+   #      "Installer=copy"
+   #      "Destination=/tmp/install/boot.tgz"
+   # Arguments:
+   #  -n pkg_fileName - this is the name of the generated pkg file
+   #  -o pkg_origin - file origin. will be put into pkg manifest
+   #  -f file/dir - this will be packaged
+   #  -m user,group,mode,file_pattern - set user, mode, group attribute
+   #                                    to files matching pattern
+   #  -p prefix - device (required) and submodules (if exising)
+   #              concated by "." (e.g. emmc.navigation)
+   #  -v variant - variant index of pkg_filename
+   buildSwupModule() {
+      # we are now building swup modules in (almost) all target packages
+      # some are used in root recipes (doxygen, unittest, host-linux etc.)
+      # where no MODULE/PACKGE_VERSION is set
+      # do not try to build them there
+      if [[ -z "${MODULE_VERSION+xyz}" ]] && [[ -z "${PACKAGE_VERSION+xyz}" ]] ; then
+         echo "buildSwupModule: aborting, no MODULE_VERSION or PACKAGE_VERSION defined"
+         return
+      fi
+      if [[ ! -z ${CONFIG_SKIP_SWUPDATE_PKG_BUILD+xyz} ]] && [[ ${CONFIG_SKIP_SWUPDATE_PKG_BUILD} == "1" ]] ; then
+         echo "buildSwupModule: skipping"
+         return
+      fi
+
+      FILES_WITH_MODE=()
+      FILE_DIR=""
+      PKG_FILE_NAME=""
+      PKG_ORIGIN=""
+      PKG_PREFIX=""
+      PKG_VARIANT=""
+      OPTIND=1
+      while getopts ":n:o:f:m:p:v:" opt; do
+         case $opt in
+            n) PKG_FILE_NAME="$OPTARG" ;;
+            o) PKG_ORIGIN="$OPTARG" ;;
+            f) FILE_DIR="$OPTARG" ;;
+            m) FILES_WITH_MODE+=("$OPTARG") ;;
+            p) PKG_PREFIX="$OPTARG" ;;
+            v) PKG_VARIANT="$OPTARG" ;;
+            :) break ;;
+            \?)
+               echo "invalid option $OPTARG" >&2
+               exit 1 ;;
+         esac
+      done
+      shift $((OPTIND-1))
+
+      PARAMS="$@"
+
+      # limited module depth in RequiredBy
+      PARAMS=$(__restrictModuleDepthInRequiredBy "$@")
+
+      manifest=$(mktemp)
+      MANIFEST_PKGNAME=$PKG_FILE_NAME
+      if [[ "${PKG_PREFIX}" ]]; then
+         MANIFEST_PKGNAME="${PKG_PREFIX}.${MANIFEST_PKGNAME}"
+      fi
+      if [[ "${PKG_VARIANT}" ]]; then
+         MANIFEST_PKGNAME="${MANIFEST_PKGNAME}.${PKG_VARIANT}"
+      fi
+
+      # sets the finished module name - limited to a max number of submodules
+      # restricted module/package names of the manifest files are set in buildSwupDevice
+      MANIFEST_PKGNAME=$(__restrictModuleDepth ${MANIFEST_PKGNAME})
+
+      # create manifest
+      echo "name: ${MANIFEST_PKGNAME}" > $manifest
+      echo "version: ${MODULE_VERSION}" >> $manifest
+      echo "origin: ${PKG_ORIGIN}" >> $manifest
+      echo "comment: \"\"" >> $manifest
+      echo "desc: \"\"" >> $manifest
+      echo "prefix: \"\"" >> $manifest
+      echo "maintainer: dev" >> $manifest
+      echo "www: http://www.prehcarconnect.com/" >> $manifest
+
+      if [[ ! -d ${FILE_DIR} ]] ; then
+         mkdir -p "tmp"
+         cp "${FILE_DIR}" "tmp/"
+         PKG_ROOT_DIR="tmp"
+      else
+         PKG_ROOT_DIR=${FILE_DIR}
+      fi
+
+      pushd ${PKG_ROOT_DIR}
+
+      # test if PKG_ROOT_DIR contains any files. If not exit.
+      files=$(find -type f -print)
+      links=$(find -type l -print)
+
+      if [[ "$files" == "" ]] && [[ "$links" == "" ]]; then
+         # no files and no links. But maybe some interessting dir?
+         # we can savely skip the package if only /usr/lib is in it
+         dirsToSkip="/usr \
+                     /usr/lib"
+         allDirs=$(find ! -path . -type d -printf "/%P")
+         for testd in $dirsToSkip; do
+            allDirs=${allDirs#$testd}
+         done
+         if [[ "$allDirs" == "" ]]; then
+            exit 0
+         fi
+      fi
+
+      flist=$(mktemp)
+      # We need to explicitly set the group to 'root' as the default is 'wheel'
+      echo "@group root"  >  $flist
+      for i in $(find ! -path . -type d -printf "/%P\n" | sort -r); do
+         echo "@dir $i" >> $flist
+      done
+      echo "$files" >> $flist
+      echo "$links" >> $flist
+
+      if [[ ${#FILES_WITH_MODE[@]} -eq 0 ]]; then
+         final=$flist
+      else
+         final=$(mktemp)
+         while read -r line; do
+            for i in ${FILES_WITH_MODE[@]+"${FILES_WITH_MODE[@]}"}; do
+               IFS=',' read -ra ENTRY <<< "$i"
+               if [[ "$line" =~ ${ENTRY[3]} ]]; then
+                  echo "@owner ${ENTRY[0]}"  >> $final
+                  echo "@group ${ENTRY[1]}"  >> $final
+                  echo "@mode ${ENTRY[2]}"   >> $final
+                  echo "$line"               >> $final
+                  echo "@mode"               >> $final
+                  echo "@group root"         >> $final
+                  echo "@owner"              >> $final
+                  continue 2
+               fi
+            done
+            echo "$line"                     >> $final
+         done < $flist
+      fi
+      popd
+
+      pkg create -f "tgz" -r ${PKG_ROOT_DIR} -M "$manifest" -p $final
+      rm -rf $flist $final $manifest
+
+      OUTPUT_DIR="_swupdata"
+
+      mib3-packing module \
+         --packageType="module" \
+         --packageName=${PKG_FILE_NAME} \
+         --packageVersion ${PACKAGE_VERSION} \
+         --manifestVersion ${MANIFEST_VERSION} \
+         --moduleVersion ${MODULE_VERSION} \
+         --moduleParentPath=${PKG_PREFIX} \
+         --file ${MANIFEST_PKGNAME}-${MODULE_VERSION}.tgz \
+         --move \
+         --fileType="image" \
+         -o ${OUTPUT_DIR} ${PKG_VARIANT:+--variantIdx ${PKG_VARIANT}} "$PARAMS"
+      if [[ ! -d ${FILE_DIR} ]] ; then
+         rm -rf tmp
+      fi
+      if [[ ${CHECKSUM} == "true" ]] ; then
+         mib3-packing checksum \
+            --manifestVersion ${MANIFEST_VERSION} \
+            -o ${OUTPUT_DIR} \
+            --type "module"
+      fi
+   }

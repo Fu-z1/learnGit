@@ -1,0 +1,93 @@
+inherit: [buildenv]
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@git-repo.server.technisat-digital:swi-btf/pcc.swi.testapp.git
+      dir: pcc.swi.testapp
+      tag: '0.11.1'
+
+# some depends for docs. Delete them if docs are build without deps
+#depends:
+#   - system::tsd-common-dev
+#   - swi::pcc-swi-btf-common-rsi-amb
+#   - swi::pcc-swi-btf-common-rsi-radio
+#   - swi::pcc-swi-btf-common-dsi-amb
+#   - swi::pcc-swi-btf-common-dsi-online
+#   - hmi::tsd-dsi-cpp-dev
+#   - communication::tsd-communication-dev
+#   - basic-services::rsi-library::tsd-rsi-server-dev
+#   - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+
+multiPackage:
+   "":
+      depends:
+      - hmi::tsd-dsi-cpp-dev
+      - communication::tsd-communication-dev
+
+      - basic-services::rsi-library::tsd-rsi-server-dev
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+
+      - use: []
+        depends:
+           - hmi::tsd-dsi-cpp-target
+           - communication::tsd-communication-target
+
+           - basic-services::rsi-library::tsd-rsi-server-target
+           - basic-services::rsi-library::tsd-vw-rsi-viwi-server-target
+
+      multiPackage:
+         target:
+            buildScript: |
+               buildenvBuildAll
+
+            packageScript: |
+               buildenvPackageTarget
+
+            provideDeps:
+               - "*-target"
+
+         dev:
+            buildScript: |
+               buildenvBuildAll
+
+            packageScript: |
+               buildenvPackageDev
+
+            provideDeps:
+               - "*-dev"
+
+   binarytests:
+      inherit: [binarytests]
+      depends:
+         - swi::pcc-swi-btf-common-rsi-amb
+         - swi::pcc-swi-btf-common-rsi-radio
+         - swi::pcc-swi-btf-common-dsi-amb
+         - swi::pcc-swi-btf-common-dsi-asia
+         - swi::pcc-swi-btf-common-dsi-car
+         - swi::pcc-swi-btf-common-dsi-nav
+         - swi::pcc-swi-btf-common-dsi-online
+         - swi::pcc-swi-btf-common-dsi-phone
+         - swi::pcc-swi-btf-common-dsi-swdl
+         - swi::pcc-swi-btf-common-dsi-system
+
+      buildScript: |
+         binarytestsBuild \
+            pcc.swi.testapp.test.binarytests
+
+      packageScript: |
+         binarytestsPackage
+         # <zr3-build-path> <host-linux-build-path> <app-name> <needed-lib>*
+         # (if one build-path don't exist use -)
+         createStartArguments \
+            "binarytests/swi::binarytests-swi__pcc-swi-testapp-target/swi::pcc-swi-testapp-target" \
+            "binarytests/swi::binarytests-swi__pcc-swi-testapp-host/swi::pcc-swi-testapp-dev" \
+            "pcc.swi.testapp"
+
+      provideDeps:
+         - "swi::pcc-swi-btf-common-*"
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

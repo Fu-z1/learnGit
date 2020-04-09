@@ -1,0 +1,19 @@
+diff -Nurp libpthread-stubs-0.3-orig/config.sub libpthread-stubs-0.3/config.sub
+--- libpthread-stubs-0.3-orig/config.sub	2009-08-20 09:55:46.000000000 +0200
++++ libpthread-stubs-0.3/config.sub	2017-02-15 10:07:50.183883072 +0100
+@@ -242,6 +242,7 @@ case $basic_machine in
+ 	# Some are omitted here because they have special meanings below.
+ 	1750a | 580 \
+ 	| a29k \
++	| aarch64 \
+ 	| alpha | alphaev[4-8] | alphaev56 | alphaev6[78] | alphapca5[67] \
+ 	| alpha64 | alpha64ev[4-8] | alpha64ev56 | alpha64ev6[78] | alpha64pca5[67] \
+ 	| am33_2.0 \
+@@ -322,6 +323,7 @@ case $basic_machine in
+ 	# Recognize the basic CPU types with company name.
+ 	580-* \
+ 	| a29k-* \
++	| aarch64-* \
+ 	| alpha-* | alphaev[4-8]-* | alphaev56-* | alphaev6[78]-* \
+ 	| alpha64-* | alpha64ev[4-8]-* | alpha64ev56-* | alpha64ev6[78]-* \
+ 	| alphapca5[67]-* | alpha64pca5[67]-* | arc-* \

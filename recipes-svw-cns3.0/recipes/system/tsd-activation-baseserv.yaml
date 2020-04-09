@@ -1,0 +1,39 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - communication::tsd-communication-dev
+  - hmi::tsd-dsi-cpp-dev
+  - system::tsd-activation-intern-api-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - hmi::tsd-dsi-cpp-target
+      - system::tsd-activation-intern-api-target
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.activation.baseserv.git
+    dir: tsd.activation.baseserv
+    tag: 2.1.0
+    branch: master
+
+buildScript: |
+   buildenvBuildAll
+   mkdir -p dist/etc/activation
+   rsync -a --delete $1/tsd.activation.baseserv/depl/commonapi.ini dist/etc/activation/commonapi.ini
+
+packageScript: |
+   buildenvPackageTarget install
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "activation-baseserv" \
+      -p "emmc.system" \
+      -o "system:tsd-activation-baseserv " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps:
+  - "*-target"

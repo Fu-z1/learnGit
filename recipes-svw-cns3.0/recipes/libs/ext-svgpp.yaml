@@ -1,0 +1,39 @@
+inherit: [install, packing-module]
+
+depends:
+   - system::ext-boost-dev
+   - use: []
+     depends:
+        - system::ext-boost-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.svgpp.git
+   dir: ext.svgpp
+   tag: 1.2.1
+
+packageTools: [buildenv]
+
+buildScript: |
+   mkdir -p usr
+   rsync -r --delete $1/ext.svgpp/include usr/
+   mkdir -p  usr/include/rapidxml_ns
+   rsync -r --delete $1/ext.svgpp/third_party/rapidxml_ns/*hpp usr/include/rapidxml_ns/
+
+multiPackage:
+   dev:
+      packageScript: |
+         rsync -r --delete $1/ ./
+         tsd-buildenv-create-shim.sh -p usr -I include ext.svgpp
+      provideDeps: ['*-dev']
+   target:
+      packageScript: |
+         rsync -r --delete $1/ ./
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-svgpp" \
+            -p "emmc.libs" \
+            -o "libs:ext-svgpp " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

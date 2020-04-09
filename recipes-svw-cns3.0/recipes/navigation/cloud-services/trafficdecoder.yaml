@@ -1,0 +1,68 @@
+inherit: [buildenv, patch, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Service Cloud"
+
+depends:
+  - navigation::tsd-nav-cloud-mw-api-dev
+  - navigation::tsd-nav-traffic-clouddecoder-api-dev
+  - navigation::tsd-nav-traffic-clouddecoder-dev
+  - navigation::tsd-nav-mapdataservice-mib3-cloud-dev
+  - navigation::ext-prometheus-client-cpp-dev
+  - navigation::tsd-nav-cloud-common-cpp-dev
+  - navigation::tsd-nav-cloud-service-penaltymapmerger-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.service.trafficdecoder.git
+   dir: tsd.nav.cloud.service.trafficdecoder
+   branch: snapshot
+
+buildTools:
+  - protoc
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+       dev:
+          buildScript: |
+             buildenvBuildAll
+          packageScript: |
+             buildenvPackageDev
+          provideDeps:
+            - navigation::tsd-nav-cloud-mw-api-dev
+            - navigation::tsd-nav-traffic-clouddecoder-api-dev
+            - navigation::tsd-nav-traffic-clouddecoder-dev
+            - navigation::tsd-nav-mapdataservice-mib3-cloud-dev
+            - navigation::ext-prometheus-client-cpp-dev
+            - navigation::tsd-nav-cloud-common-cpp-dev
+            - navigation::tsd-nav-cloud-service-penaltymapmerger-dev
+
+       target:
+          buildScript: |
+             buildenvBuildAll
+          packageScript: |
+             buildenvPackageTarget
+             d=$(mktemp -d)
+             rsync -a --delete --exclude ".debug" ./ $d
+             buildSwupModule -n "trafficdecoder" \
+                -p "emmc.navigation.cloud-services" \
+                -o "navigation.cloud-services:trafficdecoder " -f $d -- \
+                -U "Partition=rootfs_ro"
+             rm -rf $d
+          provideDeps:
+            - navigation::tsd-nav-cloud-mw-api-dev
+            - navigation::tsd-nav-traffic-clouddecoder-api-dev
+            - navigation::tsd-nav-mapdataservice-mib3-cloud-dev
+            - navigation::ext-prometheus-client-cpp-dev
+            - navigation::tsd-nav-cloud-common-cpp-dev
+            - navigation::tsd-nav-cloud-service-penaltymapmerger-dev
+
+       unittests:
+          buildScript: |
+             buildenvTestAll
+          packageScript: |
+             buildenvPackageTests

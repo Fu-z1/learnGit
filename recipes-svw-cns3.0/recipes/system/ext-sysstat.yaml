@@ -1,0 +1,28 @@
+inherit: [install, make, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-or-later"
+   PKG_VERSION: "11.4.5"
+   PKG_NAME: "sysstat"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}/src/ext-sysstat/sysstat-${PKG_VERSION}.tar.xz
+
+buildVars: [SYSROOT, CROSS_COMPILE, ARCH, CC, LD, PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -av $1/sysstat-${PKG_VERSION}/ .
+   autotoolsBuild .
+
+packageScript: |
+   autotoolsPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-sysstat" \
+      -p "emmc.system" \
+      -o "system:ext-sysstat " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+

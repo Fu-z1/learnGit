@@ -1,0 +1,147 @@
+packageScript: |
+   devdropCreateRunScript(){
+   cat << 'EOF' > runMe.sh
+   #!/bin/bash
+      set -e
+      function cleanUp(){
+         zenity --question --width=400 --text='Do you want to uninstall this application after exiting?'
+         if [[ $? ]]; then
+            popd
+            echo "Deleting $PWD"
+            rm -rf $PWD
+         fi
+         exit 1;
+      }
+      trap cleanUp SIGHUP SIGINT SIGTERM
+      function install_packed ()
+      {
+         if [[ -z ${password:-} ]]; then
+            password=$(zenity  --width=400 --text="Some necessary libraries are missing. Please provide your root password to install the missing libraries" --forms --add-password="Root password")
+
+         fi
+         [ /tmp/limit -nt /var/lib/apt/periodic/update-success-stamp ] && echo "osboxes.org" | sudo -S apt-get update
+         echo ${password:-"osboxes.org"} | sudo -S apt-get install -y $@
+      }
+
+
+      echo "Checking for missing libraries..."
+      dpkg --get-selections | grep -v deinstall|grep -q libc6:amd64   || install_packed libc6:amd64 libncurses5:amd64 libstdc++6:amd64
+      dpkg --get-selections | grep -v deinstall|grep -q libgbm1:amd64 || install_packed libx11-xcb1:amd64 libx11-6:amd64 libxcb-dri2-0:amd64 libxcb-xfixes0:amd64 libwayland-client0:amd64 libwayland-server0:amd64
+      dpkg --get-selections | grep -v deinstall|grep -q libgles2-mesa:amd64 || install_packed libgles2-mesa:amd64
+      pushd usr/bin
+      zenity --info --width=600 --text="THIS IS A DEVDROP. COPYRIGHT 2017 BY Preh Car Connect GmbH.\nTHIS SOFTWARE IS NOT FINAL AND SUBJECT TO FUTURE CHANGES.\nIT DOES NOT REPRESENT THE ACTUAL WORKING STATE ON THE TARGET PLATFORM.\nNO BUGREPORTS WILL BE ACCEPTED BASED ON THIS SOFTWARE"
+
+      if [ ! -r /tmp/map ];then
+        zenity --error --width=400 --text "No map found at /tmp/map. Please select a map folder"
+        mappath=$(zenity --file-selection --directory)
+        mkdir -p /tmp/map/var/lib/nav/map
+        pushd "$mappath"/var/lib/nav/map/
+        ln -sfr * /tmp/map/var/lib/nav/map/
+        popd
+      fi
+      ulimit -n 4096
+      if [[ $(ulimit -n) -lt 4096 ]]; then
+        zenity --warning --width=400 --text "Failed to set maximum number of file descriptors to 4096\n Be aware that navigation might crash when larger parts of the map are used."
+      fi
+      xterm -e "LD_LIBRARY_PATH=$(pwd)/../lib64 $(pwd)/tsd.nav.mainapp.mib3 --ro-path ../../etc/nav/ |tee navi.log"
+      cleanUp
+   EOF
+   chmod +x runMe.sh
+   }
+   devdropCreateSelfextractingArchive(){
+   echo "creating header"
+   cat << 'EOL' > ../header.sh
+   #!/bin/bash
+      echo "Extracting files into $(pwd)"
+      SKIP=`awk '/^[ ]+__TARFILE_FOLLOWS__/ { print NR + 1; exit 0; }' $0`
+      THIS="$(pwd)/$0"
+      tail -n +$SKIP $THIS | tar xzv --overwrite
+      echo "Finished. Please run runMe.sh in the extracted folder"
+      exit 0
+      __TARFILE_FOLLOWS__
+   EOL
+      echo "creating navigation$(date +%d_%m_%Y).sh"
+      cat ../header.sh navigation$(date +%d_%m_%Y).tgz > ../navigation$(date +%d_%m_%Y).sh
+      chmod +x ../navigation$(date +%d_%m_%Y).sh
+      rm ../header.sh
+      rm -rf *
+      mv ../navigation$(date +%d_%m_%Y).sh .
+   }
+   devdropCreateStatusPng(){
+      #Add Jobdescription "Navi ZR3 Devdrop"
+      mkdir -p ../tsd
+      convert -size 800x480 canvas:red -pointsize 30 -draw "text 85,160 'Installation failed'" ../tsd/error.png
+      convert -size 800x480 canvas:#eeeeee -pointsize 30 -draw "text 85,90 'Navi ZR3 Devdrop'" -pointsize 30 -draw "text 85,160 'Devdrop already installed'" -pointsize 25 -draw "text 85,260 'Run via console with -f parameter to force installation'" -pointsize 15 -draw "text 85,440 '$(date +"%Y %b %d")'"  ../tsd/alreadyInstalled.png
+      convert -size 800x480 canvas:#58d096 -pointsize 30 -draw "text 85,90 'Navi ZR3 Devdrop'" -pointsize 30 -draw "text 85,160 'Installation in progress'" -pointsize 15 -draw "text 85,440 '$(date +"%Y %b %d")'"  ../tsd/run.png
+      convert -size 800x480 canvas:#6391de -pointsize 30 -draw "text 85,90 'Navi ZR3 Devdrop'" -pointsize 30 -draw "text 85,160 'Installation finished'" -pointsize 25 -draw "text 85,260 'Please remove the USB-device & reboot'" -pointsize 15 -draw "text 85,440 '$(date +"%Y %b %d")'" ../tsd/finish.png
+
+   }
+
+   devdropCreateTsdSh(){
+   echo "creating tsd.sh"
+   cat << STOP0 > ../tsd.sh
+   #!/bin/sh
+   force=0
+   filename=navigation$(date +%d_%m_%Y).tgz
+   checksum=$(sha1sum usr/bin/tsd.nav.mainapp.mib3|cut -d ' ' -f1)
+   export XDG_RUNTIME_DIR=/run/display
+
+   STOP0
+   cat << 'STOP1' >> ../tsd.sh
+   while getopts "f?h" opt; do
+      case "$opt" in
+      f) force=1
+      ;;
+      h\?) echo "-f: force update"
+      exit 0
+      ;;
+      esac
+
+   done
+   if [[ "aarch64" = $(uname -m) ]]; then
+      if [[ -s /usr/bin/tsd.nav.mainapp.mib3 ]]; then
+         #CHECKSUM
+         if [[ $force = 1 || $checksum != $(sha1sum /usr/bin/tsd.nav.mainapp.mib3|cut -d ' ' -f1) ]]; then
+            echo "File differs from updateversion."
+            echo "Proceeding with update"
+
+         else
+            echo "Checksum of the old tsd.nav.mainapp.mib3 is the same as the new one."
+            echo "Aborting update"
+            echo "Force Update with -f option"
+            timeout -sHUP 5s /usr/bin/tsd.system.displaymanager.app.pngviewer -f -x tsd/alreadyInstalled.png
+            exit 1
+         fi
+      fi
+      systemctl stop nav
+      /usr/bin/tsd.system.displaymanager.app.pngviewer -f -x tsd/run.png &
+      PID=$!
+      tar xzvf $filename -C /
+      kill $PID
+      systemctl start nav
+      systemctl status nav
+      /usr/bin/tsd.system.displaymanager.app.pngviewer -f -x tsd/finish.png
+
+   else
+      tar xzvf navigation$(date +%d_%m_%Y).tgz
+   fi
+   STOP1
+
+   }
+   devdropCreateSimulator(){
+      devdropCreateRunScript
+      rm symbols.tgz
+      foldername=navigation$(date +%d_%m_%Y)
+      mkdir $foldername
+      find . -maxdepth 1 | grep -v $foldername|grep ./ | xargs -i mv {} ./$foldername
+      tar --exclude *.tgz -cvzf  $foldername.tgz --transform s/workspace/$foldername/ $foldername/
+      devdropCreateSelfextractingArchive
+   }
+   devdropCreateDevdrop(){
+      tar cvzf ../navigation$(date +%d_%m_%Y).tgz --exclude symbols.tgz .
+      devdropCreateStatusPng
+      devdropCreateTsdSh
+      rm -rf *
+      mv ../tsd.sh ../navigation$(date +%d_%m_%Y).tgz ../tsd/ .
+
+   }

@@ -1,0 +1,96 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.soundproc.soundcontrol.mib3.api.git
+   dir: tsd.audio.soundproc.soundcontrol.mib3.api
+#   tag: 3.4.7
+   branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll \
+            -DTSD_AUDIO_DSP_ROUTER_DOMAIN=\""/tux/dsp/"\"
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - system::tsd-common-dev
+        - communication::tsd-communication-dev
+
+   dev-host:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - system::tsd-common-dev
+        - communication::tsd-communication-dev
+
+   dev-dsp:
+      buildScript: |
+         buildenvBuildAll \
+            -DTSD_AUDIO_ARM_ROUTER_DOMAIN=\""/tux/"\"
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - communication::tsd-communication-dev
+
+   target:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            -DTSD_AUDIO_DSP_ROUTER_DOMAIN=\""/tux/dsp/"\" \
+            -DTSD_AUDIO_ARM_ROUTER_DOMAIN=\""/tux/"\" \
+            tsd.audio.soundproc.soundcontrol.mib3.api \
+            tsd.audio.soundproc.soundcontrol.mib3.api.app.SndCmdClient
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "sndctrl-mib3-api" \
+            -p "emmc.audio.soundprg" \
+            -o "audio.soundprocessing:tsd-audio-soundproc-soundcontrol-mib3-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   apps:
+      depends:
+         # TODO: drop audio-common-test-dev dependency.
+         # DON'T USE cppunit includes in apps!
+        - audio::audiomanager::tsd-audio-common-test-dev
+
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.audio.soundproc.soundcontrol.mib3.api \
+            tsd.audio.soundproc.soundcontrol.mib3.api.app
+      packageScript: |
+         buildenvPackageTarget
+
+   unittests:
+      depends:
+        - audio::audiomanager::tsd-audio-common-test-dev
+      buildScript: |
+         buildenvTestTargets tsd.audio.soundproc.soundcontrol.mib3.api.test
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

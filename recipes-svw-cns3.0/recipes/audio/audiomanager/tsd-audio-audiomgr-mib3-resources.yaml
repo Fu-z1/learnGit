@@ -1,0 +1,49 @@
+inherit: [packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiomgr.mib3.resources.git
+#   tag: 2.4.8
+   branch: release/cns_mqb
+
+multiPackage:
+   target:
+      environment:
+         IS_MQB: "$(flagIsSet,${VARIANTS},SW_CSW_ISSW,ISSW_MQB)"
+         IS_37W: "$(flagIsSet,${VARIANTS},SW_CSW_ISSW,ISSW_37W)"
+         IS_CNS: "$(or,$(flagIsSet,${VARIANTS},Region,CHINA), \
+                       $(flagIsSet,${VARIANTS},Region,TAIWAN), \
+                       $(flagIsSet,${VARIANTS},Region,HONGKONG_MACAO))"
+         IS_VW: "$(flagIsSet,${VARIANTS},SW_HMI_BRAND,vw)"
+         IS_SKODA: "$(flagIsSet,${VARIANTS},SW_HMI_BRAND,sk)"
+      privateEnvironment:
+         AUDIOTABLE_PLATFORM: "$(if-then-else,${IS_MQB},mqb,$(if-then-else,${IS_37W},37w,''))"
+         AUDIOTABLE_VARIANT: "$(if-then-else,${IS_CNS},cns,$(if-then-else,${IS_VW},vw,$(if-then-else,${IS_SKODA},skoda,'')))"
+      buildVars: [AUDIOTABLE_PLATFORM, AUDIOTABLE_VARIANT]
+      buildScript: |
+         rsync --exclude=".git*" --exclude="usr/share/tsd.audio.audiomgr.mib3/audiotable" -a --delete $1/ $PWD/
+         mkdir -p $PWD/usr/share/tsd.audio.audiomgr.mib3/audiotable/
+         rsync --exclude=".git*" -a --delete $1/usr/share/tsd.audio.audiomgr.mib3/audiotable/${AUDIOTABLE_PLATFORM}/${AUDIOTABLE_VARIANT}/ $PWD/usr/share/tsd.audio.audiomgr.mib3/audiotable/
+      packageVars: [AUDIOTABLE_PLATFORM, AUDIOTABLE_VARIANT]
+      packageScript: |
+         rsync -a --delete $1/ $PWD/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "mib3-res-${AUDIOTABLE_PLATFORM}-${AUDIOTABLE_VARIANT}" \
+            -p "emmc.audio.audiomgr" \
+            -m 'audiomanager,audiomanager,0700,/var/lib/tsd.audio.audiomgr.mib3$'  \
+            -m 'audiomanager,audiomanager,0700,/var/lib/tsd.audio.audiomgr.mib3/.*' \
+            -m 'audiomanager,audiomanager,0500,/usr/share/tsd.audio.audiomgr.mib3$'  \
+            -m 'audiomanager,audiomanager,0500,/usr/share/tsd.audio.audiomgr.mib3/.*' \
+            -o "audio.audiomanager:tsd-audio-audiomgr-mib3-resources" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   apps:
+      buildScript: |
+         mkdir -p $PWD/usr/bin/audiotable/
+         rsync -a --delete $1/usr/share/tsd.audio.audiomgr.mib3/audiotable/mqb/vw/ $PWD/usr/bin/audiotable/
+      packageScript: |
+         rsync -a --delete $1/ $PWD/

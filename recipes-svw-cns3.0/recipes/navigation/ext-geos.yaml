@@ -1,0 +1,31 @@
+inherit: [buildenv, packing-module]
+
+#depends:
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.geos.git
+   dir: ext.geos
+   tag: 55.1.0
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         buildenvPackageDev install
+         tsd-buildenv-create-shim.sh -p usr -I include -L $LIBDIR -l geos ext.geos
+         #provideDeps:
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-geos" \
+            -p "emmc.navigation" \
+            -o "navigation:ext-geos " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

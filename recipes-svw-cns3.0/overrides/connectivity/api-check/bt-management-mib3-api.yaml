@@ -1,0 +1,7 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.management.mib3.api.git"
+     del: [commit, tag]
+     set:
+        branch: "xdefect/7300"

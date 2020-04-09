@@ -1,0 +1,34 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+   - system::ext-boost-dev
+   - system::tsd-common-dev
+   - navigation::tsd-nav-common-mib3-api-dev
+   - navigation::tsd-nav-utils-api-dev
+   # please separate build dependencies from unit test deps
+   - navigation::tsd-nav-sdk-common-api-dev
+   - navigation::tsd-nav-rsi-clients-mib3-dev
+   - navigation::tsd-nav-pathfinder-mib3-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.usersettings.mib3.git
+   dir: tsd.nav.usersettings.mib3
+   tag: mqb_sop1_eu-150.0.1       #navi-api (internal only interface)
+
+buildScript: |
+   buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+      dev:
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']

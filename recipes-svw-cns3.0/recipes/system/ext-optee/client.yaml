@@ -1,0 +1,40 @@
+inherit: [install, packing-module]
+
+checkoutVars: [CONFIG_HYPERVISOR]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.optee_client.git
+   branch: $(if-then-else,$(eq,${CONFIG_HYPERVISOR:-1},1),"yocto-3.15.0-hv","yocto-3.15.0")
+
+buildVars: [AR, ARCH, CC, CROSS_COMPILE]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+
+   make RPMB_EMU=0
+packageTools: [buildenv]
+
+multiPackage:
+   dev:
+      packageScript: |
+         rsync -a --delete $1/out/export/ .
+         rm -rf bin
+         # FIXME: Clean up this quirks for providing a shim-compatible
+         # directory structure because an empty prefix is not accepted.
+         ln -f -s . usr
+         tsd-buildenv-create-shim.sh -p usr -I include -l teec ext.optee.client
+
+   target:
+      packageScript: |
+         mkdir -p usr
+         rsync -a --delete $1/out/export/ usr/
+         rm -rf usr/include
+         installStripAll ${PWD}
+         mkdir -p data/tee
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "client" \
+            -p "emmc.system.ext-optee" \
+            -o "system.ext-optee:client " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

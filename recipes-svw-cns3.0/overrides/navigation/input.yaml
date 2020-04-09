@@ -1,0 +1,62 @@
+scmOverrides:
+#zieleingabe
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.input.mib3.api.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.input.mib3.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.input.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.input.api.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.input.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.poi.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.poi.api.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.memory.mib3.api.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.memory.mib3.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.input.mapcode.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu

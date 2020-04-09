@@ -1,0 +1,11 @@
+checkoutSCM:
+   - scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/mib3.signature.devkey.git
+     #tag: 1.0.0
+     branch: main/svw_cns3.0_1480_dev
+
+buildScript: |
+   rsync -a --delete --exclude='.git' $1/ .
+
+packageScript: |
+   rsync -a --delete --exclude='.git' $1/ .

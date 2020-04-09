@@ -1,0 +1,189 @@
+shared: True
+
+environment:
+   PKG_VERSION:    "6.0.3"
+   TOOLCHAIN_NAME: "xt"
+   TOOLCHAIN_HASH: "99ca414669a3c711ba5d4a37273f83b7677a1a29"
+   TOOLCHAIN_ONLY_HASH: "3d9c38ff6282de1d3a61d02fd60a7715eafdb41e"
+   REDIST_NAME:    "hifi2_rcar_rf20153c_linux_redist-1.0.0"
+   REDIST_HASH:    "ddc7ab95c0ed0f269ce035ab978198de9a4d9511"
+   URL:            "${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/xtensa"
+
+privateEnvironment:
+   SANDBOX: "$(is-sandbox-enabled)"
+
+checkoutVars: [PKG_VERSION, TOOLCHAIN_ONLY_HASH, TOOLCHAIN_HASH, REDIST_NAME, REDIST_HASH]
+checkoutSCM:
+   -
+      scm: url
+      url: ${URL}/XtDevTools-${PKG_VERSION}.tar.gz
+      digestSHA1: ${TOOLCHAIN_ONLY_HASH}
+      extract: no
+      dir: XtDevTools
+   -
+      scm: url
+      url: ${URL}/Xplorer-${PKG_VERSION}-linux-installer.bin
+      digestSHA1: ${TOOLCHAIN_HASH}
+      extract: no
+      dir: Xplorer
+   -
+      scm: url
+      url: ${URL}/${REDIST_NAME}.tgz
+      digestSHA1: ${REDIST_HASH}
+      extract: no
+      dir: redist
+   -
+      scm: url
+      url: ${URL}/libstdc++_xtensa_patched-0.8.15.tar.gz
+      digestSHA1: 9fc57067cd6abd4b4036373c42d7d7331f07a08f
+      extract: no
+      dir: libstdc++
+
+buildVars: [PKG_VERSION, REDIST_NAME]
+buildVarsWeak: [SANDBOX]
+buildScript: |
+   if [[ ${SANDBOX} == true ]] ; then
+     ln -sf $1/XtDevTools/XtDevTools-${PKG_VERSION}.tar.gz
+   else
+     ln -sf $1/Xplorer/Xplorer-${PKG_VERSION}-linux-installer.bin
+     ln -sf $1/redist/${REDIST_NAME}.tgz
+   fi
+   ln -sf $1/libstdc++/libstdc++_xtensa_patched-0.8.15.tar.gz
+
+packageVars: [PKG_VERSION, REDIST_NAME]
+packageVarsWeak: [SANDBOX, KLOCWORK_BIN_PATH]
+packageScript: |
+   if [[ ${SANDBOX} == true ]] ; then
+      # use compiler only package
+      # to generate:
+      # 1) follow the no sandbox steps below
+      # 2) in XtDevTools/install/tools/RF-2015.3-linux/XtensaTools/config/default-params replace the absoulte path names with relative ones. e.g.:
+      #    :%s/\/data\/projects\/tsd-recipes-mib3\/dev\/dist\/toolchain\/xtensa\/xtensa-xcc\/1\/workspace/..\/..\/..\/..\/..\/../g
+      # 3) remove some unused directories:
+      #     - XtDevTools/downloads/RF-2015.3/samples/
+      #     - XtDevTools/downloads/RF-2015.3/builds/
+      # 4) generare a tar file: tar -cvzf XtDevTools-6.0.3.tar.gz XtDevTools
+      tar -xzf $1/XtDevTools-${PKG_VERSION}.tar.gz
+   else
+      # install Caidence tools
+      cp $1/Xplorer-${PKG_VERSION}-linux-installer.bin .
+
+      chmod +x Xplorer-${PKG_VERSION}-linux-installer.bin
+      linux32 ./Xplorer-${PKG_VERSION}-linux-installer.bin --prefix $(pwd) --unattendedmodeui minimal --mode unattended --disable-components GeneralSampleOpt,TenExController,HifiSampleOpt,TieSampleOpt,ConnXRefOpt
+      rm -rf rollbackBackupDirectory/
+
+      # install redistibution package
+      tar -xzf $1/${REDIST_NAME}.tgz
+      XtDevTools=$(pwd)/XtDevTools
+      mv RF-2015.3-linux/hifi2_rcar_rf20153c $XtDevTools/install/builds
+      pushd $XtDevTools/install/builds/hifi2_rcar_rf20153c
+      ./install --xtensa-tools $XtDevTools/install/tools/RF-2015.3-linux/XtensaTools/ --registry $XtDevTools/install/tools/RF-2015.3-linux/XtensaTools/config/
+      popd
+
+      rm -rf Xplorer-${PKG_VERSION}-linux-installer.bin
+   fi
+
+   # patch libstdc++. See https://ass.renesas.eu/mantis/view.php?id=3225
+   tar -xzf $1/libstdc++_xtensa_patched-0.8.15.tar.gz
+   cp libstdc++_xtensa_patched/usr/local/include/c++/4.2.0/ext/atomicity.h XtDevTools/install/builds/hifi2_rcar_rf20153c/xtensa-elf/include/xcc/c++/ext/
+   cp libstdc++_xtensa_patched/usr/local/lib/* XtDevTools/install/builds/hifi2_rcar_rf20153c/xtensa-elf/lib/xcc/
+   rm -rf  libstdc++_xtensa_patched
+
+   # create toolchain file if klocwork is set 
+   cat > linux_xtensa_xcc-klocwork.toolchain <<EOF
+   # kw wrapper toolchain
+   SET( KLOCWORK_BIN_PATH "\$ENV{KLOCWORK_BIN_PATH}" )
+   IF( NOT KLOCWORK_BIN_PATH )
+   SET( KLOCWORK_BIN_PATH "/opt/install/klocwork/bin" )
+   ENDIF()
+   
+   IF( NOT WORKSPACE )
+   SET(WORKSPACE "\$ENV{WORKSPACE}")
+   ENDIF()
+   
+   FIND_PROGRAM(
+   KWWRAP_PATH
+   kwwrap
+   PATHS "\${KLOCWORK_BIN_PATH}"
+   )
+   
+   SET(KLOCWORK_LOGFILE "\${WORKSPACE}/klocwork-buildtrace.log")
+
+   # tell cmake the name of our target system
+   set (CMAKE_SYSTEM_NAME "Generic")
+
+   # set compiler
+   SET(CMAKE_C_COMPILER   "xt-xcc")
+   SET(CMAKE_CXX_COMPILER "xt-xc++")
+
+   # compiler check is failing...
+   set(CMAKE_C_COMPILER_WORKS 1)
+   set(CMAKE_CXX_COMPILER_WORKS 1)
+
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY CACHE INTERNAL "")
+   
+   SET(GCC_KW_WRAPPER_PATH "\${WORKSPACE}/gcc-kw-wrapper.sh")
+   SET(GXX_KW_WRAPPER_PATH "\${WORKSPACE}/gxx-kw-wrapper.sh")
+   FILE(WRITE "\${GCC_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_C_COMPILER} \"\$@\"")
+   FILE(WRITE "\${GXX_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_CXX_COMPILER} \"\$@\"")
+   execute_process(COMMAND chmod 754 "\${GCC_KW_WRAPPER_PATH}")
+   execute_process(COMMAND chmod 754 "\${GXX_KW_WRAPPER_PATH}")
+   
+   SET(CMAKE_C_COMPILER "\${GCC_KW_WRAPPER_PATH}")
+   SET(CMAKE_CXX_COMPILER "\${GXX_KW_WRAPPER_PATH}")
+
+   EOF
+   
+   # create toolchain file if klocwork is not set
+   cat > linux_xtensa_xcc.toolchain <<EOF
+   # tell cmake the name of our target system
+   set (CMAKE_SYSTEM_NAME "Generic")
+
+   # set compiler
+   SET(CMAKE_C_COMPILER   "xt-xcc")
+   SET(CMAKE_CXX_COMPILER "xt-xc++")
+
+   # compiler check is failing...
+   set(CMAKE_C_COMPILER_WORKS 1)
+   set(CMAKE_CXX_COMPILER_WORKS 1)
+
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY CACHE INTERNAL "")
+   EOF
+
+provideVars:
+   # architecture
+   ARCH: xtensa
+   AUTOCONF_HOST:   "xtensa-unknown-elf"
+   AUTOCONF_TARGET: "xtensa-unknown-elf"
+   CROSS_COMPILE: "${TOOLCHAIN_NAME}-"
+   TARGET_TYPE: "embedded"
+
+   # compiler settings
+   CMAKE_TARGET_FILE: "xtensa.cmake"
+   CMAKE_TOOLCHAIN_FILE: $(if-then-else,$(eq,${CONFIG_KLOCWORK:-0},1),"../../../../../../linux_xtensa_xcc-klocwork.toolchain","../../../../../../linux_xtensa_xcc.toolchain")
+   CFLAGS: ""
+   CXXFLAGS: ""
+   LDFLAGS: ""
+   LIBDIR: lib
+
+   # tools
+   AR:     "${TOOLCHAIN_NAME}-ar"
+   AS:     "${TOOLCHAIN_NAME}-as"
+   CC:     "${TOOLCHAIN_NAME}-xcc"
+   CPP:    "${TOOLCHAIN_NAME}-cpp"
+   CXX:    "${TOOLCHAIN_NAME}-xc++"
+   GDB:    "${TOOLCHAIN_NAME}-gdb"
+   LD:     "${TOOLCHAIN_NAME}-ld"
+   NM:     "${TOOLCHAIN_NAME}-nm"
+   OBJCPY: "${TOOLCHAIN_NAME}-objcopy"
+   OBJDMP: "${TOOLCHAIN_NAME}-objdump"
+   RANLIB: "${TOOLCHAIN_NAME}-ranlib"
+   STRIP:  "${TOOLCHAIN_NAME}-strip"
+
+provideTools:
+   toolchain:
+      path: "XtDevTools/install/tools/RF-2015.3-linux/XtensaTools/bin"

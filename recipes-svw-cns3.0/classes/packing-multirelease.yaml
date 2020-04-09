@@ -1,0 +1,144 @@
+inherit: [packing-utils]
+
+packageTools: [mib3-packing, prepare_multirelease_container.sh]
+packageVars: [MANIFEST_VERSION]
+packageScript: |
+   # generates a multi release
+   # Parameter:
+   #  i) directory, which contains the releases - <input>
+   #     - release path has to be: <input>/<releasename>/UpdateContainer
+   #           - 'UpdateContainer' contains the 'Meta' and 'Data' directory of the release
+   #  n) multirelease name
+   #  o) output directory
+   buildSwupMultiRelease() {
+      __build -f "multirelease" $@
+   }
+
+   # generates a sequential release
+   # Parameter:
+   #  i) directory, which contains the releases - <input>
+   #     - release path has to be: <input>/<releasename>/UpdateContainer
+   #           - 'UpdateContainer' contains the 'Meta' and 'Data' directory of the release
+   #  n) sequentialrelease name
+   #  o) output directory
+   buildSwupSequentialRelease() {
+      __build -f "sequentialrelease" $@
+   }
+
+   # generates a multiset
+   # Parameter:
+   #  i) directory, which contains the releases - <input>
+   #     - release path has to be: <input>/<releasename>/UpdateContainer
+   #           - 'UpdateContainer' contains the 'Meta' and 'Data' directory of the release
+   #  n) multiset name
+   #  o) output directory
+   buildSwupMultisetRelease() {
+      __build -f "multiset" $@
+   }
+
+   # builds the multi release
+   __build() {
+      INPUT=""
+      FUNCTION=""
+      NAME=""
+      OUTPUT_DIRECTORY=""
+      OPTIND=1
+      while getopts ":i:f:n:o:" opt; do
+         case $opt in
+            i) INPUT=("$OPTARG") ;;
+            f) FUNCTION="$OPTARG" ;;
+            n) NAME="$OPTARG" ;;
+            o) OUTPUT_DIRECTORY="$OPTARG" ;;
+            :) break ;;
+            \?)
+               echo "invalid option $OPTARG" >&2
+               exit 1 ;;
+         esac
+      done
+      shift $((OPTIND-1))
+
+      PACKAGE_TYPE=$FUNCTION
+
+      if [[ $FUNCTION == "sequentialrelease" ]]; then
+         PACKAGE_TYPE="sequential"
+      fi
+
+      # map container
+      CONTAINERLIST=$(ls ${INPUT})
+
+      # complete the path to the containers
+      cPaths=""
+      for c in ${CONTAINERLIST}; do
+         cPaths=$cPaths" "${INPUT}/$c
+      done
+
+      # If different containers contain the same module with the same timestamp but different hashes -
+      # because of different variants -
+      # then this function will modify the timestamp and the link to the installer.txt, which contains the timestamp.
+      __prepareReleases $cPaths
+
+      # initialize the multirelease container
+      mib3-packing $FUNCTION --manifestVersion ${MANIFEST_VERSION} \
+      --packageVersion 1.0.0 \
+      --packageType=$PACKAGE_TYPE \
+      --packageName=$NAME \
+      --outputDir ${OUTPUT_DIRECTORY}
+
+      # add container to the multireleases
+      for c in ${CONTAINERLIST}; do
+         UC=${INPUT}/${c}
+
+         echo "Updatecontainer:"${UC}
+
+         RELEASE_NAME=$(__getReleaseName ${UC})
+         RELEASE_MNF=$(__getReleaseManifestFileName ${UC})
+
+         RELEASE_MNF_BASE=$(basename ${RELEASE_MNF})
+
+         echo "RELEASE_NAME: "${RELEASE_NAME}
+         echo "RELEASE_MNF: "${RELEASE_MNF}
+         echo "RELEASE_MNF_BASE: "${RELEASE_MNF_BASE}
+
+         mib3-packing $FUNCTION"addition" \
+         --packageName="${RELEASE_NAME}/${RELEASE_MNF_BASE}" \
+         --displayName="${RELEASE_NAME}" \
+         --metaDirName=${RELEASE_NAME} \
+         --updateContainerDir ${UC} \
+         --outputDir ${OUTPUT_DIRECTORY}
+      done
+   }
+
+   # prepare the releases for the multi release container
+   #  - changes data timestamps and pathes if the same modules with the same timestamps have different data files
+   __prepareReleases() {
+      prepare_multirelease_container.sh \
+      -r modified_containers.txt \
+      $@
+
+      # modified_containers.txt contains the modified containers
+      # re-calculate the checksums
+      for c in $(cat modified_containers.txt); do
+         mib3-packing checksum \
+         -t complete-uc \
+         --manifestVersion ${MANIFEST_VERSION} \
+         -o $c
+      done
+   }
+
+   # returns the release manifest filename
+   __getReleaseManifestFileName() {
+      RELEASE_MNF=$(find $1/Meta -maxdepth 1 -name "*.mnf")
+      echo ${RELEASE_MNF}
+   }
+
+   # returns the release name
+   __getReleaseName() {
+      RELEASE_MNF=$(__getReleaseManifestFileName $1)
+      TRAIN=$(cat ${RELEASE_MNF} | grep -i "\"release\"")
+      TRAIN="${TRAIN/\"Release\"/ }"
+      TRAIN="${TRAIN/ \"/}"
+      TRAIN="${TRAIN/\"/}"
+      TRAIN="${TRAIN/,/}"
+      TRAIN="${TRAIN/:/}"
+      echo ${TRAIN}
+   }

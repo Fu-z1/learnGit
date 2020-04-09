@@ -1,0 +1,155 @@
+root: True
+
+environment:
+   HOST: "amd64"
+   RELEASE: "stretch"
+   VARIANT: "minbase"
+   MIRROR: "http://ftp.de.debian.org/debian/"
+   PACKAGES_ARCHIVE: "packages.tar"
+   GCC_VERSION: "6.4.0"
+   ADDITIONAL_PACKAGES: "autogen autopoint automake bc bison bzip2 cpio curl fakeroot file flex gawk git libmagickwand-6.q16-3 lcov make python python3 python-crypto python-wand rsync srecord ssh wget xz-utils p7zip-full patch unzip kmod binutils squashfs-tools pkg-config libtool-bin intltool gperf subversion"
+
+
+
+checkoutDeterministic: True
+checkoutVars: [HOST, GCC_VERSION, RELEASE, VARIANT, MIRROR, PACKAGES_ARCHIVE, ADDITIONAL_PACKAGES]
+checkoutScript: |
+   /usr/sbin/debootstrap \
+      --arch=${HOST} \
+      --variant=$VARIANT \
+      --no-check-gpg \
+      --download-only \
+      --make-tarball=$PACKAGES_ARCHIVE \
+      --keep-debootstrap-dir \
+      $RELEASE \
+      debian_${RELEASE}_${HOST} \
+      $MIRROR
+
+checkoutSCM:
+   -
+      scm: url
+      url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/gcc/gcc-${GCC_VERSION}.tar.xz
+      dir: gcc
+      digestSHA1: "f237974b2d3af0f60936ce6a2f35b912a91e0239"
+
+buildScript: |
+   echo $(pwd)
+   # add debootstrap to sudoers like this
+   # user ALL=(root) NOPASSWD: /usr/sbin/debootstrap
+   sudo /usr/sbin/debootstrap \
+      --arch=${HOST} \
+      --variant=$VARIANT \
+      --no-check-gpg \
+      --unpack-tarball=$1/$PACKAGES_ARCHIVE \
+      --keep-debootstrap-dir \
+      --exclude=build-essential,systemd \
+      $RELEASE \
+      debian_${RELEASE}_${HOST} \
+      $MIRROR
+
+   sudo chroot debian_${RELEASE}_${HOST} /bin/sh -c "dpkg --add-architecture i386 && apt-get update && apt-get -y install libc6:i386 zlib1g:i386"
+
+   sudo chroot debian_${RELEASE}_${HOST} /bin/sh -c "apt-get update && apt-get install -y $ADDITIONAL_PACKAGES && apt-get -y upgrade"
+
+   # compile gcc with prefix=/toolchain/gcc with distro-gcc and remove
+   # distro-gcc afterwards. We also move the c-library headers to a
+   # different location to ensure cross compiling gcc is not using the
+   # host includes
+   sudo rm -rf debian_${RELEASE}_${HOST}/toolchain/download
+   sudo mkdir -p debian_${RELEASE}_${HOST}/toolchain/download
+   sudo cp -R $1/gcc debian_${RELEASE}_${HOST}/toolchain/download
+
+
+   # now switch into the sandbox environment, install build-essentials
+   # and compile the gcc with a different prefix. Afterwards remove
+   # build-essentials, gcc, g++,.. but keep libtool.
+   sudo chroot debian_${RELEASE}_${HOST} /bin/sh -c "apt-get -y install build-essential libgmp-dev libmpfr-dev libmpc-dev
+   cat << EOF >> make_gcc.sh
+   #!/bin/sh
+   mkdir -p /toolchain/gcc-${GCC_VERSION} && mkdir -p /toolchain/build && cd /toolchain/build
+   ../download/gcc/gcc-${GCC_VERSION}/configure --prefix=/toolchain/gcc-${GCC_VERSION} --enable-languages=c,c++ --disable-multilib
+   make -j8
+   make install
+   EOF
+   chmod +x make_gcc.sh
+   ./make_gcc.sh
+   apt-get -y remove build-essential gcc g++ cpp cpp-6
+   apt-get -y --download-only install libtool
+   dpkg -i --ignore-depends=cpp,cpp-6,gcc,gcc-6 /var/cache/apt/archives/libtool_2.4.6-2_all.deb
+   dpkg -i --ignore-depends=cpp,cpp-6,gcc,gcc-6 /var/cache/apt/archives/libtool-bin_2.4.6-2_amd64.deb
+   mkdir -p /toolchain/usr/
+   mv /usr/include /toolchain/usr/"
+
+
+   # wrapper scripts to make gcc/g++ find our moved system headers. Use
+   # idirafter because some libs use isystem (libbsd)
+
+   mkdir -p tmp && pushd tmp
+   for i in c++ gcc g++ cpp; do
+      cat > $i << EOF
+   #!/bin/sh
+   /toolchain/gcc-${GCC_VERSION}/bin/_$i -idirafter /toolchain/usr/include -idirafter /toolchain/usr/include/x86_64-linux-gnu \$@
+   EOF
+   done
+
+   for i in c++ g++ gcc; do
+      cat > x86_64-pc-linux-gnu-$i << EOF
+   #!/bin/sh
+   /toolchain/gcc-${GCC_VERSION}/bin/_x86_64-pc-linux-gnu-$i -idirafter /toolchain/usr/include -idirafter /toolchain/usr/include/x86_64-linux-gnu \$@
+   EOF
+   done
+   popd #tmp
+
+
+   pushd debian_${RELEASE}_${HOST}/toolchain/gcc-${GCC_VERSION}
+   for i in c++ gcc g++ cpp x86_64-pc-linux-gnu-gcc x86_64-pc-linux-gnu-g++ x86_64-pc-linux-gnu-c++; do
+      sudo mv bin/$i bin/_$i
+      sudo mv ../../../tmp/$i bin/$i
+      sudo chmod a+x bin/$i
+   done
+   pushd bin
+   sudo ln -sf gcc cc
+   for i in c++ gcc g++ gcc-ar gcc-nm gcc-ranlib; do
+      sudo ln -sf x86_64-pc-linux-gnu-$i x86_64-linux-gnu-$i
+   done
+   popd #bin
+   popd #toolchain/gcc-${GCC_VERSION}
+
+   sudo rm -rf debian_${RELEASE}_${HOST}/toolchain/download debian_${RELEASE}_${HOST}/toolchain/build
+   rm -rf tmp
+
+   sudo chroot debian_${RELEASE}_${HOST} /bin/sh -c \
+     "echo 'StrictHostKeyChecking no\nUserKnownHostsFile /dev/null\nGlobalKnownHostsFile /dev/null\nLogLevel ERROR' >> /etc/ssh/ssh_config"
+
+packageScript: |
+   sudo tar --preserve-permissions \
+      --exclude=./var \
+      --exclude=./boot \
+      --exclude=./debootstrap \
+      --exclude=./media \
+      --exclude=./opt \
+      --exclude=./home \
+      --exclude=./srv \
+      --exclude=./dev \
+      --exclude=./tmp \
+      -zcf debian-${RELEASE}-${HOST}-rootfs.tgz -C $1/debian_${RELEASE}_${HOST}/ .
+
+   tar -xf debian-${RELEASE}-${HOST}-rootfs.tgz --exclude=./dev
+
+   for DIR in bin etc lib lib64 opt sbin toolchain usr var; do
+      if [[ -d $1/${DIR} ]];then
+         cp -al $1/${DIR} ${PWD}
+      fi
+   done
+
+provideVars:
+   HOME: "/tmp"
+
+provideSandbox:
+   paths: [ "/bin", "/usr/bin", "/sbin"]
+   mount:
+       - "/etc/resolv.conf"
+         # mount proc fs. autogen needs this
+       - [ "/proc", "/proc" ]
+       - [ "\\$HOME/.ssh", "/nonexistent/.ssh"]
+       - [ "\\$HOME/.subversion", "/nonexistent/.subversion"]

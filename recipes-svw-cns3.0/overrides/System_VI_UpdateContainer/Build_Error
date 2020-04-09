@@ -1,0 +1,7 @@
+===== MISSING LIBRARIES SUMMARY =====
+libMIBUtilLib.so.00 needed by tmp/usr/bin/tsd.carssw.viwicarservice.mib3 tmp/usr/bin/tsd.carssw.viwinavsdclient.mib3 
+libMIBServiceLib.so.00 needed by tmp/usr/bin/tsd.carssw.viwicarservice.mib3 tmp/usr/bin/tsd.carssw.viwinavsdclient.mib3 
+libMIBSecurityLib.so.00 needed by tmp/usr/bin/tsd.carssw.viwicarservice.mib3 tmp/usr/bin/tsd.carssw.viwinavsdclient.mib3 
+ERROR: some shared libraries are missing. Stopping build!
+Build error: Build script ./dev/build/images/rootfs/1/build.sh returned with 1
+Failed package: zr3/zr3-variant-VW_EU/images::rootfs

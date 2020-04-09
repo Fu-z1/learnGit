@@ -1,0 +1,17 @@
+inherit: [autotools]
+
+privateEnvironment:
+   PKG_VERSION: "1.0.3"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libuuid/libuuid-${PKG_VERSION}.tar.gz
+   digestSHA256: "46af3275291091009ad7f1b899de3d0cea0252737550e7919d17237997db5644"
+
+buildVars: [CC, LD]
+buildScript: |
+   autotoolsBuild $1/libuuid-${PKG_VERSION} --enable-static --disable-shared
+
+packageScript: |
+   autotoolsPackageDev

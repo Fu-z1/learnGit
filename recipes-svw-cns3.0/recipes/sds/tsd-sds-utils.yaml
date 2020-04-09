@@ -1,0 +1,35 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-dataformats-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-dataformats-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.utils.git
+   dir: tsd.sds.utils
+   tag: 2.4.0
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageTarget
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen,dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

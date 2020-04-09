@@ -1,0 +1,17 @@
+#!/bin/sh
+
+#
+# Helper for generating and updating the artifacts used for building. Say no to
+# tedious work.
+#
+
+
+set -e
+
+
+./genVariants.py $@
+
+sed -i -e '/multiPackage:/q' ../../recipes/zr3-variant.yaml
+cat 3-variant.fragment.yaml >> ../../recipes/zr3-variant.yaml
+cat 7-variant.fragment.yaml >> ../../recipes/zr3-variant.yaml
+cp variants-helper.py ../../plugins

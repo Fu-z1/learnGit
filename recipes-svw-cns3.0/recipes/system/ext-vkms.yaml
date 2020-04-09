@@ -1,0 +1,107 @@
+inherit: [buildenv, packing-module, werror]
+
+privateEnvironment:
+   SW_DEVELOP: "$(flagIsSet,${VARIANTS-201001},SW_DEV_ACCESS,1)"
+   SW_PLATFORM: $(getUniqueFeatureFromList,${VARIANTS},SW_DIAGNOSIS_PLATFORM)
+
+depends:
+  - system::ext-optee::client-dev
+  - system::ext-optee::os-dev
+
+  - use: []
+    depends:
+      - system::ext-optee::client-target
+      - system::ext-optee::os-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/ext.vkms.git
+   dir: ext.vkms
+
+   tag: mqb_sop1_eu-3.6.1
+   branch: master_mqb_sop1_eu
+buildVars: [ARCH, CC, CROSS_COMPILE, SW_MANUFACTURING, SW_DEVELOP, SW_PLATFORM]
+buildScript: |
+   export TA_DEV_KIT_DIR=${BOB_DEP_PATHS["system::ext-optee::os-dev"]}
+
+   if [[ $SW_DEVELOP == "True" || -v SW_MANUFACTURING ]]; then
+      export CFLAGS="${CFLAGS:-} -DENABLE_VKMS_PSS_MANIPULATION_AND_RETRIEVAL"
+   fi
+
+   # Map diagnosis platform definitions to VKMS key configurations.
+   KEY_CONFIG=""
+   case $SW_PLATFORM in
+      MQB)
+         KEY_CONFIG=MIB3_MQB
+         ;;
+      MQB2020)
+         KEY_CONFIG=MIB3_MQB2020
+         ;;
+      CNS_MQB)
+         KEY_CONFIG=CNS3_0_MQB
+         ;;
+      CNS_MQB2020)
+         KEY_CONFIG=CNS3_0_MQB2020
+         ;;
+      *)
+         echo "Could not derive VKMS key config from unknown diagnosis platform $SW_PLATFORM." >&2
+         exit 1
+   esac
+
+   if [[ $KEY_CONFIG == "MIB3_MQB" || $KEY_CONFIG == "CNS3_0_MQB" ]]; then
+      export CFLAGS="${CFLAGS:-} -DENABLE_FIXED_PSK_FPK_FOR_MQB"
+   fi
+
+   export CFLAGS="${CFLAGS:-} -DVKMS_KEY_CONFIG=VKMS_KEY_CONFIG_${KEY_CONFIG}"
+
+multiPackage:
+   apps:
+      depends:
+        # We are using Boost header-only library code right now. So there is no
+        # need for pulling any target dependency.
+        - system::ext-boost-dev
+        - system::ext-vkms-dev
+        - use: []
+          depends:
+            - system::ext-vkms-target
+
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            ext.vkms.app.vkmstool
+
+      packageScript: |
+         buildenvPackageTarget
+
+      provideDeps: ["*-target"]
+
+   ? ""
+   :  buildScript: |
+         buildenvBuildAll
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev
+
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               mkdir -p lib/optee_armtz
+               mkdir -p usr/lib
+
+               find $1/ext.vkms/ -name "*.ta" -type f -exec cp {} lib/optee_armtz/ \;
+
+               buildenvPackageTarget
+
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-vkms" \
+                  -p "emmc.system" \
+                  -o "system:ext-vkms " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+
+            provideDeps: ["*-target"]

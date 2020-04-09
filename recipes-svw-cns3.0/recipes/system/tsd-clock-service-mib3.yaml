@@ -1,0 +1,75 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   LICENSE: "PROPRIETARY"
+   MAINTAINER: "Philipp Trommler <philipp.trommler@preh.de>"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.clock.service.mib3.git
+    dir: tsd.clock.service.mib3
+    tag: 2.7.0
+    branch: master_mqb_sop1_eu
+depends:
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - system::tsd-clock-mib3-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - system::tsd-common-target
+
+multiPackage:
+   linux-pkg:
+      depends:
+        - system::tsd-common-daemon-dev
+        - use: []
+          depends:
+            - system::tsd-common-daemon-target
+
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Wall -Wextra -Werror -Wno-error=deprecated-declarations"
+      buildScript: buildenvBuildAll -DFEATURE_TSD_CLOCK_SERVICE_MIB3_PLATFORM=LINUX
+
+      packageScript: |
+         buildenvPackageTarget
+
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n clock-service-mib3 -p "emmc.system" \
+            -o 'tsd-clock-service-mib3' -f $d -- \
+            -U "Partition=rootfs_ro"
+
+         rm -rf $d
+
+   cr7:
+      depends:
+        - system::system-lifecycle::tsd-pwc-proxy-api-dev
+        - use: []
+          depends:
+            - system::system-lifecycle::tsd-pwc-proxy-api-target
+
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Wall -Wextra -Werror -Wno-error=deprecated-declarations"
+      buildScript: buildenvBuildAll -DFEATURE_TSD_CLOCK_SERVICE_MIB3_PLATFORM=CR7
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   adsp:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Wall -Wextra -Werror -Wno-error=deprecated-declarations"
+      buildScript: buildenvBuildAll -DFEATURE_TSD_CLOCK_SERVICE_MIB3_PLATFORM=ADSP
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   doc:
+      depends:
+        - system::tsd-common-daemon-dev
+        - use: []
+          depends:
+            - system::tsd-common-daemon-target
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll -DFEATURE_TSD_CLOCK_SERVICE_MIB3_PLATFORM=LINUX
+      packageScript: buildenvPackageDoc

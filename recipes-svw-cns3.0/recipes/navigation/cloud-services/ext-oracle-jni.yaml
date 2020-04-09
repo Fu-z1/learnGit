@@ -1,0 +1,26 @@
+inherit: [packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Service Cloud"
+
+checkoutSCM:
+   scm: url
+   url: http://artifacts/src/java.tar.gz
+   digestSHA1: "01e57a2f73bd908ecc99cd9a32740062e4cf0ec3"
+   fileName: "java.tar.gz"
+buildScript: |
+   mkdir -p install/include
+   rsync -a --delete $1/jdk1.8.0_111/include/ install/include/
+
+packageTools: [buildenv]
+packageScript: |
+   mkdir -p usr/local
+   rsync -a --delete $1/install/ usr/local/
+   tsd-buildenv-create-shim.sh -I include ext.oracle.jni
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-oracle-jni" \
+      -p "emmc.navigation.cloud-services" \
+      -o "navigation.cloud-services:ext-oracle-jni " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

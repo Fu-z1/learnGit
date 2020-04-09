@@ -1,0 +1,3171 @@
+From f49156736a570615b6efc44e9a0ad6d0ae88bfbd Mon Sep 17 00:00:00 2001
+From: "guobing.miao" <guobing.miao@preh.cn>
+Date: Mon, 28 Jan 2019 13:38:42 +0800
+Subject: [PATCH] %REM%Rebase shared optee to yocto3.15
+
+---
+ Makefile                        |  20 +-
+ flags.mk                        |   2 +-
+ libteec/Makefile                |  14 +-
+ libteec/include/teec_helper.h   |  40 ++
+ libteec/src/teec_helper.c       | 158 +++++++
+ libteec/src/wrloop.c            |  88 ++++
+ libteec/src/wrloop.h            |  37 ++
+ public/tee_common.h             |  70 +++
+ public/tee_memfd.h              |  57 +++
+ tee-agent/Makefile              |  56 +++
+ tee-agent/src/connect_ops.h     |  11 +
+ tee-agent/src/tee_agent.c       | 709 ++++++++++++++++++++++++++++++
+ tee-agent/src/vchar_agent_ops.c |  42 ++
+ tee-agent/src/vchar_agent_ops.h |   7 +
+ tee-agent/src/vnet_agent_ops.c  |  91 ++++
+ tee-agent/src/vnet_agent_ops.h  |   7 +
+ tee-agent/src/wrloop.c          | 152 +++++++
+ tee-agent/src/wrloop.h          |  39 ++
+ tee-proxy/Makefile              |  51 +++
+ tee-proxy/src/connect_ops.h     |  10 +
+ tee-proxy/src/tee_proxy.c       | 927 ++++++++++++++++++++++++++++++++++++++++
+ tee-proxy/src/vchar_proxy_ops.c |  21 +
+ tee-proxy/src/vchar_proxy_ops.h |   5 +
+ tee-proxy/src/vnet_proxy_ops.c  |  46 ++
+ tee-proxy/src/vnet_proxy_ops.h  |   6 +
+ tee-proxy/src/wrloop.c          | 152 +++++++
+ tee-proxy/src/wrloop.h          |  39 ++
+ tee-proxy/tee_proxy_android.mk  |  32 ++
+ 28 files changed, 2879 insertions(+), 10 deletions(-)
+ create mode 100644 libteec/include/teec_helper.h
+ create mode 100644 libteec/src/teec_helper.c
+ create mode 100644 libteec/src/wrloop.c
+ create mode 100644 libteec/src/wrloop.h
+ create mode 100644 public/tee_common.h
+ create mode 100644 public/tee_memfd.h
+ create mode 100644 tee-agent/Makefile
+ create mode 100644 tee-agent/src/connect_ops.h
+ create mode 100644 tee-agent/src/tee_agent.c
+ create mode 100644 tee-agent/src/vchar_agent_ops.c
+ create mode 100644 tee-agent/src/vchar_agent_ops.h
+ create mode 100644 tee-agent/src/vnet_agent_ops.c
+ create mode 100644 tee-agent/src/vnet_agent_ops.h
+ create mode 100644 tee-agent/src/wrloop.c
+ create mode 100644 tee-agent/src/wrloop.h
+ create mode 100644 tee-proxy/Makefile
+ create mode 100644 tee-proxy/src/connect_ops.h
+ create mode 100644 tee-proxy/src/tee_proxy.c
+ create mode 100644 tee-proxy/src/vchar_proxy_ops.c
+ create mode 100644 tee-proxy/src/vchar_proxy_ops.h
+ create mode 100644 tee-proxy/src/vnet_proxy_ops.c
+ create mode 100644 tee-proxy/src/vnet_proxy_ops.h
+ create mode 100644 tee-proxy/src/wrloop.c
+ create mode 100644 tee-proxy/src/wrloop.h
+ create mode 100644 tee-proxy/tee_proxy_android.mk
+
+diff --git a/Makefile b/Makefile
+index bad6945..3c052c3 100644
+--- a/Makefile
++++ b/Makefile
+@@ -37,11 +37,18 @@ build-tee-supplicant: build-libteec
+ 	@echo "Building tee-supplicant"
+ 	$(MAKE) --directory=tee-supplicant  --no-print-directory --no-builtin-variables
+ 
+-build: build-libteec build-tee-supplicant
++build-tee-agent: build-libteec
++	@echo "Building tee-agent"
++	$(MAKE) --directory=tee-agent  --no-print-directory --no-builtin-variables
+ 
++build-tee-proxy: build-libteec
++	@echo "Building tee-proxy"
++	$(MAKE) --directory=tee-proxy  --no-print-directory --no-builtin-variables
++
++build: build-libteec build-tee-supplicant build-tee-proxy build-tee-agent
+ install: copy_export
+ 
+-clean: clean-libteec clean-tee-supplicant clean-cscope
++clean: clean-libteec  clean-tee-supplicant clean-tee-agent clean-cscope clean-tee-proxy
+ 
+ clean-libteec:
+ 	@$(MAKE) --directory=libteec --no-print-directory clean
+@@ -49,6 +56,12 @@ clean-libteec:
+ clean-tee-supplicant:
+ 	@$(MAKE) --directory=tee-supplicant --no-print-directory clean
+ 
++clean-tee-agent:
++	@$(MAKE) --directory=tee-agent --no-print-directory clean
++
++clean-tee-proxy:
++	@$(MAKE) --directory=tee-proxy --no-print-directory clean
++
+ cscope:
+ 	@echo "  CSCOPE"
+ 	${VPREFIX}find ${CURDIR} -name "*.[chsS]" > cscope.files
+@@ -126,6 +139,7 @@ distclean: clean
+ copy_export: build
+ 	mkdir -p $(DESTDIR)$(BINDIR) $(DESTDIR)$(LIBDIR) $(DESTDIR)$(INCLUDEDIR)
+ 	cp -a ${O}/libteec/libteec.so* $(DESTDIR)$(LIBDIR)
+-	cp -a ${O}/libteec/libteec.a $(DESTDIR)$(LIBDIR)
+ 	cp ${O}/tee-supplicant/tee-supplicant $(DESTDIR)$(BINDIR)
++	cp ${O}/tee-agent/tee-agent $(DESTDIR)$(BINDIR)
++	cp ${O}/tee-proxy/tee-proxy $(DESTDIR)$(BINDIR)
+ 	cp public/*.h $(DESTDIR)$(INCLUDEDIR)
+diff --git a/flags.mk b/flags.mk
+index 71f3d18..3f808cd 100644
+--- a/flags.mk
++++ b/flags.mk
+@@ -13,7 +13,7 @@ CFLAGS          := -Wall -Wbad-function-cast -Wcast-align \
+ 		   -Wmissing-format-attribute -Wmissing-include-dirs \
+ 		   -Wmissing-noreturn -Wmissing-prototypes -Wnested-externs \
+ 		   -Wpointer-arith -Wshadow -Wstrict-prototypes \
+-		   -Wswitch-default -Wunsafe-loop-optimizations \
++		   -Wswitch-default \
+ 		   -Wwrite-strings -Werror
+ CFLAGS          += -c -fPIC
+ 
+diff --git a/libteec/Makefile b/libteec/Makefile
+index e5cbfa3..3a76fc8 100644
+--- a/libteec/Makefile
++++ b/libteec/Makefile
+@@ -16,7 +16,9 @@ LIB_MAJOR	:= $(LIB_NAME).$(MAJOR_VERSION)
+ LIB_MAJ_MIN	:= $(LIB_NAME).$(MAJOR_VERSION).$(MINOR_VERSION)
+ 
+ TEEC_SRCS	:= tee_client_api.c \
+-		   teec_trace.c
++		   teec_trace.c \
++		   teec_helper.c \
++		   wrloop.c
+ ifeq ($(CFG_TEE_BENCHMARK),y)
+ TEEC_SRCS	+= teec_benchmark.c
+ endif
+@@ -39,7 +41,7 @@ endif
+ TEEC_LFLAGS    := $(LDFLAGS) -lpthread
+ TEEC_LIBRARY	:= $(OUT_DIR)/$(LIB_MAJ_MIN)
+ 
+-libteec: $(TEEC_LIBRARY) $(OUT_DIR)/libteec.a
++libteec: $(TEEC_LIBRARY)
+ 	$(VPREFIX)ln -sf $(LIB_MAJ_MIN) $(OUT_DIR)/$(LIB_MAJOR)
+ 	$(VPREFIX)ln -sf $(LIB_MAJOR) $(OUT_DIR)/$(LIB_NAME)
+ 
+@@ -48,9 +50,9 @@ $(TEEC_LIBRARY): $(TEEC_OBJS)
+ 	$(VPREFIX)$(CC) -shared -Wl,-soname,$(LIB_MAJ_MIN) $(TEEC_LFLAGS) -o $@ $+
+ 	@echo ""
+ 
+-$(OUT_DIR)/libteec.a: $(TEEC_OBJS)
+-	@echo "  AR      $@"
+-	$(VPREFIX)$(AR) rcs $@ $+
++#$(OUT_DIR)/libteec.a: $(TEEC_OBJS)
++#	@echo "  AR      $@"
++#	$(VPREFIX)$(AR) rcs $@ $+
+ 
+ $(TEEC_OBJ_DIR)/%.o: ${TEEC_SRC_DIR}/%.c
+ 	$(VPREFIX)mkdir -p $(TEEC_OBJ_DIR)
+@@ -62,5 +64,5 @@ $(TEEC_OBJ_DIR)/%.o: ${TEEC_SRC_DIR}/%.c
+ ################################################################################
+ clean:
+ 	$(RM) $(TEEC_OBJS) $(TEEC_LIBRARY) $(OUT_DIR)/$(LIB_MAJOR) $(OUT_DIR)/$(LIB_NAME)
+-	$(RM) $(OUT_DIR)/libteec.a
++#	$(RM) $(OUT_DIR)/libteec.a
+ 	$(call rmdir,$(OUT_DIR))
+diff --git a/libteec/include/teec_helper.h b/libteec/include/teec_helper.h
+new file mode 100644
+index 0000000..86f3256
+--- /dev/null
++++ b/libteec/include/teec_helper.h
+@@ -0,0 +1,40 @@
++/*******************************************************************************
++ * Copyright 2018 OpenSynergy GmbH
++ * All rights reserved. All unpublished rights reserved.
++ *
++ * Unpublished Confidential Information of OpenSynergy GmbH. 
++ * Do Not Disclose.
++ *
++ * No part of this work may be used or reproduced in any form or by any 
++ * means, or stored in a database or retrieval system, without prior written 
++ * permission of OpenSynergy GmbH.
++ * 
++ * Use of this work is governed by a license granted by OpenSynergy GmbH. 
++ * This work contains confidential and proprietary information of 
++ * OpenSynergy GmbH which is protected by copyright, trade secret, 
++ * trademark and other intellectual property rights.
++ ******************************************************************************/
++
++#ifndef __TEEC_HELPER_H__
++#define __TEEC_HELPER_H__
++
++#include <sys/queue.h>
++
++struct shm_info{
++    int sock;
++    int shm_id;
++    SLIST_ENTRY(shm_info) next;
++};
++
++/* TODO: initialize with SLIST_HEAD_INITIALIZER(head) */
++SLIST_HEAD(shm_sock, shm_info) shm_info_head;
++
++struct in_addr local_ip(const char *iface);
++int create_unet_socket(const char *path);
++int *recv_fds(int socket, int n);
++struct shm_info *find_shm_info(int shm_id);
++struct shm_info *init_shm_info(int sock, int shm_id);
++void hexdump(void *mem, unsigned int len);
++
++#endif /* __TEEC_HELPER_H__ */
++
+diff --git a/libteec/src/teec_helper.c b/libteec/src/teec_helper.c
+new file mode 100644
+index 0000000..06fb4fd
+--- /dev/null
++++ b/libteec/src/teec_helper.c
+@@ -0,0 +1,158 @@
++/*******************************************************************************
++ * Copyright 2018 OpenSynergy GmbH
++ * All rights reserved. All unpublished rights reserved.
++ *
++ * Unpublished Confidential Information of OpenSynergy GmbH.
++ * Do Not Disclose.
++ *
++ * No part of this work may be used or reproduced in any form or by any
++ * means, or stored in a database or retrieval system, without prior written
++ * permission of OpenSynergy GmbH.
++ *
++ * Use of this work is governed by a license granted by OpenSynergy GmbH.
++ * This work contains confidential and proprietary information of
++ * OpenSynergy GmbH which is protected by copyright, trade secret,
++ * trademark and other intellectual property rights.
++ ******************************************************************************/
++
++#include "tee_memfd.h"
++#include <tee_common.h>
++#include <sys/queue.h>
++#include <sys/socket.h>
++#include <arpa/inet.h>
++#include <sys/un.h>
++#include <stdlib.h>
++#include <tee_client_api.h>
++#include <teec_trace.h>
++#include <unistd.h>
++#include "teec_helper.h"
++#include <stdio.h>
++#include <ctype.h>
++
++#ifndef HEXDUMP_COLS
++#define HEXDUMP_COLS 8
++#endif
++
++#ifndef __aligned
++#define __aligned(x) __attribute__((__aligned__(x)))
++#endif
++#include <linux/tee.h>
++
++int create_unet_socket(const char *path)
++{
++    int socket_fd;
++    socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
++    if (socket_fd == -1) {
++        printf("[Client] Failed to create socket\n");
++        return -1;
++    }
++
++    struct sockaddr_un addr;
++    memset(&addr, 0, sizeof(struct sockaddr_un));
++    addr.sun_family = AF_UNIX;
++    strncpy(addr.sun_path, path, (sizeof(addr.sun_path) - 1));
++
++    printf("[Client] Try to connect to: %s\n", path);
++    if (connect(socket_fd, (const struct sockaddr *)&addr, sizeof(struct sockaddr_un)) == -1) {
++        printf("[Client] Failed to connect to socket\n");
++        if (close(socket_fd) == -1)
++            printf("[Client] Failed close socket\n");
++        return -1;
++    }
++
++    return socket_fd;
++}
++
++int *recv_fds(int socket, int n)
++{
++    int *fds = calloc(n, sizeof(int));
++    struct msghdr msg;
++    struct cmsghdr *cmsg;
++    char buf[CMSG_SPACE(n * sizeof(int))], dup[256];
++    memset(buf, '\0', sizeof(buf));
++    memset(&msg, 0, sizeof(msg));
++    struct iovec io = { .iov_base = &dup, .iov_len = sizeof(dup) };
++
++    msg.msg_iov = &io;
++    msg.msg_iovlen = 1;
++    msg.msg_control = buf;
++    msg.msg_controllen = sizeof(buf);
++    if (recvmsg(socket, &msg, MSG_WAITALL) < 0) {
++        fprintf(stderr, "Failed to receive message\n");
++        return NULL;
++    }
++
++    cmsg = CMSG_FIRSTHDR(&msg);
++    if (cmsg == NULL)
++        return NULL;
++
++    memcpy(fds, (char *)CMSG_DATA(cmsg), n * sizeof(int));
++
++
++    return fds;
++}
++
++struct shm_info *find_shm_info(int shm_id)
++{
++    struct shm_info *p;
++    SLIST_FOREACH(p, &shm_info_head, next)
++        if (p->shm_id == shm_id)
++            return p;
++    return NULL;
++}
++
++struct shm_info *init_shm_info(int sock, int shm_id)
++{
++    struct shm_info *p = malloc(sizeof(struct shm_info));
++    if (p == NULL)
++        return NULL;
++    p->sock = sock;
++    p->shm_id = shm_id;
++
++    return p;
++}
++
++void hexdump(void *mem, unsigned int len)
++{
++    unsigned int i, j;
++
++    for(i = 0; i < len + ((len % HEXDUMP_COLS) ? (HEXDUMP_COLS - len % HEXDUMP_COLS) : 0); i++)
++    {
++        /* print offset */
++        if(i % HEXDUMP_COLS == 0)
++        {
++            printf("0x%06x: ", i);
++        }
++
++        /* print hex data */
++        if(i < len)
++        {
++            printf("%02x ", 0xFF & ((char*)mem)[i]);
++        }
++        else /* end of block, just aligning for ASCII dump */
++        {
++            printf("   ");
++        }
++
++        /* print ASCII dump */
++        if(i % HEXDUMP_COLS == (HEXDUMP_COLS - 1))
++        {
++            for(j = i - (HEXDUMP_COLS - 1); j <= i; j++)
++            {
++                if(j >= len) /* end of block, not really printing */
++                {
++                    putchar(' ');
++                }
++                else if(isprint(((char*)mem)[j])) /* printable char */
++                {
++                    putchar(0xFF & ((char*)mem)[j]);
++                }
++                else /* other char */
++                {
++                    putchar('.');
++                }
++            }
++            putchar('\n');
++        }
++    }
++}
+diff --git a/libteec/src/wrloop.c b/libteec/src/wrloop.c
+new file mode 100644
+index 0000000..060e168
+--- /dev/null
++++ b/libteec/src/wrloop.c
+@@ -0,0 +1,88 @@
++#include <unistd.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "wrloop.h"
++
++ssize_t read_in_loop(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_read;
++	ssize_t n = 0;
++	int count = 0;
++
++	bp = (char *)data;
++	bytes_to_read = size;
++
++	while((n = read(fd, bp, bytes_to_read)) > 0) {
++		bp += n;
++		count += n;
++		bytes_to_read -= n;
++
++		if (bytes_to_read <= 0)
++			break;
++	}
++
++	return count;
++}
++
++ssize_t write_in_loop(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_write;
++	ssize_t n = 0;
++	int count = 0;
++
++	bp = (char *)data;
++	bytes_to_write = size;
++
++	while((n = write(fd, bp, bytes_to_write)) > 0) {
++		bp += n;
++		count += n;
++		bytes_to_write -= n;
++
++		if (bytes_to_write <= 0)
++			break;	
++	}
++
++	return count;
++}
++
++/* Prepare the packet for sending */
++void prepare_packet(struct packet *p, int seq, size_t sz, void *data)
++{
++    p->magic = MAGIC;
++    p->size  = sz;
++    p->seq   = seq;
++
++    if (data)
++		memcpy(&p->data, data, sizeof(p->data));
++
++   	return;
++}
++
++/* Check the packet when receiving */
++int check_packet(struct packet *p, int sz_check, size_t sz, int seq)
++{
++	int valid = 0;
++
++    if (p->magic != MAGIC) {
++       	printf("[TEEC  ] error: MAGIC not match, seq %x\n", seq);
++       	goto err;
++    } /* Check the MAGIC number of the packet */
++
++    if (p->seq != seq) {
++       	printf("[TEEC  ] error: sequence not match, seq %x\n", seq);
++       	goto err;
++    } /* Check the sequence number of the message */
++
++    if (sz_check && (p->size != sz)) {
++        printf("[TEEC  ] error: data size not match, size %zu, seq %x\n", sz, seq);
++        goto err;
++    } /* Check the size of buffer if necessary */
++
++    valid = 1;
++    
++err:
++    return valid;
++}
+diff --git a/libteec/src/wrloop.h b/libteec/src/wrloop.h
+new file mode 100644
+index 0000000..0c5e90d
+--- /dev/null
++++ b/libteec/src/wrloop.h
+@@ -0,0 +1,37 @@
++#include <unistd.h>
++#include <string.h>
++#include <tee_client_api.h>
++#ifndef __aligned
++#define __aligned(x) __attribute__((__aligned__(x)))
++#endif
++#include <linux/tee.h>
++
++#define MAGIC 0xdeadbeef
++
++struct packet {
++	uint32_t magic;
++    int32_t  seq;
++    uint64_t size;
++    
++    union {
++		unsigned long opcode; /* opcode  */
++		int fd;				  /* socket  */
++		int shm_id;			  /* shm_id	 */
++		unsigned long buf_len;/* buf_len */
++		unsigned long buf_ptr;/* buf_ptr */
++		TEEC_Result res;	  /* result  */
++		int dev_fd;           /* dev_fd  */
++		struct tee_ioctl_close_session_arg arg; /* params	*/	
++		struct tee_ioctl_shm_alloc_data data;   /* shm_data	*/	
++		struct tee_ioctl_version_data vers;     /* vers		*/
++		struct tee_ioctl_shm_alloc_data shm_data;
++		struct tee_ioctl_shm_register_data register_shm_data;							
++    } data;        
++} __attribute__((packed));
++
++ssize_t read_in_loop(int fd, void *data, size_t size);
++ssize_t write_in_loop(int fd, void *data, size_t size);
++/* Prepare the packet for sending */
++void prepare_packet(struct packet *p, int seq, size_t sz, void *data);
++/* Check the packet when receiving */
++int check_packet(struct packet *p, int sz_check, size_t sz, int seq);
+diff --git a/public/tee_common.h b/public/tee_common.h
+new file mode 100644
+index 0000000..64eb0f1
+--- /dev/null
++++ b/public/tee_common.h
+@@ -0,0 +1,70 @@
++/*******************************************************************************
++ * Copyright 2018 OpenSynergy GmbH
++ * All rights reserved. All unpublished rights reserved.
++ *
++ * Unpublished Confidential Information of OpenSynergy GmbH. 
++ * Do Not Disclose.
++ *
++ * No part of this work may be used or reproduced in any form or by any 
++ * means, or stored in a database or retrieval system, without prior written 
++ * permission of OpenSynergy GmbH.
++ * 
++ * Use of this work is governed by a license granted by OpenSynergy GmbH. 
++ * This work contains confidential and proprietary information of 
++ * OpenSynergy GmbH which is protected by copyright, trade secret, 
++ * trademark and other intellectual property rights.
++ ******************************************************************************/
++
++#ifndef __TEE_COMMON_H__
++#define __TEE_COMMON_H__
++
++#include <tee_client_api_extensions.h>
++#include <tee_client_api.h>
++
++#ifndef __aligned
++#define __aligned(x) __attribute__((__aligned__(x)))
++#endif
++#include <linux/tee.h>
++#include <sys/queue.h>
++
++#ifdef __ANDROID__
++#define PROXY_UNIX_SOCK_PATH "/storage/fd-pass.socket"
++#else
++#define PROXY_UNIX_SOCK_PATH "/tmp/fd-pass.socket"
++#endif
++
++#define	TEEC_INIT_CTX 1000
++#define	TEEC_FINA_CTX 1001
++#define	TEEC_RELEASE_SHARED_MEMORY 1002
++
++/* struct remote_context tracks the requests proxy gets */
++struct remote_session {
++    uint32_t remote_session_id;
++    TEEC_UUID local_uuid;
++    TEEC_UUID remote_uuid;
++    TEEC_Session local_teec_session;
++    SLIST_ENTRY(remote_session) next;
++};
++
++struct remote_shm {
++    void *remote_va;
++    int remote_shmid;
++    TEEC_SharedMemory local_teec_shm;
++    SLIST_ENTRY(remote_shm) next;
++};
++
++struct remote_context {
++    int remote_connect_fd; /* socket fd */
++    SLIST_HEAD(ses_head, remote_session) session_head;
++    SLIST_HEAD(shm_head, remote_shm) shm_head;
++    SLIST_ENTRY(remote_context) next;
++};
++
++/* struct remote_proxy tracks the requests agent gets */
++struct remote_proxy {
++    int fd;  /* socket fd for a proxy and agent */
++    SLIST_HEAD(c_head, remote_context) context_head;
++    SLIST_ENTRY(remote_proxy) next;
++};
++
++#endif /* __TEE_COMMON_H__ */
+diff --git a/public/tee_memfd.h b/public/tee_memfd.h
+new file mode 100644
+index 0000000..a496173
+--- /dev/null
++++ b/public/tee_memfd.h
+@@ -0,0 +1,57 @@
++/*******************************************************************************
++ * Copyright 2018 OpenSynergy GmbH
++ * All rights reserved. All unpublished rights reserved.
++ *
++ * Unpublished Confidential Information of OpenSynergy GmbH. 
++ * Do Not Disclose.
++ *
++ * No part of this work may be used or reproduced in any form or by any 
++ * means, or stored in a database or retrieval system, without prior written 
++ * permission of OpenSynergy GmbH.
++ * 
++ * Use of this work is governed by a license granted by OpenSynergy GmbH. 
++ * This work contains confidential and proprietary information of 
++ * OpenSynergy GmbH which is protected by copyright, trade secret, 
++ * trademark and other intellectual property rights.
++ ******************************************************************************/
++
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++#ifndef __TEE_MEMFD_H__
++#define __TEE_MEMFD_H__
++
++/* flags for memfd_create(2) (unsigned int) */
++#define MFD_CLOEXEC		    0x0001U
++#define MFD_ALLOW_SEALING	0x0002U
++#define MFD_HUGETLB		    0x0004U
++
++#ifndef F_LINUX_SPECIFIC_BASE
++#define F_LINUX_SPECIFIC_BASE 1024
++#endif
++
++#ifndef F_ADD_SEALS
++#define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
++#define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
++
++#define F_SEAL_SEAL     0x0001
++#define F_SEAL_SHRINK   0x0002
++#define F_SEAL_GROW     0x0004
++#define F_SEAL_WRITE    0x0008
++#endif
++
++#if !HAVE_MEMFD_CREATE
++#  ifndef __NR_memfd_create
++#    if defined __x86_64__
++#      define __NR_memfd_create 319
++#    elif defined __arm__
++#      define __NR_memfd_create 385
++#    elif defined __aarch64__
++#      define __NR_memfd_create 279
++#    elif defined __i386__
++#      define __NR_memfd_create 356
++#    else
++#      warning "__NR_memfd_create unknown for your architecture"
++#    endif
++#  endif
++#endif
++
++#endif /* __TEE_MEMFD_H__ */
+diff --git a/tee-agent/Makefile b/tee-agent/Makefile
+new file mode 100644
+index 0000000..044e89a
+--- /dev/null
++++ b/tee-agent/Makefile
+@@ -0,0 +1,56 @@
++include ../flags.mk
++include ../config.mk
++
++OUT_DIR := $(OO)/tee-agent
++
++.PHONY: all tee-agent clean
++
++all: tee-agent
++################################################################################
++# Teec configuration
++################################################################################
++PACKAGE_NAME	:= tee-agent
++
++TEES_SRCS	:= tee_agent.c
++
++TEES_SRCS += wrloop.c
++TEES_SRCS += vnet_agent_ops.c
++TEES_SRCS += vchar_agent_ops.c
++
++TEES_SRC_DIR	:= src
++TEES_OBJ_DIR	:= $(OUT_DIR)
++TEES_OBJS 	:= $(patsubst %.c,$(TEES_OBJ_DIR)/%.o, $(TEES_SRCS))
++TEES_INCLUDES 	:= ${CURDIR}/../libteec/include \
++		   ${CURDIR}/src \
++		   ${CURDIR}/../public \
++
++TEES_CFLAGS	:= $(addprefix -I, $(TEES_INCLUDES)) $(CFLAGS)
++
++TEES_FILE	:= $(OUT_DIR)/$(PACKAGE_NAME)
++TEES_LDFLAGS    := $(LDFLAGS) -L$(OUT_DIR)/../libteec -lteec
++
++TEES_LDFLAGS	+= -pthread
++
++ifdef $(SYSTEMD_SOCKET_ACTIVATION)
++  TEES_LDFLAGS	+= -lsystemd
++  TEES_CFLAGS	+= -DSYSTEMD_SOCKET_ACTIVATION
++endif
++
++tee-agent: $(TEES_FILE)
++
++$(TEES_FILE): $(TEES_OBJS)
++	@echo "  LINK    $@"
++	$(VPREFIX)$(CC) -o $@ $+ $(TEES_LDFLAGS)
++	@echo ""
++
++$(TEES_OBJ_DIR)/%.o: $(TEES_SRC_DIR)/%.c
++	$(VPREFIX)mkdir -p $(dir $@)
++	@echo "  CC      $<"
++	$(VPREFIX)$(CC) $(TEES_CFLAGS) $(TEES_CFLAGS_$(notdir $<)) -c $< -o $@
++
++################################################################################
++# Cleaning up configuration
++################################################################################
++clean:
++	$(RM) $(TEES_OBJS) $(TEES_FILE)
++	$(call rmdir,$(OUT_DIR))
+diff --git a/tee-agent/src/connect_ops.h b/tee-agent/src/connect_ops.h
+new file mode 100644
+index 0000000..6e0777b
+--- /dev/null
++++ b/tee-agent/src/connect_ops.h
+@@ -0,0 +1,11 @@
++#ifndef CONNECT_OPS_H
++#define CONNECT_OPS_H
++
++struct connect_ops {
++	void (*init)(void);
++	int (*get_aux_fd)(int *p_fd);
++	int (*handle_request)(fd_set *readfs);
++};
++
++#endif
++
+diff --git a/tee-agent/src/tee_agent.c b/tee-agent/src/tee_agent.c
+new file mode 100644
+index 0000000..dea6736
+--- /dev/null
++++ b/tee-agent/src/tee_agent.c
+@@ -0,0 +1,709 @@
++/*******************************************************************************
++ * Copyright (c) 2018 OpenSynergy GmbH.
++ *
++ * This software may not be used in any way or distributed without
++ * permission. All rights reserved.
++ ******************************************************************************/
++
++#include <stdio.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <sys/un.h>
++#include <stdlib.h>
++#include <sys/socket.h>
++#include <arpa/inet.h>
++#include <unistd.h>
++#include <errno.h>
++#include <sys/mman.h>
++#include <sys/select.h>
++#include <tee_common.h>
++#include <tee_memfd.h>
++#include <sys/ioctl.h>
++#include <signal.h>
++#include <sys/types.h>
++#include <netinet/in.h>
++#include <netdb.h>
++#include <time.h>
++
++#include <tee_client_api.h>
++#include <sys/queue.h>
++#include "wrloop.h"
++#include "vchar_agent_ops.h"
++#include "vnet_agent_ops.h"
++
++struct connect_ops *active_ops = &vchar_ops;
++static int curr_fd = -1;
++/* The head for a list of struct context */
++static SLIST_HEAD(proxy_head, remote_proxy) proxy_head;
++
++/* for the context of agent */
++static TEEC_Context agent_ctx;
++struct tee_ioctl_version_data vers;
++static int vers_rc;
++void create_new_proxy(int pfd);
++
++static int close_rp_connection(struct remote_proxy *rp);
++static int fds_setting(fd_set *r);
++static int agent_handle_request(struct remote_proxy *rp,
++	struct remote_context *rctx, unsigned long opcode,
++    struct packet *pkt);
++
++/* Coding scheme of the sequence number "ABCD":
++   A  - API sequence 
++       0: TEEC_InitializeContext
++       1: TEEC_OpenSession
++       2: TEEC_AllocateSharedMemory
++       3: TEEC_InvokeCommand
++       4: TEEC_ReleaseSharedMemory
++       5: TEEC_CloseSession
++       6: TEEC_FinalizeContext
++       7: TEEC_RequestCancellation
++       8: TEEC_RegisterSharedMemory
++       9: TEEC_RegisterSharedMemoryFileDescriptor
++
++   B  - Data type
++       0: OPCODE   1: SOCKET    2: SHM_ID    3: SHM_DATA
++       4: PARAMS   5: BUF_LEN   6: BUF_PTR   7: RESULT
++       8: VERS     9: DEV_FD
++
++   CD - direction
++       01: libteec   -> tee-proxy
++       12: tee-proxy -> tee-agent
++       21: tee-agent -> tee-proxy
++       10: tee-proxy -> libteec
++*/
++
++int agent_seq[] = {
++      0x12,  0x112,  0x921,  0x821,  0x721,
++    0x1012, 0x1112, 0x1512, 0x1612, 0x1412,
++    0x1321, 0x1721, 0x1621,
++    0x2012, 0x2112, 0x2312, 0x2721, 0x2321,
++    0x3012, 0x3112, 0x3512, 0x3612, 0x3412,
++    0x3721, 0x3621, 0x3321,
++    0x4012, 0x4112, 0x4212,
++    0x5012, 0x5112, 0x5412, 0x5721,
++    0x6012, 0x6112,
++    0x7012, 0x7112, 0x7412, 0x7721,
++    0x8012, 0x8112, 0x8312, 0x8721, 0x8321
++};
++
++static void sigint(int errnumber)
++{
++    struct remote_proxy *p;
++    printf("[Agent] proxy %d quit unexpected way %s\n", curr_fd, strerror(errnumber));
++
++    /* signal without current socket seems wierd */
++    if (curr_fd == -1)
++        return;
++
++    SLIST_FOREACH(p, &proxy_head, next) {
++        if (p->fd == curr_fd) {
++            close_rp_connection(p);
++            break;
++        }
++    }
++}
++
++static int close_rp_connection(struct remote_proxy *rp)
++{
++    struct remote_context *pctx;
++    struct remote_shm *pshm;
++    struct remote_session *psess;
++
++    /* List Deletion of shared memory */
++    SLIST_FOREACH(pctx, &rp->context_head, next) {
++        /* List Deletion of shared memory */
++        while (!SLIST_EMPTY(&pctx->shm_head)) {
++            pshm = SLIST_FIRST(&pctx->shm_head);
++            SLIST_REMOVE_HEAD(&pctx->shm_head, next);
++            TEEC_ReleaseSharedMemory(&pshm->local_teec_shm);
++            free(pshm);
++        }
++
++        /* List Deletion of session */
++        while (!SLIST_EMPTY(&pctx->session_head)) {
++            psess = SLIST_FIRST(&pctx->session_head);
++            SLIST_REMOVE_HEAD(&pctx->session_head, next);
++            TEEC_CloseSession(&psess->local_teec_session);
++            free(psess);
++        }
++
++        SLIST_REMOVE(&rp->context_head, pctx, remote_context, next);
++        free(pctx);
++    }
++
++    /* Delete corresponding remote context from list */
++    SLIST_REMOVE(&proxy_head, rp, remote_proxy, next);
++
++    printf("[Agent ] close proxy %d\n", rp->fd);
++    close(rp->fd);
++    free(rp);
++    curr_fd = -1;
++    return 0;
++}
++
++static int close_ca_connection(struct remote_proxy *rp, struct remote_context *rctx)
++{
++    struct remote_shm *pshm;
++    struct remote_session *psess;
++
++    /* List Deletion of shared memory */
++    while (!SLIST_EMPTY(&rctx->shm_head)) {
++        pshm = SLIST_FIRST(&rctx->shm_head);
++        SLIST_REMOVE_HEAD(&rctx->shm_head, next);
++        TEEC_ReleaseSharedMemory(&pshm->local_teec_shm);
++        printf("[Agent ] shm %d is released\n", pshm->remote_shmid);
++        free(pshm);
++    }
++
++    /* List Deletion of session */
++    while (!SLIST_EMPTY(&rctx->session_head)) {
++        psess = SLIST_FIRST(&rctx->session_head);
++        SLIST_REMOVE_HEAD(&rctx->session_head, next);
++        free(psess);
++    }
++
++    /* Delete corresponding remote context from list */
++    SLIST_REMOVE(&rp->context_head, rctx, remote_context, next);
++
++    printf("[Agent ] close ca %d\n", rctx->remote_connect_fd);
++    free(rctx);
++
++    return 0;
++}
++
++static struct remote_shm *find_shm(struct remote_proxy *rp, int shm_id)
++{
++    struct remote_context *pctx;
++    struct remote_shm *pshm;
++    SLIST_FOREACH(pctx, &rp->context_head, next) {
++        SLIST_FOREACH(pshm, &pctx->shm_head, next) {
++            if (pshm->remote_shmid == shm_id)
++                return pshm;
++        }
++    }
++
++    return NULL;
++}
++
++static void pre_operation(struct remote_proxy *rp, int fd,
++        struct tee_ioctl_param *params, int num_params, int seq)
++{
++    int n;
++    struct packet pkt;
++    struct remote_shm *shm;
++
++    for (n = 0; n < num_params; n++) {
++        switch (params[n].attr) {
++            case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT:
++            case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT:
++                shm = find_shm(rp, params[n].u.memref.shm_id);          
++                if (!shm) {
++                    printf("[Agent ] %s shm not found\n", __func__);
++                    return;
++                }
++                
++                if ((char *)shm->local_teec_shm.buffer + shm->local_teec_shm.size < 
++                	(char *)shm->local_teec_shm.buffer + params[n].u.memref.shm_offs + 
++                	params[n].u.memref.size) {
++	                printf("you are trying to access unallocated memory\n");
++                    continue;;
++                }
++					                              	
++				read_in_loop(fd, &pkt, sizeof(pkt));				    
++				if (!check_packet(&pkt, 1, params[n].u.memref.size, seq)) {
++				   	printf("[Proxy ] error: packet out of sync\n");
++				   	return;
++				}
++                read_in_loop_chunk(fd, (void *)((char *)shm->local_teec_shm.buffer + 
++                	params[n].u.memref.shm_offs), params[n].u.memref.size);				
++
++                break;
++            default:
++                break;
++        }
++    }
++}
++
++static void post_operation(struct remote_proxy *rp, int fd,
++        struct tee_ioctl_param *params, int num_params, int seq)
++{
++    int n;
++    struct packet pkt;    
++    struct remote_shm *shm;
++
++    for (n = 0; n < num_params; n++) {
++        switch (params[n].attr) {
++            case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_OUTPUT:
++            case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT:
++                shm= find_shm(rp, params[n].u.memref.shm_id);                
++                if (!shm) {
++                    printf("[Agent ] %s shm not found\n", __func__);
++                    return;
++                }
++
++                if ((char *)shm->local_teec_shm.buffer + shm->local_teec_shm.size < 
++                	(char *)shm->local_teec_shm.buffer + params[n].u.memref.shm_offs + 
++                		params[n].u.memref.size) {
++                    printf("you are trying to access unallocated memory\n");
++                    continue;
++                }
++                
++		 		prepare_packet(&pkt, seq, params[n].u.memref.size, NULL);
++				write_in_loop(fd, &pkt, sizeof(pkt));	 				                            
++                write_in_loop_chunk(fd, (void *)((char *)shm->local_teec_shm.buffer + 
++                	params[n].u.memref.shm_offs), params[n].u.memref.size);
++                break;
++            default:
++                break;
++        }
++    }
++}
++
++static int get_highest_proxy_fd(int base)
++{
++    int high = base;
++    struct remote_proxy *p;
++
++    SLIST_FOREACH(p, &proxy_head, next)
++		if (p->fd > high)
++		    high = p->fd;
++
++    return high;
++}
++
++static int fds_setting(fd_set *r)
++{
++    struct remote_proxy *p;
++	int agent_fd;
++    FD_ZERO(r);
++    
++    if (active_ops->get_aux_fd(&agent_fd)) {
++       FD_SET(agent_fd, r);
++    }
++    
++    SLIST_FOREACH(p, &proxy_head, next)
++        FD_SET(p->fd, r);
++
++    return 0;
++}
++
++static struct remote_proxy *init_rp(int fd)
++{
++    struct remote_proxy *rp = malloc(sizeof(struct remote_proxy));
++    if (!rp)
++        return NULL;
++
++    rp->fd = fd;
++    SLIST_INIT(&rp->context_head);
++
++    return rp;
++}
++
++static struct remote_context *init_ctx(int cfd)
++{
++    struct remote_context *p = malloc(sizeof(struct remote_context));
++    if (!p)
++        return NULL;
++
++    p->remote_connect_fd = cfd;
++    SLIST_INIT(&p->session_head);
++    SLIST_INIT(&p->shm_head);
++
++    return p;
++}
++
++void create_new_proxy(int pfd) 
++{
++    struct remote_proxy *rp;
++	rp = init_rp(pfd);
++	SLIST_INSERT_HEAD(&proxy_head, rp, next);
++}
++
++static void octets_to_uuid(uint8_t d[TEE_IOCTL_UUID_LEN], TEEC_UUID *s)
++{
++    s->timeLow = d[0] << 24 | d[1] << 16 | d[2] << 8 | d[3];
++    s->timeMid = d[4] << 8 | d[5];
++    s->timeHiAndVersion = d[6] << 8 | d[7];
++    memcpy(s->clockSeqAndNode, d + 8, sizeof(s->clockSeqAndNode));
++}
++
++static struct remote_session *open_sess(struct tee_ioctl_open_session_arg *arg)
++{
++    struct remote_session *p = malloc(sizeof(struct remote_session));
++    if (!p)
++        return NULL;
++
++    /* make differ later in local and remote uuid */
++    octets_to_uuid((uint8_t *)&arg->uuid, &p->local_uuid);
++    octets_to_uuid((uint8_t *)&arg->uuid, &p->remote_uuid);
++    p->remote_session_id = arg->session;
++    p->local_teec_session.ctx = &agent_ctx;
++    p->local_teec_session.session_id = arg->session;
++
++    return p;
++}
++
++static int close_sess(struct remote_context *rctx, __u32 session_id)
++{
++    struct remote_session *rsess;
++    if (rctx == NULL)
++        return -1;
++
++    SLIST_FOREACH(rsess, &rctx->session_head, next)
++    {
++        if (rsess->remote_session_id == session_id)
++        {
++            SLIST_REMOVE(&rctx->session_head, rsess, remote_session, next);
++            free(rsess);
++            return 0;
++        }
++    }
++
++    return -1;
++}
++
++static struct remote_shm *agent_alloc_shm(size_t shm_size)
++{
++    struct remote_shm *p = malloc(sizeof(struct remote_shm));
++    if (!p)
++        return NULL;
++
++    p->local_teec_shm.size = shm_size;
++    p->local_teec_shm.flags = TEEC_MEM_INPUT | TEEC_MEM_OUTPUT;
++    
++    if (TEEC_AllocateSharedMemory(&agent_ctx, &p->local_teec_shm) != TEEC_SUCCESS) {
++        free(p);
++        return NULL;
++    }
++
++    p->remote_shmid = p->local_teec_shm.id;
++    return p;
++}
++
++int main(void)
++{
++    fd_set read_fds;
++    struct remote_context *p;
++    struct remote_proxy *rp;
++    struct packet pkt;
++
++    signal(SIGPIPE, sigint);
++
++    TEEC_InitializeContext(NULL, &agent_ctx);
++    vers_rc = ioctl(agent_ctx.fd, TEE_IOC_VERSION, &vers);
++    if (vers_rc) {
++         TEEC_FinalizeContext(&agent_ctx);
++        return -1;
++    }
++
++    SLIST_INIT(&proxy_head);
++	active_ops->init();
++
++    while (1) {
++        int rv;
++        int high_fd =0 ;
++		unsigned long opc;	
++		
++		active_ops->get_aux_fd(&high_fd);		
++		high_fd = get_highest_proxy_fd(high_fd);		
++		fds_setting(&read_fds);		// call back
++
++		/* Last parameter is NULL which means no tmieout */
++		rv = select(high_fd + 1, &read_fds, NULL, NULL, NULL);
++		if (rv <= 0) {
++		    printf("[Agent ] error: unexpected return from select()\n");
++		    return -1;
++		}
++
++		if (active_ops->handle_request(&read_fds)) {
++			continue;
++		}		
++
++		SLIST_FOREACH(rp, &proxy_head, next) {
++		    if (FD_ISSET(rp->fd, &read_fds)) {
++		        int client_fd;
++		        struct remote_context *ctx = NULL;
++
++				if (read_in_loop(rp->fd, &pkt, sizeof(pkt)) == 0) {
++				    close_rp_connection(rp);
++				    continue;
++				}
++
++				memcpy(&opc, &pkt.data, sizeof(opc));		
++				read_in_loop(rp->fd, &pkt, sizeof(pkt));			
++				memcpy(&client_fd, &pkt.data, sizeof(int));	
++				SLIST_FOREACH(p, &rp->context_head, next)
++				    if (client_fd == p->remote_connect_fd)
++				        ctx = p;
++
++				if (ctx == NULL) {
++				    ctx = init_ctx(client_fd);
++				    SLIST_INSERT_HEAD(&rp->context_head, ctx, next);
++				}
++
++        		agent_handle_request(rp, ctx, opc, &pkt);
++            }
++        }
++    }
++
++    TEEC_FinalizeContext(&agent_ctx);
++    return 0;
++}
++
++static int agent_handle_request(struct remote_proxy *rp,
++        struct remote_context *rctx, unsigned long opcode,
++        struct packet *pkt)
++{
++    int rc, shm_id;
++    int pfd = rp->fd;
++    int idx = 0;
++    TEEC_Result ret = TEEC_SUCCESS;
++
++    struct tee_ioctl_buf_data buf_data;
++    struct remote_session *rsess;
++    struct remote_shm *rshm = NULL;
++
++    struct tee_ioctl_close_session_arg arg;
++    struct tee_ioctl_cancel_arg cancel_arg;
++    struct tee_ioctl_shm_alloc_data shm_data;
++    struct tee_ioctl_shm_register_data register_shm_data;
++
++    struct tee_ioctl_invoke_arg *invoke_arg;
++    struct tee_ioctl_open_session_arg *sess_arg;
++
++    uint64_t sess_buf[(sizeof(struct tee_ioctl_open_session_arg) +
++            TEEC_CONFIG_PAYLOAD_REF_COUNT *
++            sizeof(struct tee_ioctl_param)) /
++            sizeof(uint64_t)] = { 0 };
++    uint64_t invoke_buf[(sizeof(struct tee_ioctl_invoke_arg) +
++            TEEC_CONFIG_PAYLOAD_REF_COUNT *
++            sizeof(struct tee_ioctl_param)) /
++            sizeof(uint64_t)] = { 0 };
++ 	memset(pkt, 0, sizeof(*pkt));
++    switch(opcode)
++    {
++        case TEEC_RELEASE_SHARED_MEMORY:
++            idx = 28; /* 0x4212 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));
++			if (!check_packet(pkt, 0, 0, agent_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&shm_id, &pkt->data, sizeof(shm_id));
++            
++            rshm = find_shm(rp, shm_id);
++            TEEC_ReleaseSharedMemory(&rshm->local_teec_shm);
++            SLIST_REMOVE(&rctx->shm_head, rshm, remote_shm, next);
++            free(rshm);
++            break;
++        case TEE_IOC_SHM_ALLOC:
++            idx = 15; /* 0x2312 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, agent_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&shm_data, &pkt->data, sizeof(shm_data));
++            
++            idx ++; /* 0x2721 */
++            rshm = agent_alloc_shm(shm_data.size);
++            if (!rshm) {
++                ret = TEEC_ERROR_OUT_OF_MEMORY;
++		  		prepare_packet(pkt, agent_seq[idx], 0, &ret);            
++				write_in_loop(pfd, pkt, sizeof(*pkt));
++                break;
++            }
++
++	  		prepare_packet(pkt, agent_seq[idx], 0, &ret);            
++			write_in_loop(pfd, pkt, sizeof(*pkt));
++            
++            SLIST_INSERT_HEAD(&rctx->shm_head, rshm, next);
++            shm_data.id = rshm->remote_shmid;
++
++            idx ++; /* 0x2321 */
++	  		prepare_packet(pkt, agent_seq[idx], 0, &shm_data);            
++			write_in_loop(pfd, pkt, sizeof(*pkt));
++            break;
++        case TEE_IOC_SHM_REGISTER:
++            idx = 41; /* 0x8312 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, agent_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&register_shm_data, &pkt->data, sizeof(register_shm_data));
++            
++            idx ++; /* 0x8721 */
++            rshm = agent_alloc_shm(register_shm_data.length);
++            if (!rshm) {
++                ret = TEEC_ERROR_OUT_OF_MEMORY;
++		  		prepare_packet(pkt, agent_seq[idx], 0, &ret);            
++				write_in_loop(pfd, pkt, sizeof(*pkt));
++                break;
++            }
++
++	  		prepare_packet(pkt, agent_seq[idx], 0, &ret);            
++			write_in_loop(pfd, pkt, sizeof(*pkt));
++            
++            SLIST_INSERT_HEAD(&rctx->shm_head, rshm, next);
++            register_shm_data.id = rshm->remote_shmid;
++
++            idx ++; /* 0x8321 */
++	  		prepare_packet(pkt, agent_seq[idx], 0, &register_shm_data);            
++			write_in_loop(pfd, pkt, sizeof(*pkt));
++
++            break;
++        case TEE_IOC_OPEN_SESSION:
++            idx = 7; /* 0x1512 */
++            buf_data.buf_ptr = (uintptr_t)sess_buf;
++            sess_arg = (struct tee_ioctl_open_session_arg *)buf_data.buf_ptr;
++
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, agent_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&buf_data.buf_len, &pkt->data, sizeof(buf_data.buf_len));
++            
++            idx ++; /* 0x1612 */
++            if (buf_data.buf_len > sizeof(sess_buf))
++                printf("[Agent ] open_session buf_data on agent too small\n");
++
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 1, buf_data.buf_len, agent_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++		
++			read_in_loop(pfd, (void *)buf_data.buf_ptr, buf_data.buf_len);   
++            
++            idx ++; /* 0x1412 */
++            pre_operation(rp, pfd, (struct tee_ioctl_param *)(sess_arg + 1),
++                        sess_arg->num_params, agent_seq[idx]);
++
++            idx ++; /* 0x1321 */
++            rc = ioctl(agent_ctx.fd, opcode, &buf_data);
++            post_operation(rp, pfd, (struct tee_ioctl_param *)(sess_arg + 1), 
++                        sess_arg->num_params, agent_seq[idx]);
++                        
++            idx ++; /* 0x1721 */
++     		prepare_packet(pkt, agent_seq[idx], 0, &rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++    		
++            idx ++; /* 0x1621 */
++     		prepare_packet(pkt, agent_seq[idx], buf_data.buf_len, NULL);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++     		write_in_loop(pfd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++
++            /* this request is failed on opensession */
++            if (rc || (sess_arg->ret != TEEC_SUCCESS))
++                break;
++
++            rsess = open_sess(sess_arg);
++            SLIST_INSERT_HEAD(&rctx->session_head, rsess, next);
++
++            break;
++        case TEE_IOC_CLOSE_SESSION:
++            idx = 31; /* 0x5412 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, agent_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&arg, &pkt->data, sizeof(arg));
++            
++            idx ++; /* 0x5721 */
++            rc = ioctl(agent_ctx.fd, opcode, &arg);
++     		prepare_packet(pkt, agent_seq[idx], 0, &rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++
++            if (rc)
++                break;
++
++            close_sess(rctx, arg.session);
++            break;
++        case TEE_IOC_INVOKE:   
++            idx = 20; /* 0x3512 */
++            buf_data.buf_ptr = (uintptr_t)invoke_buf;
++            invoke_arg = (struct tee_ioctl_invoke_arg *)buf_data.buf_ptr;
++
++  			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, agent_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&buf_data.buf_len, &pkt->data, sizeof(buf_data.buf_len));
++            
++            idx ++; /* 0x3612 */
++            if (buf_data.buf_len > sizeof(invoke_buf))
++                printf("[Agent ] invoke buf_data on agent too small\n");
++
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 1, buf_data.buf_len, agent_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++						
++    		read_in_loop(pfd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++            
++            idx ++; /* 0x3412 */
++            pre_operation(rp, pfd, (struct tee_ioctl_param *)(invoke_arg + 1), 
++                    invoke_arg->num_params, agent_seq[idx]);
++                    
++            idx ++; /* 0x3721 */
++            rc = ioctl(agent_ctx.fd, opcode, &buf_data);          
++          	prepare_packet(pkt, agent_seq[idx], 0, &rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++            
++            idx ++; /* 0x3621 */
++     		prepare_packet(pkt, agent_seq[idx], buf_data.buf_len, NULL);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++    		write_in_loop(pfd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++
++            idx ++; /* 0x3321 */
++            post_operation(rp, pfd, (struct tee_ioctl_param *)(invoke_arg + 1), 
++                    invoke_arg->num_params, agent_seq[idx]);
++            break;
++        case TEE_IOC_CANCEL:
++            /* This request returns fail. This would success after
++               supporting multi-threading in vtzm */
++            idx = 37; /* 0x7412 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, agent_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&cancel_arg, &pkt->data, sizeof(cancel_arg));
++            
++            idx ++; /* 0x7721 */
++            rc = ioctl(agent_ctx.fd, TEE_IOC_CANCEL, &cancel_arg);
++   			prepare_packet(pkt, agent_seq[idx], 0, &rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++
++            if (!rc)
++                close_sess(rctx, cancel_arg.cancel_id);
++
++            break;
++        case TEEC_INIT_CTX:
++            idx = 2; /* 0x0921 */
++    		prepare_packet(pkt, agent_seq[idx], 0, &agent_ctx.fd);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++    		
++            idx ++; /* 0x0821 */
++    		prepare_packet(pkt, agent_seq[idx], 0, &vers);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++            
++            idx ++; /* 0x0721 */
++    		prepare_packet(pkt, agent_seq[idx], 0, &vers_rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++
++            break;
++        case TEEC_FINA_CTX:
++            close_ca_connection(rp, rctx);
++        default:
++            break;
++    }
++
++    return 0;
++}
+diff --git a/tee-agent/src/vchar_agent_ops.c b/tee-agent/src/vchar_agent_ops.c
+new file mode 100644
+index 0000000..5d4a120
+--- /dev/null
++++ b/tee-agent/src/vchar_agent_ops.c
+@@ -0,0 +1,42 @@
++#include <stdio.h>
++#include <fcntl.h>
++#include <tee_common.h>
++#include <signal.h>
++#include "wrloop.h"
++#include "vchar_agent_ops.h"
++
++static int agent_fd = -1;
++void create_new_proxy(int pfd);
++
++void vchar_init(void)
++{
++    int vchar_fd;
++
++    vchar_fd = open("/dev/vchar-sh_optee", O_RDWR|O_NONBLOCK);
++    if (vchar_fd == -1) {
++        printf("[Proxy ] Failed to open vchar device\n");
++        _exit(1);
++    }
++    
++	create_new_proxy(vchar_fd);
++	agent_fd = vchar_fd;    
++    return;
++}
++
++int vchar_handle_request(fd_set *readfds)
++{
++    (void)readfds;
++	return 0;
++}
++
++int vchar_get_aux_fd(int *pfd)
++{
++	*pfd = agent_fd;
++	return 1;
++}
++
++struct connect_ops vchar_ops = {
++	.init           = vchar_init,
++	.handle_request = vchar_handle_request, 
++	.get_aux_fd     = vchar_get_aux_fd,
++};
+diff --git a/tee-agent/src/vchar_agent_ops.h b/tee-agent/src/vchar_agent_ops.h
+new file mode 100644
+index 0000000..9a73bad
+--- /dev/null
++++ b/tee-agent/src/vchar_agent_ops.h
+@@ -0,0 +1,7 @@
++#include "connect_ops.h"
++
++extern struct connect_ops vchar_ops;
++
++void vchar_init(void);
++int vchar_get_aux_fd(int *pfd);
++int vchar_handle_request(fd_set *readfds);
+diff --git a/tee-agent/src/vnet_agent_ops.c b/tee-agent/src/vnet_agent_ops.c
+new file mode 100644
+index 0000000..31d9b54
+--- /dev/null
++++ b/tee-agent/src/vnet_agent_ops.c
+@@ -0,0 +1,91 @@
++#include <stdio.h>
++#include <sys/un.h>
++#include <sys/socket.h>
++#include <arpa/inet.h>
++#include <tee_common.h>
++#include <unistd.h>
++#include "wrloop.h"
++#include "vnet_agent_ops.h"
++
++static int agent_fd = -1;
++void create_new_proxy(int pfd);
++
++/* #include <systemd/sd-daemon.h>*/ 
++/* Toolchain does not provide sd-daemon.h header, add necessary declarations here.*/
++
++#define SD_LISTEN_FDS_START 3
++int sd_listen_fds(int unset_environment);
++
++void vnet_init(void)
++{
++#ifdef SYSTEMD_SOCKET_ACTIVATION
++    int fds = sd_listen_fds(1);
++    if (fds > 1) {
++        fprintf(stderr, "Too many fds passed %d\n", fds);
++        _exit(1);
++    }
++    if (fds == 1) {
++        agent_fd = SD_LISTEN_FDS_START;
++        return;
++    }
++#endif
++    int sfd;
++    struct sockaddr_in addr;
++    sfd = socket(AF_INET, SOCK_STREAM, 0);
++    if (sfd < 0)
++        printf("[Agent ] Failed to create socket\n");
++
++    memset(&addr, 0, sizeof(struct sockaddr_in));
++    addr.sin_family = AF_INET;
++    addr.sin_port = htons(5100);
++    addr.sin_addr.s_addr = htonl(INADDR_ANY);
++
++    printf("[Agent ] bind AF_INET socket to host %s, port %d\n", 
++		inet_ntoa(addr.sin_addr), addr.sin_port);
++    if (bind(sfd, (struct sockaddr *) &addr, sizeof(addr)) == -1) {
++        printf("[Agent ] Failed to bind to socket\n");
++        _exit(1);
++    }
++
++    if (listen(sfd, 5) == -1) {
++        printf("[Agent ] Failed to listen to socket\n");
++        _exit(1);
++    }
++
++    agent_fd = sfd;    
++    if (agent_fd == -1) {
++       printf("[Agent ] failed in listening unet socket\n");
++       _exit(1);
++    }
++}
++
++int vnet_handle_request(fd_set *read_fds)
++{	
++	int pfd;
++	
++	if (FD_ISSET(agent_fd, read_fds)) {
++	    /* time to make a new connection */
++	    pfd = accept(agent_fd, NULL, NULL);
++	    if (pfd == -1) {
++	        printf("[Agent ] failed to make new connection\n");
++	        return -1;
++	    }
++	    
++        create_new_proxy(pfd);
++	    return 1;
++	}
++	
++    return 0;		
++}
++
++int vnet_get_aux_fd(int *pfd)
++{
++	*pfd = agent_fd;
++	return 1;
++}
++
++struct connect_ops vnet_ops = {
++	.init           = vnet_init,
++	.get_aux_fd     = vnet_get_aux_fd,
++	.handle_request = vnet_handle_request,
++};
+diff --git a/tee-agent/src/vnet_agent_ops.h b/tee-agent/src/vnet_agent_ops.h
+new file mode 100644
+index 0000000..89a4daa
+--- /dev/null
++++ b/tee-agent/src/vnet_agent_ops.h
+@@ -0,0 +1,7 @@
++#include "connect_ops.h"
++
++extern struct connect_ops vnet_ops;
++
++void vnet_init(void);
++int vnet_handle_request(fd_set *read_fds);
++int vnet_get_aux_fd(int *pfd);
+diff --git a/tee-agent/src/wrloop.c b/tee-agent/src/wrloop.c
+new file mode 100644
+index 0000000..bb9941a
+--- /dev/null
++++ b/tee-agent/src/wrloop.c
+@@ -0,0 +1,152 @@
++/*******************************************************************************
++ * Copyright (c) 2018 OpenSynergy GmbH.
++ *
++ * This software may not be used in any way or distributed without
++ * permission. All rights reserved.
++ ******************************************************************************/
++
++#include <unistd.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "wrloop.h"
++
++/* MTU (maximum transmission unit ) - platform-dependent */
++#define MTU 32758
++
++ssize_t read_in_loop(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_read;
++	ssize_t n = 0;
++	int count = 0;
++
++	bp = (char *)data;
++	bytes_to_read = size;
++
++	while((n = read(fd, bp, size)) > 0) {
++		bp += n;
++		count += n;
++		bytes_to_read -= n;
++
++		if (bytes_to_read <= 0)
++			break;
++	}
++
++	return count;
++}
++
++ssize_t write_in_loop(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_write;
++	ssize_t n = 0;
++	int count = 0;
++
++	bp = (char *)data;
++	bytes_to_write = size;
++
++	while((n = write(fd, bp, size)) > 0) {
++		bp += n;
++		count += n;
++		bytes_to_write -= n;
++
++		if (bytes_to_write <= 0)
++			break;	
++	}
++
++	return count;
++}
++
++ssize_t read_in_loop_chunk(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_read;	
++	size_t n = 0;
++	int count = 0;
++	int num, rem, i;
++
++	bp = (char *)data;	
++	num = size / MTU;
++	rem = size % MTU;
++
++	for (i = 0; i <= num; i++) {
++	    bytes_to_read = ((i+1) <= num) ? MTU : rem;
++		while((n = read(fd, bp, bytes_to_read)) > 0) {
++			bp += n;
++			count += n;
++			bytes_to_read -= n;
++
++			if (bytes_to_read <= 0)
++				continue;
++		}
++	}
++
++	return count;
++}
++
++ssize_t write_in_loop_chunk(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_write;
++	size_t n = 0;
++	int count = 0;
++	int num, rem, i;
++
++	bp = (char *)data;	
++	num = size / MTU;
++	rem = size % MTU;
++
++	for (i = 0; i <= num; i++) {
++	    bytes_to_write = ((i+1) <= num) ? MTU : rem;    	
++		while((n = write(fd, bp, bytes_to_write)) > 0) {
++			bp += n;
++			count += n;
++			bytes_to_write -= n;
++
++			if (bytes_to_write <= 0)
++				continue;	
++		}
++	}
++
++	return count;
++}
++
++/* Prepare the packet for sending */
++void prepare_packet(struct packet *p, int seq, size_t sz, void *data)
++{
++    p->magic = MAGIC;
++    p->size  = sz;
++    p->seq   = seq;
++
++    if (data)
++	   	memcpy(&p->data, data, sizeof(p->data));
++
++    return;
++}
++
++/* Check the packet when receiving */
++int check_packet(struct packet *p, int sz_check, size_t sz, int seq)
++{
++	int valid = 0;
++
++    if (p->magic != MAGIC) {
++       	printf("[Agent ] error: MAGIC not match, seq %x\n", seq);
++       	goto err;
++    } /* Check the MAGIC number of the packet */
++
++    if (p->seq != seq) {
++       	printf("[Agent ] error: sequence not match, seq %x\n", seq);
++       	goto err;
++    } /* Check the sequence number of the message */
++
++    if (sz_check && (p->size != sz)) {
++        printf("[Agent ] error: data size not match, size %zu, seq %x\n", sz, seq);
++        goto err;
++    } /* Check the size of buffer if necessary */
++
++    valid = 1;
++
++err:
++    return valid;
++}
+diff --git a/tee-agent/src/wrloop.h b/tee-agent/src/wrloop.h
+new file mode 100644
+index 0000000..5d10db0
+--- /dev/null
++++ b/tee-agent/src/wrloop.h
+@@ -0,0 +1,39 @@
++#include <unistd.h>
++#include <string.h>
++#include <tee_client_api.h>
++#ifndef __aligned
++#define __aligned(x) __attribute__((__aligned__(x)))
++#endif
++#include <linux/tee.h>
++
++#define MAGIC 0xdeadbeef
++
++struct packet {
++	uint32_t magic;
++    int32_t  seq;
++    uint64_t size;
++    
++    union {
++		unsigned long opcode; /* opcode  */
++		int fd;				  /* socket  */
++		int shm_id;			  /* shm_id	 */
++		unsigned long buf_len;/* buf_len */
++		unsigned long buf_ptr;/* buf_ptr */
++		TEEC_Result res;	  /* result  */
++		int dev_fd;           /* dev_fd  */
++		struct tee_ioctl_close_session_arg arg; /* params	*/	
++		struct tee_ioctl_shm_alloc_data data;   /* shm_data	*/	
++		struct tee_ioctl_version_data vers;     /* vers		*/
++		struct tee_ioctl_shm_alloc_data shm_data;
++		struct tee_ioctl_shm_register_data register_shm_data;							
++    } data;        
++} __attribute__((packed));
++
++ssize_t read_in_loop(int fd, void *data, size_t size);
++ssize_t read_in_loop_chunk(int fd, void *data, size_t size);
++ssize_t write_in_loop(int fd, void *data, size_t size);
++ssize_t write_in_loop_chunk(int fd, void *data, size_t size);
++/* Prepare the packet for sending */
++void prepare_packet(struct packet *p, int seq, size_t sz, void *data);
++/* Check the packet when receiving */
++int check_packet(struct packet *p, int sz_check, size_t sz, int seq);
+diff --git a/tee-proxy/Makefile b/tee-proxy/Makefile
+new file mode 100644
+index 0000000..0d2b309
+--- /dev/null
++++ b/tee-proxy/Makefile
+@@ -0,0 +1,51 @@
++include ../flags.mk
++include ../config.mk
++
++OUT_DIR := $(OO)/tee-proxy
++
++.PHONY: all tee-proxy clean
++
++all: tee-proxy
++################################################################################
++# Teec configuration
++################################################################################
++PACKAGE_NAME	:= tee-proxy
++
++TEES_SRCS	:= tee_proxy.c
++
++TEES_SRCS += wrloop.c
++TEES_SRCS += vnet_proxy_ops.c 
++TEES_SRCS += vchar_proxy_ops.c
++
++TEES_SRC_DIR	:= src
++TEES_OBJ_DIR	:= $(OUT_DIR)
++TEES_OBJS 	:= $(patsubst %.c,$(TEES_OBJ_DIR)/%.o, $(TEES_SRCS))
++TEES_INCLUDES 	:= ${CURDIR}/../libteec/include \
++		   ${CURDIR}/src \
++		   ${CURDIR}/../public \
++
++TEES_CFLAGS	:= $(addprefix -I, $(TEES_INCLUDES)) $(CFLAGS)
++
++TEES_FILE	:= $(OUT_DIR)/$(PACKAGE_NAME)
++TEES_LDFLAGS    := $(LDFLAGS) -L$(OUT_DIR)/../libteec -lteec
++
++TEES_LDFLAGS	+= -pthread
++
++tee-proxy: $(TEES_FILE)
++
++$(TEES_FILE): $(TEES_OBJS)
++	@echo "  LINK    $@"
++	$(VPREFIX)$(CC) -o $@ $+ $(TEES_LDFLAGS)
++	@echo ""
++
++$(TEES_OBJ_DIR)/%.o: $(TEES_SRC_DIR)/%.c
++	$(VPREFIX)mkdir -p $(dir $@)
++	@echo "  CC      $<"
++	$(VPREFIX)$(CC) $(TEES_CFLAGS) $(TEES_CFLAGS_$(notdir $<)) -c $< -o $@
++
++################################################################################
++# Cleaning up configuration
++################################################################################
++clean:
++	$(RM) $(TEES_OBJS) $(TEES_FILE)
++	$(call rmdir,$(OUT_DIR))
+diff --git a/tee-proxy/src/connect_ops.h b/tee-proxy/src/connect_ops.h
+new file mode 100644
+index 0000000..94fdc22
+--- /dev/null
++++ b/tee-proxy/src/connect_ops.h
+@@ -0,0 +1,10 @@
++#ifndef CONNECT_OPS_H
++#define CONNECT_OPS_H
++
++#include <sys/select.h>
++
++struct connect_ops {
++  int (*init)(void);        /* create the channel for communication */
++};
++
++#endif
+diff --git a/tee-proxy/src/tee_proxy.c b/tee-proxy/src/tee_proxy.c
+new file mode 100644
+index 0000000..4dce71c
+--- /dev/null
++++ b/tee-proxy/src/tee_proxy.c
+@@ -0,0 +1,927 @@
++/*******************************************************************************
++ * Copyright (c) 2018 OpenSynergy GmbH.
++ *
++ * This software may not be used in any way or distributed without
++ * permission. All rights reserved.
++ ******************************************************************************/
++
++#include <stdio.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <sys/un.h>
++#include <stdlib.h>
++#include <sys/socket.h>
++#include <arpa/inet.h>
++#include <unistd.h>
++#include <errno.h>
++#include <sys/mman.h>
++#include <sys/select.h>
++#include <tee_common.h>
++#include <tee_memfd.h>
++#include <sys/ioctl.h>
++#include <signal.h>
++
++#include <tee_client_api.h>
++#include <sys/queue.h>
++#include "wrloop.h"
++#include "vchar_proxy_ops.h"
++#include "vnet_proxy_ops.h"
++
++#include <linux/tee.h>
++#include <sys/queue.h>
++#include <sys/types.h>
++#include <netinet/in.h>
++#include <netdb.h>
++#include <net/if.h>
++
++static bool isCanceled = false;
++static int proxy_fd;
++static int curr_sock = -1;
++/* The head for a list of struct context */
++static SLIST_HEAD(ctx_head, remote_context) context_head;
++struct tee_ioctl_version_data vers;
++static int vers_rc;
++struct connect_ops *active_ops = &vchar_ops;
++
++static int listen_unet_socket(const char *path, int *socket_fd);
++
++static int close_ca_connection(struct remote_context *rctx);
++static int fds_setting(fd_set *r);
++static int highest_fd(void);
++static int proxy_handle_request(struct remote_context *rctx, int afd,
++		unsigned long opcode, struct packet *pkt);
++
++/* Coding scheme of the sequence number "ABCD":
++   A  - API sequence 
++       0: TEEC_InitializeContext
++       1: TEEC_OpenSession
++       2: TEEC_AllocateSharedMemory
++       3: TEEC_InvokeCommand
++       4: TEEC_ReleaseSharedMemory
++       5: TEEC_CloseSession
++       6: TEEC_FinalizeContext
++       7: TEEC_RequestCancellation
++       8: TEEC_RegisterSharedMemory
++       9: TEEC_RegisterSharedMemoryFileDescriptor
++
++   B  - Data type
++       0: OPCODE   1: SOCKET    2: SHM_ID    3: SHM_DATA
++       4: PARAMS   5: BUF_LEN   6: BUF_PTR   7: RESULT
++       8: VERS     9: DEV_FD
++
++   CD - direction
++       01: libteec   -> tee-proxy
++       12: tee-proxy -> tee-agent
++       21: tee-agent -> tee-proxy
++       10: tee-proxy -> libteec
++*/
++
++int proxy_seq[] = {
++       0x1,  0x101,   0x12,  0x112,  0x921,
++     0x910,  0x821,  0x810,  0x721,  0x710,
++    0x1001, 0x1101, 0x1012, 0x1112, 0x1501, 
++    0x1601, 0x1512, 0x1612, 0x1412, 0x1321,
++    0x1721, 0x1621, 0x1710, 0x1610,
++    0x2001, 0x2101, 0x2012, 0x2112, 0x2301,
++    0x2312, 0x2721, 0x2710, 0x2321, 0x2310,
++    0x3001, 0x3101, 0x3012, 0x3112, 0x3501,
++    0x3601, 0x3512, 0x3612, 0x3412, 0x3721,
++    0x3621, 0x3321, 0x3710, 0x3610,
++    0x4001, 0x4101, 0x4012, 0x4112, 0x4201,
++    0x4212,
++    0x5001, 0x5101, 0x5012, 0x5112, 0x5401,
++    0x5412, 0x5721, 0x5710,
++    0x6012, 0x6112,
++    0x7001, 0x7101, 0x7012, 0x7112, 0x7401,
++    0x7412, 0x7721, 0x7710,
++    0x8001, 0x8101, 0x8012, 0x8112, 0x8301,
++    0x8312, 0x8721, 0x8710, 0x8321, 0x8310
++};
++
++
++static void sigint(int errnumber)
++{
++    struct remote_context *p;
++    printf("[Proxy ] %d quit unexpected way %s\n", curr_sock, strerror(errnumber));
++
++    /* signal without current socket seems wierd */
++    if (curr_sock == -1)
++        return;
++
++    SLIST_FOREACH(p, &context_head, next) {
++        if (p->remote_connect_fd == curr_sock) {
++            close_ca_connection(p);
++            isCanceled = true;
++            break;
++        }
++    }
++}
++
++static int send_fds(int socket, int *fds, int n)
++{
++    struct msghdr msg;
++    struct cmsghdr *cmsg;
++    char buf[CMSG_SPACE(n * sizeof(int))], dup[256];
++    memset(buf, '\0', sizeof(buf));
++    struct iovec io = { .iov_base = &dup, .iov_len = sizeof(dup) };
++
++    memset(&msg, '\0', sizeof(struct msghdr));
++    msg.msg_iov = &io;
++    msg.msg_iovlen = 1;
++    msg.msg_namelen = 0;
++    msg.msg_control = buf;
++    msg.msg_controllen = sizeof(buf);
++
++    cmsg = CMSG_FIRSTHDR(&msg);
++    cmsg->cmsg_level = SOL_SOCKET;
++    cmsg->cmsg_type = SCM_RIGHTS;
++    cmsg->cmsg_len = CMSG_LEN(n * sizeof(int));
++
++    memcpy((char *)CMSG_DATA(cmsg), fds, n * sizeof(int));
++
++    if (sendmsg(socket, &msg, 0) < 0) {
++        fprintf(stderr, "%s(): Failed to send message: %s\n", __func__, strerror(errno));
++        return -1;
++    }
++
++    return 0;
++}
++
++static int listen_unet_socket(const char *path, int *socket_fd)
++{
++    int sfd;
++    struct sockaddr_un addr;
++    sfd = socket(AF_UNIX, SOCK_STREAM, 0);
++    if (sfd == -1)
++        printf("[Proxy ] Failed to create socket\n");
++
++    if (unlink (path) == -1 && errno != ENOENT) {
++        printf("[Proxy ] Removing socket file failed\n");
++        return -1;
++    }
++
++    memset(&addr, 0, sizeof(struct sockaddr_un));
++    addr.sun_family = AF_UNIX;
++    strncpy(addr.sun_path, path, (sizeof(addr.sun_path) - 1));
++
++    printf("[Proxy ] bind AF_UNIX socket to %s\n", path);
++    if (bind(sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) == -1) {
++        printf("[Proxy ] Failed to bind to socket\n");
++        return -1;
++    }
++
++    if (listen(sfd, 5) == -1) {
++        printf("[Proxy ] Failed to listen on socket\n");
++        return -1;
++    }
++
++    *socket_fd = sfd;
++    return sfd;
++}
++
++static int close_ca_connection(struct remote_context *rctx)
++{
++    struct remote_shm *pshm;
++    struct remote_session *psess;
++
++    /* List Deletion of shared memory */
++    while (!SLIST_EMPTY(&rctx->shm_head)) {
++        pshm = SLIST_FIRST(&rctx->shm_head);
++        SLIST_REMOVE_HEAD(&rctx->shm_head, next);
++        munmap(pshm->remote_va, pshm->local_teec_shm.size);
++        free(pshm);
++    }
++
++    /* List Deletion of session */
++    while (!SLIST_EMPTY(&rctx->session_head)) {
++        psess = SLIST_FIRST(&rctx->session_head);
++        SLIST_REMOVE_HEAD(&rctx->session_head, next);
++        free(psess);
++    }
++
++    /* Delete corresponding remote context from list */
++    SLIST_REMOVE(&context_head, rctx, remote_context, next);
++
++    printf("[Proxy ] close ca %d\n", rctx->remote_connect_fd);
++    close(rctx->remote_connect_fd);
++    free(rctx);
++    curr_sock = -1;
++
++    return 0;
++}
++
++static struct remote_shm *find_shm(int shm_id)
++{
++    struct remote_context *pctx;
++    struct remote_shm *pshm;
++    SLIST_FOREACH(pctx, &context_head, next) {
++        SLIST_FOREACH(pshm, &pctx->shm_head, next) {
++            if (pshm->remote_shmid == shm_id)
++                return pshm;
++        }
++    }
++
++    return NULL;
++}
++
++static void *create_memfd(int shm_size, int *shm_fd)
++{
++    void *addr;
++    int fd, ret;
++
++    fd = syscall(__NR_memfd_create, "foofile", MFD_ALLOW_SEALING);
++    if (fd == -1)
++        perror("memfd_create()");
++
++    ret = ftruncate(fd, shm_size);
++    if (ret == -1)
++        perror("ftruncate()");
++
++    ret = fcntl(fd, F_ADD_SEALS, F_SEAL_SHRINK);
++    if (ret == -1)
++        perror("fcntl(F_SEAL_SHRINK)");
++
++    addr = mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++    if (addr == MAP_FAILED)
++        perror("mmap()");
++
++    ret = munmap(addr, shm_size);
++    if (ret == -1)
++        perror("munmap()");
++
++    ret = fcntl(fd, F_ADD_SEALS, F_SEAL_SEAL);
++    if (ret == -1)
++        perror("fcntl(F_SEAL_SEAL)");
++
++    addr = mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++    if (addr == MAP_FAILED)
++        perror("mmap()");
++    *shm_fd = fd;
++
++    return addr;
++}
++
++static void pre_operation(int fd, struct tee_ioctl_param *params,
++    int num_params, int seq)
++{
++    int n;
++    struct packet pkt;
++    struct remote_shm *shm;
++
++    for (n = 0; n < num_params; n++) {
++        switch (params[n].attr) {
++            case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INPUT:
++            case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT:
++                shm = find_shm(params[n].u.memref.shm_id);
++                if (!shm) {
++                    printf("[Proxy ] %s shm not found\n", __func__);
++		            return;
++		        }
++
++                if ((char *)shm->remote_va + shm->local_teec_shm.size < 
++                	(char *)shm->remote_va + params[n].u.memref.shm_offs + 
++                	params[n].u.memref.size) {
++                    printf("you are trying to access unallocated memory\n");
++                    continue;
++                }
++
++		 		prepare_packet(&pkt, seq, params[n].u.memref.size, NULL);            
++				write_in_loop(fd, &pkt, sizeof(pkt)); 
++                write_in_loop_chunk(fd, (void *)((char *)shm->remote_va + 
++	                params[n].u.memref.shm_offs), params[n].u.memref.size);
++                break;
++            default:
++                break;
++        }
++    }
++}
++
++static void post_operation(int fd, struct tee_ioctl_param *params,
++        int num_params, int seq)
++{
++    int n;
++    struct packet pkt;
++    struct remote_shm *shm;
++
++    for (n = 0; n < num_params; n++) {
++        switch (params[n].attr) {
++            case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_OUTPUT:
++            case TEE_IOCTL_PARAM_ATTR_TYPE_MEMREF_INOUT:
++                shm = find_shm(params[n].u.memref.shm_id);
++                if (!shm) {
++                    printf("[Proxy ] %s shm not found\n", __func__);
++		            return;
++		        }
++
++                if ((char *)shm->remote_va + shm->local_teec_shm.size < 
++                	(char *)shm->remote_va + params[n].u.memref.shm_offs + 
++                	params[n].u.memref.size) {
++                    printf("you are trying to access unallocated memory\n");
++                    continue;
++                }
++                
++				read_in_loop(fd, &pkt, sizeof(pkt));    
++				if (!check_packet(&pkt, 1, params[n].u.memref.size, seq)) {
++				   	printf("[Proxy ] error: packet out of sync\n");
++				   	return;
++				}                
++                read_in_loop_chunk(fd, (void *)((char *)shm->remote_va + 
++                	params[n].u.memref.shm_offs), params[n].u.memref.size);
++                break;
++            default:
++                break;
++        }
++    }
++}
++
++static int highest_fd(void)
++{
++    int high = proxy_fd;
++    struct remote_context *p;
++    SLIST_FOREACH(p, &context_head, next)
++        if (p->remote_connect_fd > high)
++            high = p->remote_connect_fd;
++
++    return high;
++}
++
++static int fds_setting(fd_set *r)
++{
++    struct remote_context *p;
++
++    FD_ZERO(r);
++    FD_SET(proxy_fd, r);
++
++    SLIST_FOREACH(p, &context_head, next)
++        FD_SET(p->remote_connect_fd, r);
++
++    return 0;
++}
++
++static struct remote_context *init_ctx(int cfd)
++{
++    struct remote_context *p = malloc(sizeof(struct remote_context));
++    if (!p)
++        return NULL;
++
++    p->remote_connect_fd = cfd;
++    SLIST_INIT(&p->session_head);
++    SLIST_INIT(&p->shm_head);
++
++    return p;
++}
++
++static void octets_to_uuid(uint8_t d[TEE_IOCTL_UUID_LEN], TEEC_UUID *s)
++{
++    s->timeLow = d[0] << 24 | d[1] << 16 | d[2] << 8 | d[3];
++    s->timeMid = d[4] << 8 | d[5];
++    s->timeHiAndVersion = d[6] << 8 | d[7];
++    memcpy(s->clockSeqAndNode, d + 8, sizeof(s->clockSeqAndNode));
++}
++
++static struct remote_session *open_sess(struct tee_ioctl_open_session_arg *arg)
++{
++    struct remote_session *p = malloc(sizeof(struct remote_session));
++    if (!p)
++        return NULL;
++
++    /* make differ later in local and remote uuid */
++    octets_to_uuid((uint8_t *)&arg->uuid, &p->local_uuid);
++    octets_to_uuid((uint8_t *)&arg->uuid, &p->remote_uuid);
++    p->remote_session_id = arg->session;
++    p->local_teec_session.ctx = NULL;
++    p->local_teec_session.session_id = arg->session;
++
++    return p;
++}
++
++static int close_sess(struct remote_context *rctx, __u32 session_id)
++{
++    struct remote_session *rsess;
++
++    if (rctx == NULL)
++        return -1;
++
++    SLIST_FOREACH(rsess, &rctx->session_head, next) {
++        if (rsess->remote_session_id == session_id) {
++            SLIST_REMOVE(&rctx->session_head, rsess, remote_session, next);
++            free(rsess);
++            return 0;
++        }
++    }
++
++    return -1;
++}
++
++static struct remote_shm *proxy_alloc_shm(size_t shm_size, int *fd)
++{
++    struct remote_shm *p = malloc(sizeof(struct remote_shm));
++    if (!p)
++        return NULL;
++
++    p->local_teec_shm.size = shm_size;
++    p->local_teec_shm.flags = TEEC_MEM_INPUT | TEEC_MEM_OUTPUT;
++
++    /* allocate share memory between proxy and client application */
++    p->remote_va = create_memfd(shm_size, fd);
++    if (p->remote_va == NULL) {
++        free(p);
++        return NULL;
++    }
++
++    return p;
++}
++
++int main(void)
++{
++    fd_set read_fds;
++    struct remote_context *p;
++    signal(SIGPIPE, sigint);
++    struct packet pkt;
++    int agent_fd;
++
++    /* socket for communicating with CA */
++    if (listen_unet_socket(PROXY_UNIX_SOCK_PATH, &proxy_fd) == -1) {
++        printf("[Proxy ] making listen socket failed\n");
++        return -1;
++    }
++
++    /* socket for commnunicating with agent */    
++    agent_fd = active_ops->init();
++    
++    SLIST_INIT(&context_head);
++
++    while (1) {
++        int rv;
++        int high_fd = highest_fd();
++
++        fds_setting(&read_fds);
++
++        /* Last parameter is NULL which means no timeout */
++        rv = select(high_fd + 1, &read_fds, NULL, NULL, NULL);
++        if (rv <= 0) {
++            printf("[Proxy ] unexpected return from select()\n");
++            return -1;
++        }
++
++        if (FD_ISSET(proxy_fd, &read_fds)) {
++            /* time to make a new connection */
++            int cfd;
++
++            cfd = accept(proxy_fd, NULL, NULL);
++			curr_sock = cfd;           
++            if (cfd == -1) {
++                printf("[Proxy ] Making new connection failed\n");
++                return -1;
++            }
++
++            p = init_ctx(cfd);
++            SLIST_INSERT_HEAD(&context_head, p, next);
++            continue;
++        }
++
++        SLIST_FOREACH(p, &context_head, next) {
++            if (FD_ISSET(p->remote_connect_fd, &read_fds)) {
++                unsigned long opc;
++
++                if (read_in_loop(p->remote_connect_fd, &pkt, sizeof(pkt)) == 0) {
++                    opc = TEEC_FINA_CTX;
++     	            prepare_packet(&pkt, 0, 0, &opc); // seq not checked    	            
++                    write_in_loop(agent_fd, &pkt, sizeof(pkt));               
++
++     	            prepare_packet(&pkt, 0, 0, &p->remote_connect_fd);
++     	            write_in_loop(agent_fd, &pkt, sizeof(pkt)); 
++                    close_ca_connection(p);
++		        	printf("\n[Proxy ] transaction completed\n");
++                    continue;
++                }
++
++				memcpy(&opc, &pkt.data, sizeof(opc));
++                write_in_loop(agent_fd, &pkt, sizeof(pkt));          
++ 	            prepare_packet(&pkt, 0, 0, &p->remote_connect_fd);                		    	
++                write_in_loop(agent_fd, &pkt, sizeof(pkt));
++                proxy_handle_request(p, agent_fd, opc, &pkt);
++            }
++        }
++    }
++
++    return 0;
++}
++
++static int proxy_handle_request(struct remote_context *rctx, int afd,
++    unsigned long opcode, struct packet *pkt)
++{
++    int rc, rfd, shm_id;
++    int pfd = rctx->remote_connect_fd;
++    int idx = 0;
++    TEEC_Result ret = TEEC_SUCCESS;
++
++    struct tee_ioctl_buf_data buf_data;
++    struct remote_session *rsess;
++    struct remote_shm *rshm = NULL;
++    struct tee_ioctl_close_session_arg arg;
++    struct tee_ioctl_cancel_arg cancel_arg;
++    struct tee_ioctl_shm_alloc_data shm_data;
++    struct tee_ioctl_shm_register_data register_shm_data;
++
++    struct tee_ioctl_invoke_arg *invoke_arg;
++    struct tee_ioctl_open_session_arg *sess_arg;
++
++    uint64_t sess_buf[(sizeof(struct tee_ioctl_open_session_arg) +
++            TEEC_CONFIG_PAYLOAD_REF_COUNT *
++            sizeof(struct tee_ioctl_param)) /
++            sizeof(uint64_t)] = { 0 };
++    uint64_t invoke_buf[(sizeof(struct tee_ioctl_invoke_arg) +
++            TEEC_CONFIG_PAYLOAD_REF_COUNT *
++            sizeof(struct tee_ioctl_param)) /
++            sizeof(uint64_t)] = { 0 };
++	memset(pkt, 0, sizeof(*pkt)); 
++    switch(opcode)
++    {
++        case TEEC_RELEASE_SHARED_MEMORY:
++            idx = 52; /* 0x4201 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&shm_id, &pkt->data, sizeof(shm_id));
++			           
++            idx ++; /* 0x4212 */
++      		prepare_packet(pkt, proxy_seq[idx], 0, &shm_id);            
++    		write_in_loop(afd, pkt, sizeof(*pkt));
++            
++            rshm = find_shm(shm_id);
++            munmap(rshm->remote_va, rshm->local_teec_shm.size);
++            SLIST_REMOVE(&rctx->shm_head, rshm, remote_shm, next);
++     	    free(rshm);
++	        break;
++        case TEE_IOC_SHM_ALLOC:
++            idx = 28; /* 0x2301 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&shm_data, &pkt->data, sizeof(shm_data));
++						            
++            idx ++; /* 0x2312 */
++      		prepare_packet(pkt, proxy_seq[idx], 0, &shm_data);            
++    		write_in_loop(afd, pkt, sizeof(*pkt));
++    		          
++            idx ++; /* 0x2721 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&ret, &pkt->data, sizeof(ret));
++			                      
++            idx ++; /* 0x2710 */
++            if (ret == TEEC_ERROR_OUT_OF_MEMORY) {
++		  		prepare_packet(pkt, proxy_seq[idx], 0, &ret);            
++				write_in_loop(pfd, pkt, sizeof(*pkt));
++                break;
++            }
++
++            rshm = proxy_alloc_shm(shm_data.size, &rfd);
++            if (!rshm) {
++                ret = TEEC_ERROR_OUT_OF_MEMORY;
++		  		prepare_packet(pkt, proxy_seq[idx], 0, &ret);            
++				write_in_loop(pfd, pkt, sizeof(*pkt));
++                break;
++            }
++
++	  		prepare_packet(pkt, proxy_seq[idx], 0, &ret);            
++			write_in_loop(pfd, pkt, sizeof(*pkt));
++            send_fds(pfd, &rfd, 1);            
++			
++            idx ++; /* 0x2321 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&shm_data, &pkt->data, sizeof(shm_data));
++   
++            idx ++; /* 0x2310 */
++	  		prepare_packet(pkt, proxy_seq[idx], 0, &shm_data);            
++			write_in_loop(pfd, pkt, sizeof(*pkt));
++
++	    	rshm->remote_shmid = shm_data.id;
++            SLIST_INSERT_HEAD(&rctx->shm_head, rshm, next);
++            close(rfd);
++            break;
++        case TEE_IOC_SHM_REGISTER:
++            idx = 76; /* 0x8301 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&register_shm_data, &pkt->data, sizeof(register_shm_data));
++			            
++            idx ++; /* 0x8312 */
++      		prepare_packet(pkt, proxy_seq[idx], 0, &register_shm_data);            
++    		write_in_loop(afd, pkt, sizeof(*pkt));
++    		            
++            idx ++; /* 0x8721 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&ret, &pkt->data, sizeof(ret));
++            
++            idx ++; /* 0x8710 */
++            if (ret == TEEC_ERROR_OUT_OF_MEMORY) {
++		  		prepare_packet(pkt, proxy_seq[idx], 0, &ret);            
++				write_in_loop(pfd, pkt, sizeof(*pkt));
++                break;
++            }
++
++            rshm = proxy_alloc_shm(register_shm_data.length, &rfd);
++            if (!rshm) {
++                ret = TEEC_ERROR_OUT_OF_MEMORY;
++		  		prepare_packet(pkt, proxy_seq[idx], 0, &ret);            
++				write_in_loop(pfd, pkt, sizeof(*pkt));
++                break;
++            }
++
++	  		prepare_packet(pkt, proxy_seq[idx], 0, &ret);            
++			write_in_loop(pfd, pkt, sizeof(*pkt));
++            send_fds(pfd, &rfd, 1);
++
++            idx ++; /* 0x8321 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&register_shm_data, &pkt->data, sizeof(register_shm_data));
++		   	    	
++            idx ++; /* 0x8310 */
++	  		prepare_packet(pkt, proxy_seq[idx], 0, &register_shm_data);            
++			write_in_loop(pfd, pkt, sizeof(*pkt)); 
++            
++	    	rshm->remote_shmid = register_shm_data.id;
++            SLIST_INSERT_HEAD(&rctx->shm_head, rshm, next);
++            close(rfd);
++            break;
++        case TEE_IOC_OPEN_SESSION:
++            idx = 14; /* 0x1501 */
++            buf_data.buf_ptr = (uintptr_t)sess_buf;
++            sess_arg = (struct tee_ioctl_open_session_arg *)buf_data.buf_ptr;
++
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&buf_data.buf_len, &pkt->data, sizeof(buf_data.buf_len));
++            
++            if (buf_data.buf_len > sizeof(sess_buf))
++                printf("[Proxy ] open_session buf_data on proxy too small\n");
++
++            idx ++; /* 0x1601 */ 
++			read_in_loop(pfd, pkt, sizeof(*pkt));			
++   			if (!check_packet(pkt, 1, buf_data.buf_len, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			} 			
++    		read_in_loop(pfd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++    						
++            idx ++; /* 0x1512 */
++      		prepare_packet(pkt, proxy_seq[idx], 0, &buf_data.buf_len);            
++    		write_in_loop(afd, pkt, sizeof(*pkt));
++    		            
++            idx ++; /* 0x1612 */
++     		prepare_packet(pkt, proxy_seq[idx], buf_data.buf_len, NULL);            
++    		write_in_loop(afd, pkt, sizeof(*pkt));
++    		write_in_loop(afd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++            
++            idx ++; /* 0x1412 */
++            pre_operation(afd, (struct tee_ioctl_param *)(sess_arg + 1), 
++                    sess_arg->num_params, proxy_seq[idx]);
++                    
++            idx ++; /* 0x1321 */
++            post_operation(afd, (struct tee_ioctl_param *)(sess_arg + 1),
++                    sess_arg->num_params, proxy_seq[idx]);
++                    
++            idx ++; /* 0x1721 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&rc, &pkt->data, sizeof(rc));
++			           
++            idx ++;  /* 0x1621 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 1, buf_data.buf_len, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++    		read_in_loop(afd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++    		      
++            idx ++;  /* 0x1710 */     
++      		prepare_packet(pkt, proxy_seq[idx], 0, &rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++    		       
++            idx ++;  /* 0x1610 */
++      		prepare_packet(pkt, proxy_seq[idx], buf_data.buf_len, NULL);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++     		write_in_loop(pfd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++            
++            /* this request is failed on opensession */
++            if (rc || (sess_arg->ret != TEEC_SUCCESS))
++                break;
++
++            rsess = open_sess(sess_arg);
++            SLIST_INSERT_HEAD(&rctx->session_head, rsess, next);
++            break;
++        case TEE_IOC_CLOSE_SESSION:
++            idx = 58; /* 0x5401 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&arg, &pkt->data, sizeof(arg));
++					            
++            idx ++; /* 0x5412 */
++      		prepare_packet(pkt, proxy_seq[idx], 0, &arg);            
++    		write_in_loop(afd, pkt, sizeof(*pkt));
++    		             
++            idx ++; /* 0x5721 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&rc, &pkt->data, sizeof(rc));
++			           
++            idx ++; /* 0x5710 */
++      		prepare_packet(pkt, proxy_seq[idx], 0, &rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++
++            if (rc)
++                break;
++
++            close_sess(rctx, arg.session);
++            break;
++        case TEE_IOC_INVOKE:
++            idx = 38; /* 0x3501 */
++            buf_data.buf_ptr = (uintptr_t)invoke_buf;
++            invoke_arg = (struct tee_ioctl_invoke_arg *)buf_data.buf_ptr;
++
++ 			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&buf_data.buf_len, &pkt->data, sizeof(buf_data.buf_len));
++			          
++            idx ++; /* 0x3601 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 1, buf_data.buf_len, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}			
++			read_in_loop(pfd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++			                         
++            if (buf_data.buf_len > sizeof(invoke_buf))
++                printf("[Proxy ] invoke buf_data on proxy too small\n");
++
++            idx ++; /* 0x3512 */
++      		prepare_packet(pkt, proxy_seq[idx], 0, &buf_data.buf_len);            
++    		write_in_loop(afd, pkt, sizeof(*pkt));
++    		             
++            idx ++; /* 0x3612 */
++      		prepare_packet(pkt, proxy_seq[idx], buf_data.buf_len, NULL);            
++    		write_in_loop(afd, pkt, sizeof(*pkt));
++    		write_in_loop(afd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++    		     		            
++            idx ++; /* 0x3412 */
++            pre_operation(afd, (struct tee_ioctl_param *)(invoke_arg + 1),
++                    invoke_arg->num_params, proxy_seq[idx]);
++                    
++            idx ++; /* 0x3721 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&rc, &pkt->data, sizeof(rc));
++			           
++            idx ++; /* 0x3621 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 1, buf_data.buf_len, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			
++    		read_in_loop(afd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++                        
++            idx ++; /* 0x3321 */
++            post_operation(afd, (struct tee_ioctl_param *)(invoke_arg + 1),
++                    invoke_arg->num_params, proxy_seq[idx]);
++                    
++            idx ++; /* 0x3710 */
++      		prepare_packet(pkt, proxy_seq[idx], 0, &rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++    		             
++            idx ++; /* 0x3610 */
++      		prepare_packet(pkt, proxy_seq[idx], buf_data.buf_len, NULL);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++    		write_in_loop(pfd, (void *)buf_data.buf_ptr, buf_data.buf_len);
++            break;
++
++        case TEE_IOC_CANCEL:
++            /* This request returns fail. This would success after
++               supporting multi-threading in vtzm */
++            idx = 68; /* 0x7401 */
++			read_in_loop(pfd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&cancel_arg, &pkt->data, sizeof(cancel_arg));
++			          
++            idx ++; /* 0x7412 */
++    		prepare_packet(pkt, proxy_seq[idx], 0, &cancel_arg);            
++    		write_in_loop(afd, pkt, sizeof(*pkt));
++    		            
++            idx ++; /* 0x7721 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&rc, &pkt->data, sizeof(rc));
++			         
++            idx ++; /* 0x7710 */
++    		prepare_packet(pkt, proxy_seq[idx], 0, &rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++
++            if (!rc)
++                close_sess(rctx, cancel_arg.cancel_id);
++
++            break;
++        case TEEC_INIT_CTX:
++	    	idx = 4; /* 0x0921 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&proxy_fd, &pkt->data, sizeof(proxy_fd));
++					            
++            idx ++; /* 0x0910 */
++    		prepare_packet(pkt, proxy_seq[idx], 0, &proxy_fd);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt)); 
++    		          
++            idx ++; /* 0x0821 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}    
++			memcpy(&vers, &pkt->data, sizeof(vers));
++			       
++            idx ++; /* 0x0810 */
++    		prepare_packet(pkt, proxy_seq[idx], 0, &vers);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++    		            
++            idx ++; /* 0x0721 */
++			read_in_loop(afd, pkt, sizeof(*pkt));    
++			if (!check_packet(pkt, 0, 0, proxy_seq[idx])) {
++			   	printf("[Proxy ] error: packet out of sync\n");
++			   	return -1;
++			}
++			memcpy(&vers_rc, &pkt->data, sizeof(vers_rc));
++			           
++            idx ++; /* 0x0710 */
++    		prepare_packet(pkt, proxy_seq[idx], 0, &vers_rc);            
++    		write_in_loop(pfd, pkt, sizeof(*pkt));
++            break;
++        default:
++            break;
++    }
++
++    if (isCanceled) {
++        unsigned long opc;
++        opc = TEEC_FINA_CTX;
++        idx = 66; /* 0x6012 */
++		prepare_packet(pkt, proxy_seq[idx], 0, &opc);            
++		write_in_loop(pfd, pkt, sizeof(*pkt));
++
++        idx++; /* 0x6112 */
++		prepare_packet(pkt, proxy_seq[idx], 0, &pfd);            
++		write_in_loop(pfd, pkt, sizeof(*pkt));
++
++        isCanceled = false;
++    }
++
++    return 0;
++}
+diff --git a/tee-proxy/src/vchar_proxy_ops.c b/tee-proxy/src/vchar_proxy_ops.c
+new file mode 100644
+index 0000000..7720b94
+--- /dev/null
++++ b/tee-proxy/src/vchar_proxy_ops.c
+@@ -0,0 +1,21 @@
++#include <stdio.h>
++#include <fcntl.h>
++#include <tee_common.h>
++#include "vchar_proxy_ops.h"
++
++int vchar_init(void)
++{
++    int vchar_fd;
++
++    vchar_fd = open("/dev/vchar-sh_optee", O_RDWR|O_NONBLOCK);
++    if (vchar_fd == -1) {
++        printf("[Proxy ] Failed to open vchar device\n");
++        return -1;
++    }
++    
++    return vchar_fd;
++}
++
++struct connect_ops vchar_ops = {
++	.init = vchar_init,
++};
+diff --git a/tee-proxy/src/vchar_proxy_ops.h b/tee-proxy/src/vchar_proxy_ops.h
+new file mode 100644
+index 0000000..6a5c136
+--- /dev/null
++++ b/tee-proxy/src/vchar_proxy_ops.h
+@@ -0,0 +1,5 @@
++#include "connect_ops.h"
++
++extern struct connect_ops vchar_ops;
++
++int vchar_init(void);
+diff --git a/tee-proxy/src/vnet_proxy_ops.c b/tee-proxy/src/vnet_proxy_ops.c
+new file mode 100644
+index 0000000..d1b861f
+--- /dev/null
++++ b/tee-proxy/src/vnet_proxy_ops.c
+@@ -0,0 +1,46 @@
++#include <stdio.h>
++#include <sys/un.h>
++#include <sys/socket.h>
++#include <arpa/inet.h>
++#include <tee_common.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <netinet/tcp.h>
++
++#include "wrloop.h"
++#include "vnet_proxy_ops.h"
++
++int vnet_init(void)
++{
++    int socket_fd;
++    struct sockaddr_in addr;
++
++    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
++    if (socket_fd < 0) {
++        printf("[Proxy ] Failed to create socket\n");
++        return -1;
++    }
++
++    memset(&addr, 0, sizeof(struct sockaddr_in));
++    addr.sin_addr.s_addr = inet_addr("10.0.0.1");
++    addr.sin_family = AF_INET;
++    addr.sin_port = htons(5100);
++    
++    if (connect(socket_fd, (const struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
++        printf("[Proxy ] Failed to connect to socket\n");
++        if (close(socket_fd) == -1)
++            printf("[Proxy ] Failed close socket\n");
++        return -1;
++    }
++    /*Disable bufferization of TCP socket to avoid hanging connections*/
++   int flag = 1;
++   setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int));
++
++    printf("\n[Proxy ] create an INET connect, addr %s, port %hu\n", 
++       inet_ntoa(addr.sin_addr), addr.sin_port);
++    return socket_fd;
++}
++
++struct connect_ops vnet_ops = {
++	.init = vnet_init,
++};
+diff --git a/tee-proxy/src/vnet_proxy_ops.h b/tee-proxy/src/vnet_proxy_ops.h
+new file mode 100644
+index 0000000..485228c
+--- /dev/null
++++ b/tee-proxy/src/vnet_proxy_ops.h
+@@ -0,0 +1,6 @@
++#include "connect_ops.h"
++
++extern struct connect_ops vnet_ops;
++
++int vnet_init(void);
++
+diff --git a/tee-proxy/src/wrloop.c b/tee-proxy/src/wrloop.c
+new file mode 100644
+index 0000000..e9f8f5b
+--- /dev/null
++++ b/tee-proxy/src/wrloop.c
+@@ -0,0 +1,152 @@
++/*******************************************************************************
++ * Copyright (c) 2018 OpenSynergy GmbH.
++ *
++ * This software may not be used in any way or distributed without
++ * permission. All rights reserved.
++ ******************************************************************************/
++
++#include <unistd.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "wrloop.h"
++
++/* MTU (maximum transmission unit ) - platform-dependent */
++#define MTU 32758
++
++ssize_t read_in_loop(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_read;
++	ssize_t n = 0;
++	int count = 0;
++
++	bp = (char *)data;
++	bytes_to_read = size;
++
++	while((n = read(fd, bp, size)) > 0) {
++		bp += n;
++		count += n;
++		bytes_to_read -= n;
++
++		if (bytes_to_read <= 0)
++			break;
++	}
++
++	return count;
++}
++
++ssize_t write_in_loop(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_write;
++	ssize_t n = 0;
++	int count = 0;
++
++	bp = (char *)data;
++	bytes_to_write = size;
++
++	while((n = write(fd, bp, size)) > 0) {
++		bp += n;
++		count += n;
++		bytes_to_write -= n;
++
++		if (bytes_to_write <= 0)
++			break;	
++	}
++
++	return count;
++}
++
++ssize_t read_in_loop_chunk(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_read;	
++	size_t n = 0;
++	int count = 0;
++	int num, rem, i;
++
++	bp = (char *)data;	
++	num = size / MTU;
++	rem = size % MTU;
++
++	for (i = 0; i <= num; i++) {
++	    bytes_to_read = ((i+1) <= num) ? MTU : rem;
++		while((n = read(fd, bp, bytes_to_read)) > 0) {
++			bp += n;
++			count += n;
++			bytes_to_read -= n;
++
++			if (bytes_to_read <= 0)
++				continue;
++		}
++	}
++
++	return count;
++}
++
++ssize_t write_in_loop_chunk(int fd, void *data, size_t size)
++{
++	char *bp;
++	int bytes_to_write;
++	size_t n = 0;
++	int count = 0;
++	int num, rem, i;
++
++	bp = (char *)data;	
++	num = size / MTU;
++	rem = size % MTU;
++
++	for (i = 0; i <= num; i++) {
++	    bytes_to_write = ((i+1) <= num) ? MTU : rem;    	
++		while((n = write(fd, bp, bytes_to_write)) > 0) {
++			bp += n;
++			count += n;
++			bytes_to_write -= n;
++
++			if (bytes_to_write <= 0)
++				continue;	
++		}
++	}
++
++	return count;
++}
++
++/* Prepare the packet for sending */
++void prepare_packet(struct packet *p, int seq, size_t sz, void *data)
++{
++    p->magic = MAGIC;
++    p->size  = sz;
++    p->seq   = seq;
++
++    if (data)
++	   	memcpy(&p->data, data, sizeof(p->data));
++
++    return;
++}
++
++/* Check the packet when receiving */
++int check_packet(struct packet *p, int sz_check, size_t sz, int seq)
++{
++	int valid = 0;
++
++    if (p->magic != MAGIC) {
++       	printf("[Proxy ] error: MAGIC not match, seq %x\n", seq);
++       	goto err;
++    } /* Check the MAGIC number of the packet */
++
++    if (p->seq != seq) {
++       	printf("[Proxy ] error: sequence not match, seq %x\n", seq);
++       	goto err;
++    } /* Check the sequence number of the message */
++
++    if (sz_check && (p->size != sz)) {
++        printf("[Proxy ] error: data size not match, size %zu, seq %x\n", sz, seq);
++        goto err;
++    } /* Check the size of buffer if necessary */
++
++    valid = 1;
++
++err:
++    return valid;
++}
+diff --git a/tee-proxy/src/wrloop.h b/tee-proxy/src/wrloop.h
+new file mode 100644
+index 0000000..5d10db0
+--- /dev/null
++++ b/tee-proxy/src/wrloop.h
+@@ -0,0 +1,39 @@
++#include <unistd.h>
++#include <string.h>
++#include <tee_client_api.h>
++#ifndef __aligned
++#define __aligned(x) __attribute__((__aligned__(x)))
++#endif
++#include <linux/tee.h>
++
++#define MAGIC 0xdeadbeef
++
++struct packet {
++	uint32_t magic;
++    int32_t  seq;
++    uint64_t size;
++    
++    union {
++		unsigned long opcode; /* opcode  */
++		int fd;				  /* socket  */
++		int shm_id;			  /* shm_id	 */
++		unsigned long buf_len;/* buf_len */
++		unsigned long buf_ptr;/* buf_ptr */
++		TEEC_Result res;	  /* result  */
++		int dev_fd;           /* dev_fd  */
++		struct tee_ioctl_close_session_arg arg; /* params	*/	
++		struct tee_ioctl_shm_alloc_data data;   /* shm_data	*/	
++		struct tee_ioctl_version_data vers;     /* vers		*/
++		struct tee_ioctl_shm_alloc_data shm_data;
++		struct tee_ioctl_shm_register_data register_shm_data;							
++    } data;        
++} __attribute__((packed));
++
++ssize_t read_in_loop(int fd, void *data, size_t size);
++ssize_t read_in_loop_chunk(int fd, void *data, size_t size);
++ssize_t write_in_loop(int fd, void *data, size_t size);
++ssize_t write_in_loop_chunk(int fd, void *data, size_t size);
++/* Prepare the packet for sending */
++void prepare_packet(struct packet *p, int seq, size_t sz, void *data);
++/* Check the packet when receiving */
++int check_packet(struct packet *p, int sz_check, size_t sz, int seq);
+diff --git a/tee-proxy/tee_proxy_android.mk b/tee-proxy/tee_proxy_android.mk
+new file mode 100644
+index 0000000..7c60d7f
+--- /dev/null
++++ b/tee-proxy/tee_proxy_android.mk
+@@ -0,0 +1,32 @@
++################################################################################
++# Build tee supplicant                                                         #
++################################################################################
++LOCAL_PATH := $(call my-dir)
++
++include $(CLEAR_VARS)
++LOCAL_CFLAGS += $(optee_CFLAGS)
++
++LOCAL_CFLAGS += -DDEBUGLEVEL_$(CFG_TEE_SUPP_LOG_LEVEL) \
++                -DBINARY_PREFIX=\"TEES\" \
++                -DTEEC_LOAD_PATH=\"$(CFG_TEE_CLIENT_LOAD_PATH)\" \
++                -DTEE_FS_PARENT_PATH=\"$(CFG_TEE_FS_PARENT_PATH)\"
++
++LOCAL_CFLAGS += -DANDROID_BUILD -DDEBUG=1
++LOCAL_CFLAGS += $(CFLAGS)
++
++LOCAL_SRC_FILES += src/tee_proxy.c \
++                   src/wrloop.c
++LOCAL_SRC_FILES += src/vnet_proxy_ops.c \
++
++LOCAL_C_INCLUDES := $(LOCAL_PATH)/../public \
++    $(LOCAL_PATH)/../libteec/include \
++    $(LOCAL_PATH)/src
++
++LOCAL_STATIC_LIBRARIES := libteec
++
++LOCAL_MODULE := tee-proxy
++LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT_SBIN)
++LOCAL_UNSTRIPPED_PATH := $(TARGET_ROOT_OUT_SBIN_UNSTRIPPED)
++
++LOCAL_MODULE_TAGS := optional
++include $(BUILD_EXECUTABLE)
+-- 
+2.7.4
+

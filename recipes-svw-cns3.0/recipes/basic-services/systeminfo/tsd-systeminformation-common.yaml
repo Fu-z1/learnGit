@@ -1,0 +1,51 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.systeminformation.common.git
+   dir: tsd.systeminformation.common
+   tag: 1.5.0
+   branch: master_mqb_sop1_eu
+
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   # Provide a target package for completeness. This is an internal module
+   # which just provides a static library. So the target package will be empty
+   # but should be present nonetheless.
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "systeminformation-common" \
+            -p "emmc.basic-svcs.systeminfo" \
+            -o "basic-services.systeminfo:tsd-systeminformation-common " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

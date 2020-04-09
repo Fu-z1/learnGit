@@ -1,0 +1,145 @@
+# root recipe for building host applications on linux
+
+inherit: [root]
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_ENABLE_RPATH: "1"
+#   DCONFIG_CAPI_MOCKS: "1"
+   VARIANTS: "301001"
+
+depends:
+   - tools::mib3-pwc-filter-dev
+#   - navigation::tsd-nav-mainapp-mib3-target
+#   - navigation::tsd-nav-configdata-variant-host-target
+#   - navigation::tsd-nav-middleware-interface-target
+#   - navigation::tsd-nav-middleware-nds-2_5_2-target
+   - communication::tsd-communication-apps
+   - communication::tsd-rsi-generator-generic-dev
+   - connectivity::networking::tsd-networking-api-dev
+   - connectivity::networking::tsd-networking-mib3-dev
+   - libs::ext-openssl-dev
+   - libs::ext-libxml2-dev
+   - system::tsd-common-dev
+   - basic-services::rsi-library::tsd-rsi-client-dev
+   - basic-services::rsi-library::tsd-rsi-server-dev
+   - basic-services::rsi-library::tsd-rsi-client-apps
+   - basic-services::rsi-library::tsd-rsi-server-apps
+   - basic-services::rsi-library::tsd-rsi-test-dev
+   - basic-services::rsi-service-registry::ext-vw-rsi-serviceregistry-dev
+   - basic-services::rsi-service-registry::tsd-rsi-serviceregistry-dev
+   - audio::audiomanager::tsd-audio-audiomgr-app-mib3-apps
+   - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-apps
+   - audio::soundprocessing::tsd-audio-soundproc-blocklibrary-app
+   - audio::soundprocessing::tsd-audio-soundproc-mib3-app
+   - media::libraries::tsd-media-mediainfo-api-dev
+   - media::libraries::tsd-cinemo-transport-mib3-dev
+   - media::mediaapplication::tsd-media-mib3-dev
+   - media::mediaapplication::tsd-media-mib3-gem-api-dev
+   - media::mountingservice::tsd-media-mount-status-api-dev
+   - media::mountingservice::tsd-media-mount-status-service-mib3-dev
+   - media::mountingservice::tsd-media-mount-control-api-dev
+   - media::pictureserver::tsd-media-picserver-mib3-dev
+   - media::waveplayer::tsd-media-waveplayer-mib3-target
+   - onlineservices::cns-applications-dev
+   - onlineservices::tsd-onlineservices-mosquitto-dev
+   - onlineservices::tsd-onlineservices-backendcomcore-dev
+   - onlineservices::tsd-onlineservices-backendcomcore-apps
+   - onlineservices::tsd-onlineservices-client-apps
+   - onlineservices::tsd-onlineservices-client-dev
+   - onlineservices::tsd-onlineservices-vkms-update-apps
+   - onlineservices::tsd-onlineservices-vkms-update-api-client-dev
+   - onlineservices::tsd-onlineservices-vkms-update-api-server-dev
+   - onlineservices::tsd-onlineservices-vkms-update-dev
+   - onlineservices::tsd-onlineservices-downloadmanager-dev
+   - onlineservices::tsd-onlineservices-framework-apps
+   - onlineservices::tsd-onlineservices-framework-dev
+   - onlineservices::tsd-onlineservices-remoteupdate-apps
+   - onlineservices::tsd-onlineservices-remoteupdate-dev
+   #- onlineservices::tsd-onlineservices-webapp-management-dev
+   #- onlineservices::tsd-onlineservices-webapp-controller-dev
+   #- onlineservices::tsd-onlineservices-webapp-storage-dev
+   - onlineservices::tsd-onlineservices-common-dev
+   - onlineservices::tsd-onlineservices-diagnosis-dev
+   - onlineservices::tsd-onlineservices-diagnosis-apps
+   - phone::bt-phone::tsd-bt-phone-mib3-dev
+   - phone::bt-devicemanagement::tsd-bt-management-mib3-api-dev
+   - phone::bt-organizer::tsd-organizer-mib3-api-dev
+   - phone::phonemanager::tsd-phonemanager-dev
+   - hmi::tsd-ime-dev
+   - hmi::ext-ime-dev
+   - hmi::tsd-dsi-cpp-dev
+   - hmi::tsd-hmi-wxkeypanel
+   - hmi::tsd-hmi-language-client-mib3-dev
+   - hmi::tsd-hmi-language-client-mib3-apps
+   - hmi::tsd-hmi-language-service-mib3-target
+   - sal::tsd-sal-gal-dev
+   - sal::tsd-sal-common-dev
+   - sal::ext-apple-bonjour-dev
+   - sal::ext-apple-carplay-dev
+   - sal::ext-realvnc-dev
+   - sal::tsd-sal-audio-mib3-apps
+   - sal::tsd-sal-app-dev
+   - sal::tsd-sal-carlife-dev
+   - sal::tsd-sal-carplay-dev
+   - sal::tsd-sal-client-dev
+   - sal::tsd-sal-iap2-apps
+   - sal::tsd-sal-iap2-dev
+   - sal::tsd-sal-mirrorlink-mib3-dev
+   - sal::tsd-sal-service-dev
+   - sal::tsd-sal-video-cinemo-apps
+   - sal::tsd-sal-cinemo-apps
+   - sal::viwiproxy::tsd-sal-viwiproxy-dev
+   - system::tsd-logging-mib3-target
+   - system::tsd-vkms-service-dev
+   - engineering::gem::tsd-gem-service-dev
+   - engineering::gem::tsd-gem-generic-api-dev
+   - engineering::gem::tsd-gem-generic-service-dev
+   - engineering::gem::tsd-gem-generic-client-dev
+   - basic-services::persistence::tsd-persistence-api-dev
+   - basic-services::persistence::tsd-persistence-client-dev
+   - basic-services::persistence::tsd-persistence-client-mib3-apps
+   - basic-services::persistence::tsd-persistence-client-mib3-dev
+   - basic-services::persistence::tsd-persistence-service-dev
+   - basic-services::persistence::tsd-persistence-service-mib3-dev
+   - basic-services::persistence::tsd-persistence-testinterface-api-dev
+   - basic-services::persistence::tsd-persistence-testinterface-client-dev
+   - basic-services::persistence::tsd-persistence-testinterface-service-dev
+   - basic-services::persistence::tsd-persistence-tools-apps
+   - basic-services::systeminfo::tsd-systeminformation-features-dev
+   - examples::unittest::examples-unittest-app-dev
+   - examples::commonAPI::tsd-example-root-dev
+   - examples::commonAPI::tsd-myservice-app
+   - examples::comMgrAPI::examples-commgr-client-dev
+   - examples::comMgrAPI::examples-commgr-server-dev
+   - system::system-lifecycle::tsd-systemstate-manager-app-dev
+   - system::tsd-swupdate-rsihmiserver-dev
+   - system::tsd-swupdate-rsihmiserver-client-dev
+   - system::tsd-swupdate-rsihmiserver-service-dev
+   - carcom::tsd-carcom-proxy-mib3-dev
+   - carcom::tsd-carcom-api-mib3-apps
+   - basic-services::car-function-management::tsd-carssw-viwicarservice-mib3-dev
+   - basic-services::car-function-management::tsd-carssw-viwinavsdclient-mib3-dev
+   - vehicle-connectivity::automotive-ethernet::tsd-ethernet-middleware-dev
+#   - navigation::tsd-nav-psd-v15-app-target
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-server-apps
+   - basic-services::personalization::tsd-personalization-psomanager-apps
+   - tools::tsd-testmanager-tools-apps
+   - tools::tsd-hsm-tool
+   - basic-services::common-base::common-base-dev
+   - basic-services::common-base::common-base-servers
+   - examples::fdbus-example
+   - project::proto-api-cns3.0
+   - sds::speech.service::jpcc-sds-dev
+   - sds::speech.external::ext-resource-dev
+   - sds::speech.external::ext-speech-dev
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   cp -a $1/* .

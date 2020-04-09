@@ -1,0 +1,18 @@
+buildScript: |
+   # normal vocon language codes
+   LANGS_ALL=(  bgb cah czc dad dun eng enu fif frf ged grg iti jpj kok mnc plp ptb ptp rur spe spm sws trt)
+   LANGS_EURDW=(        czc dad dun eng enu fif frf ged grg iti             plp ptb ptp rur spe spm sws trt)
+   LANGS_JP=(                           enu                     jpj                                        )
+   LANGS_KR=(                           enu                         kok                                    )
+   LANGS_CN=(       cah                 enu                             mnc                                )
+
+   # normal language codes for ASR usage
+   LANGS_GCT=(  bgb     czc dad dun eng enu fif frf ged grg iti jpj kok     plp ptb ptp rur spe spm sws trt)
+   LANGS_NLU=(          czc         eng enu     frf ged     iti                             spe            )
+
+   # vocon language codes paired with locale codes
+   LANGS_ALL_C=(  bg_BG:bgb zh_HK:cah cs_CZ:czc da_DK:dad nl_NL:dun en_GB:eng en_US:enu fi_FI:fif fr_FR:frf de_DE:ged el_GR:grg it_IT:iti ja_JP:jpj ko_KR:kok zh_CN:mnc pl_PL:plp pt_BR:ptb pt_PT:ptp ru_RU:rur es_ES:spe es_MX:spm sv_SE:sws tr_TR:trt)
+   LANGS_EURDW_C=(bg_BG:bgb           cs_CZ:czc da_DK:dad nl_NL:dun en_GB:eng en_US:enu fi_FI:fif fr_FR:frf de_DE:ged el_GR:grg it_IT:iti                               pl_PL:plp pt_BR:ptb pt_PT:ptp ru_RU:rur es_ES:spe es_MX:spm sv_SE:sws tr_TR:trt)
+   LANGS_JP_C=(                                                               en_US:enu                                                   ja_JP:jpj                                                                                                    )
+   LANGS_KR_C=(                                                               en_US:enu                                                             ko_KR:kok                                                                                          )
+   LANGS_CN_C=(             zh_HK:cah                                         en_US:enu                                                                       zh_CN:mnc                                                                                ) 

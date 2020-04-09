@@ -1,0 +1,209 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+   PKG_LICENSE: "LGPL-2.1+GPL-2"
+
+depends:
+  - audio::audiorouter::ext-alsa-lib-dev
+  - audio::audiorouter::ext-json-c-dev
+  - audio::audiorouter::ext-sndfile-dev
+  - audio::audiorouter::ext-speex-dsp-dev
+  - audio::audiorouter::tsd-audio-audiorouter-config-mib3-dev
+  - libs::ext-libtool-dev
+  - system::ext-systemd-dev
+  - system::ext-libuv-dev
+   # runtime dependencies
+  - use: []
+    depends:
+      - audio::audiorouter::ext-alsa-lib-target
+      - audio::audiorouter::ext-json-c-target
+      - audio::audiorouter::ext-sndfile-target
+      - audio::audiorouter::ext-speex-dsp-target
+      - basic-services::systeminfo::tsd-systeminformation-hardware-cli
+         # - system::ext-systemd-target
+      - system::ext-libuv-target
+      - libs::ext-libtool-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/ext.pulseaudio.git
+   # branch would be pcc TODO: successively put patches to this branch and keep track of upstream
+#   tag: mqb_sop1_eu-10.5.0
+   branch: release/cns_mqb
+
+
+
+buildVars: [TARGET_TYPE, CONFIG_BOARD, TARGET_OS]
+buildScript: |
+
+   rsync -a $1/ ${PWD}
+
+   # TODO: submit patches to upstream community
+   # TODO: I know, only idiots patch git repositories...this has historical reasons
+   patch -p1 -i "${BOB_DEP_PATHS[audio::audiorouter::tsd-audio-audiorouter-config-mib3-dev]}/quilt/patches/fix-make_secure_dir.patch"
+   patch -p1 -i "${BOB_DEP_PATHS[audio::audiorouter::tsd-audio-audiorouter-config-mib3-dev]}/quilt/patches/fix-module_ladspa_port_count.patch"
+   if ! [ -e configure ] || [ configure.ac -nt configure ] || [ Makefile.am -nt Makefile ] || [ src/Makefile.am -nt src/Makefile ]; then
+      NOCONFIGURE=1 ./bootstrap.sh
+   fi
+
+   export NEON_FLAG=''
+
+   if [[ "${TARGET_TYPE}" != host ]]; then
+      NEON_FLAG='--enable-neon64-opt'
+   fi
+
+   configure()
+   {
+      autotoolsConfigureOnly $PWD \
+      --with-database=simple              \
+      --disable-orc                       \
+      --disable-dbus                      \
+      --disable-glib2                     \
+      --disable-gconf                     \
+      --disable-avahi                     \
+      --disable-gtk3                      \
+      --disable-x11                       \
+      --disable-udev                      \
+      --disable-hal-compat                \
+      --disable-bluez5                    \
+      --disable-bluez4                    \
+      --disable-coreaudio-output          \
+      --disable-esound                    \
+      --disable-dbus                      \
+      --enable-atomic-arm-memory-barrier  \
+      --disable-rpath                     \
+      --disable-tcpwrap                   \
+      --disable-openssl                   \
+      --disable-jack                      \
+      --disable-default-build-tests       \
+      --with-systemduserunitdir=/usr/lib/systemd/ \
+      $NEON_FLAG
+   }
+
+   build()
+   {
+      autotoolsFixLibtool
+      autotoolsBuildOnly
+
+      rm -rf ./dist/etc
+      # LEGACY...some people use the audiorouter configuration files for simulations on the host system
+      if [[ "${TARGET_TYPE}" == host ]]; then
+         rsync -v -a "${BOB_DEP_PATHS[audio::audiorouter::tsd-audio-audiorouter-config-mib3-dev]}/$TARGET_TYPE/$TARGET_OS/apps/" ./dist/
+      fi
+   }
+
+
+multiPackage:
+   dev:
+      buildScript: |
+         export CFLAGS="${CFLAGS} -DNDEBUG"
+         configure
+         build
+      packageTools: [buildenv]
+      packageVars: [LIBDIR]
+      packageScript: |
+         autotoolsPackageDev
+         export PKG_VERSION=$(cut -d. -f1 $1/.version).$(cut -d- -f1 $1/.version | cut -d. -f2)
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l pulse -lpulse-mainloop-uv -L ${LIBDIR}/pulseaudio \
+         -l pulsecommon-${PKG_VERSION} -l pulsecore-${PKG_VERSION} -I include ext.pulseaudio
+      provideDeps: ['*-dev']
+
+
+   module-dev:
+      buildScript: |
+         export CFLAGS="${CFLAGS} -DNDEBUG"
+         configure
+         build
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         rsync -a --include "*.h" --include "modules/alsa/" --include "modules/" --include "pulsecore/" --include "pulsecore/filter/" --include "pulse/" --exclude "*" $1/src/ ./usr/include/
+         cp $1/config.h ./usr/include
+         export PKG_VERSION=$(cut -d. -f1 $1/.version).$(cut -d- -f1 $1/.version | cut -d. -f2)
+         echo -en $PKG_VERSION > ./usr/include/pulse-version.txt
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l pulse -L ${LIBDIR}/pulseaudio \
+         -l pulsecommon-${PKG_VERSION} -l pulsecore-${PKG_VERSION} -L ${LIBDIR}/pulse-${PKG_VERSION}/modules -l protocol-native -I include ext.pulseaudio
+      provideDeps: ['*-dev']
+
+   interface:
+      buildScript: |
+         export CFLAGS="${CFLAGS} -DNDEBUG"
+         configure
+         build
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include ext.pulseaudio.interface
+
+   env:
+      provideVars:
+          IS_CNS: "$(or,$(flagIsSet,${VARIANTS},Region,CHINA), \
+                        $(flagIsSet,${VARIANTS},Region,TAIWAN), \
+                        $(flagIsSet,${VARIANTS},Region,HONGKONG_MACAO))"
+          IS_DEV_SW: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+          HAS_A2B: "$(flagIsSet,${VARIANTS},SW_SPEAKER_LOCALIZATION,1)"
+
+   unittests:
+      depends:
+         - name: audio::audiorouter::ext-check-dev
+         - use: []
+           depends:
+              - audio::audiorouter::ext-check-target
+
+      buildScript: |
+         configure
+         makeParallel check
+
+   target:
+      buildScript: |
+         export CFLAGS="${CFLAGS} -DNDEBUG"
+         configure
+         build
+      depends:
+         - use: []
+           depends:
+              - name: audio::audiorouter::ext-pulseaudio-env
+                use: [environment]
+              - audio::audiorouter::ext-alsa-plugins-target
+              - audio::microphoneprocessing::tsd-audio-microphoneprocessing-plugins-target
+              - audio::audiorouter::tsd-audio-audiorouter-config-mib3-target
+              - name: audio::audiorouter::tsd-audio-audiorouter-config-mib3-debug-target
+                if: "${IS_DEV_SW}"
+                #
+                # if cns
+              - name: audio::audiorouter::tsd-audio-audiorouter-config-mib3-cns-target
+                if: "${IS_CNS}"
+              - name: audio::audiorouter::tsd-audio-audiorouter-config-mib3-ecall-cns-target
+                if: "${IS_CNS}"
+              - name: audio::audiorouter::tsd-audio-audiorouter-config-mib3-analogmic-cns-target
+                if: "$(and,${IS_CNS},$(not,${HAS_A2B}))"
+                # else
+              - name: audio::audiorouter::tsd-audio-audiorouter-config-mib3-asr-webapps-loopback-target
+                if: "$(not,${IS_CNS})"
+                #
+                # if not cns and not a2b
+              - name: audio::audiorouter::tsd-audio-audiorouter-config-mib3-ecall-target
+                if: "$(and,$(not,${HAS_A2B}),$(not,${IS_CNS}))"
+                #
+                # if a2b
+              - name: audio::audiorouter::tsd-audio-audiorouter-config-mib3-a2bmic-target
+                if: "${HAS_A2B}"
+                # else
+              - name: audio::audiorouter::tsd-audio-audiorouter-config-mib3-analogmic-target
+                if: "$(and,$(not,${IS_CNS}),$(not,${HAS_A2B}))"
+
+
+      packageScript: |
+         autotoolsPackageTarget
+         rm -rf lib usr/lib/systemd
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-pulseaudio" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:ext-pulseaudio " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - '*-target'
+        - '*-cli'

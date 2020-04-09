@@ -1,0 +1,34 @@
+inherit: [buildenv, capigen]
+
+depends:
+   - system::tsd-common-dev
+   - communication::ext-commonapi-runtime-dev
+   - communication::tsd-communication-binding-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-architecture/tsd.example.api.git
+      dir: tsd.example.api
+      branch: develop
+
+checkoutDeterministic: True
+checkoutScript: CapiGenProcessFIDLFiles tsd.example.api
+
+buildVars: [LIBDIR]
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+         
+      provideDeps:
+         - system::tsd-common-dev
+         - communication::ext-commonapi-runtime-dev
+         - communication::tsd-communication-binding-dev
+
+   target:
+      packageScript: |
+         buildenvPackageTarget

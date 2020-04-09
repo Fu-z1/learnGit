@@ -1,0 +1,41 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+depends:
+ - connectivity::usb::tsd-usb-api-dev
+   ## runtime dependencies
+ - use: []
+   depends:
+    - connectivity::usb::tsd-usb-api-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.usb.osal.git
+   dir: tsd.usb.osal
+   tag: mqb_sop1_eu-1.100.1
+multiPackage:
+   ? ""
+   :  buildScript: buildenvBuildAll
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "usb-osal" \
+                  -p "emmc.connectivity.usb" \
+                  -o "connectivity.usb:tsd-usb-osal " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

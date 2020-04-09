@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<guest-configuration
+	hypervisor-config="coqoshv-runtime-config-r8a7795-pcc-zr3.xml"
+	init-vm="linux"
+	model-version="v0.1"
+	platform-capabilities="r8a7795-pcc-zr3-plat-model.xml"
+	xmlns="http://www.opensynergy.com/xml/coqoshv-configuration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.opensynergy.com/xml/coqoshv-configuration ../schema/coqoshv-configuration.xsd">
+
+	<mmu-config context="hv" granule-size="4" phys-addr-size="48" va-bits="36"/>
+	<mmu-config context="guest" granule-size="4" phys-addr-size="48" va-bits="36"/>
+
+	<scheduler-config cpu-index="0">
+		<simple-scheduler timeslice-length-us="10000"/>
+	</scheduler-config>
+	<scheduler-config cpu-index="1">
+		<simple-scheduler timeslice-length-us="10000"/>
+	</scheduler-config>
+	<scheduler-config cpu-index="2">
+		<simple-scheduler timeslice-length-us="10000"/>
+	</scheduler-config>
+	<scheduler-config cpu-index="3">
+		<simple-scheduler timeslice-length-us="10000"/>
+	</scheduler-config>
+	<scheduler-config cpu-index="4">
+		<simple-scheduler timeslice-length-us="10000"/>
+	</scheduler-config>
+	<scheduler-config cpu-index="5">
+		<simple-scheduler timeslice-length-us="10000"/>
+	</scheduler-config>
+	<scheduler-config cpu-index="6">
+		<simple-scheduler timeslice-length-us="10000"/>
+	</scheduler-config>
+	<scheduler-config cpu-index="7">
+		<simple-scheduler timeslice-length-us="10000"/>
+	</scheduler-config>
+
+	<!-- Shared memory and channel for VNET -->
+	<shared-memory name="shm_vnet_12" size="0x20000" memref="memory@48000000" hpaddr="auto" />
+	<shared-memory name="shm_vnet_21" size="0x20000" memref="memory@48000000" hpaddr="auto" />
+	<channel name="ch_vnet"/>
+
+	<!-- Shared memory and channel for virtual GPU device over VCHAR -->
+	<shared-memory name="shm_vgpu_12" size="0x1000" hpaddr="auto" memref="memory@48000000"/>
+	<shared-memory name="shm_vgpu_21" size="0x1000" hpaddr="auto" memref="memory@48000000"/>
+	<channel name="ch_vgpu"/>
+
+	<shared-memory name="shm_vmctrl_12" size="0x1000" hpaddr="auto" memref="memory@48000000"/>
+	<shared-memory name="shm_vmctrl_21" size="0x1000" hpaddr="auto" memref="memory@48000000"/>
+	<channel name="ch_vmctrl"/>
+
+	<!-- Shared memory for virtual GPU heaps -->
+	<shared-memory name="shm_vgpu_heap" size="0x02000000" hpaddr="0x500000000" memref="memory@500000000"/>
+
+	<!-- Shared memory and channels for VirtIO MMIO -->
+	<shared-memory name="shm_vio_mmio0" size="0x1000" hpaddr="0x5DFFFE000" memref="memory@580000000" />
+	<channel name="ch_vio_mmio0"/>
+
+	<shared-memory name="shm_vio_mmio1" size="0x1000" hpaddr="0x5DFFFF000" memref="memory@580000000" />
+	<channel name="ch_vio_mmio1"/>
+
+	<vm-configuration name="vmctrl"
+			vcpu-type="VE-64"
+			cpu-mask="0x01"
+			logging-access="true"
+			logging-prefix="vmctrlr_"
+			access-dbg-registers="false"
+			power-mgt-access="false"
+			trustzone-access="false"
+			irq-crossbar-access="false"
+			force-cache-use="false"
+			trust-level="untrusted"
+			safety-level="QM">
+
+		<memconfig name="cp0" size="0x100000" memref="memory@48000000" cache="writeback" gpaddr="0x48000000" hpaddr="auto"/>
+
+		<boot-image>
+			<kernel filename="vmctrl.bin" placement-offset="0x0" entry-offset="0x0"/>
+		</boot-image>
+
+		<device-access name="gic"   vaddr="0xf1010000" vsize="0x1000"/>
+		<device-access name="gic-vcpu-interface">
+			<reg-mapping hpaddr="0xf1060000" gpaddr="0xf1020000"/>
+		</device-access>
+		<device-access name="generic-timer-el1-virtual"/>
+		<device-access name="vser0" vaddr="0xE6E88000" vsize="0x1000" virq="37"/>
+
+		<shmem-access name="shm_vmctrl_12" mode="rw" gpaddr="0xe0000000"/>
+		<shmem-access name="shm_vmctrl_21" mode="r"  gpaddr="0xe0001000"/>
+		<port-access channel="ch_vmctrl" sender-local-id="70" receiver-irq-no="110"/>
+	</vm-configuration>
+
+	<vm-configuration
+		access-dbg-registers="false"
+		cpu-mask="0xf3"
+		force-cache-use="false"
+		irq-crossbar-access="false"
+		logging-access="true"
+		logging-prefix="linux1_"
+		name="linux1"
+		power-mgt-access="true"
+		safety-level="QM"
+		trust-level="untrusted"
+		trustzone-access="true"
+		vcpu-type="VE-64">
+
+		<!--
+		 The first memory region is used to locate the guest boot image (see
+		 boot-image below), that means it should be big enough to fit Linux
+		 kernel image plus necessary offset (see placement-offset below)
+		-->
+		<!-- HV 0x9c00 0000 - 0xa000 0000-->
+		<!-- 0x50000000 + 0x01400000 adsp -->
+		<!-- 0x51800000 + 0x2800000 CR7 reserved and shared memory -->
+		<!-- 0x54000000 + 0x03000000 lossy_decompress -->
+		<!-- 0x57000000 + 0x0D000000 linux CMA  -->
+		<!-- 0х64000000 + 0x0C000000 android CMA -->
+		<!-- 0x70000000 + 0x10000000 linux mmp_reserved -->
+		<!-- ADSP_SHM_BASE + ADSP_SHM_SIZE -->
+		<!-- 0x80000000 + 0x00400000 adsp shmem -->
+		<!-- .... -->
+		<!-- 0x9b80'0000 - 0x9c000000 shared memory (vnet, vgpu)-->
+
+		<memconfig cache="writeback" gpaddr="0x48000000" hpaddr="0x48000000" memref="memory@48000000"  name="cp0" size="0x4000000"/>
+		<memconfig cache="writeback" gpaddr="0x50000000" hpaddr="0x50000000" memref="memory@48000000"  name="cp1" size="0x7000000"/> <!-- 0x5000'0000 - 0x5700'0000 -->
+		<memconfig cache="writeback" gpaddr="0x57000000" hpaddr="0x57000000" memref="memory@48000000"  name="cp2" size="0x0d000000"/> <!-- 0x5700'0000 - 0x6400'0000 -->
+		<!-- ADSP_SHM_BASE-->
+		<memconfig cache="writeback" gpaddr="0x70000000" hpaddr="0x70000000" memref="memory@48000000" name="cp3" size="0x10000000"/>
+		<memconfig cache="writeback" gpaddr="0x80000000" hpaddr="0x80000000" memref="memory@48000000"  name="cp4" size="0x10000000"/> <!-- 0x8000'0000 0x9000'0000 -->
+		<memconfig cache="writeback" gpaddr="0x480000000" hpaddr="0x480000000" memref="memory@480000000" name="cp5" size="0x60000000"/>
+		<memconfig cache="writeback" gpaddr="0x502000000" hpaddr="0x502000000" memref="memory@500000000" name="cp6" size="0x3E000000"/>
+      <memconfig cache="writeback" gpaddr="0x580000000" hpaddr="0x580000000" memref="memory@580000000" name="cp7" size="0x30000000"/>
+
+		<memconfig cache="writeback" gpaddr="0xe6304000" hpaddr="0xe6304000" memref="memory@e6304000" name="cp8" size="0x60000"/>
+
+		<!-- Memory region 047fd7000-047fd7000 is used by mmngr Linux kernel module -->
+		<memconfig cache="writeback" gpaddr="0x047fd7000" hpaddr="0x047fd7000" memref="memory@047fd7000"  name="mm_lossy" size="0x1000"/>
+		<memconfig cache="writeback" gpaddr="0x047e00000" hpaddr="0x047e00000" memref="memory@47e00000"  name="optee_shmem" size="0x100000"/>
+
+
+		<!-- bootargs are used only if filename is specified for DTB.
+		     Otherwise, bootargs from chosen in linux dtb (coqoshv-virtualization.dtsi)
+		-->
+		<boot-image  bootargs="
+				smp
+				root=/dev/ram0
+				rw
+				rootwait
+				video=HDMI-A-2:1920x1080-32@60
+				hwVersion=10
+				hwVariant=35
+                                printk.devkmsg=on
+				sysVariant=301001
+				log_buf_len=32M
+				loglevel=4
+				isolcpus=5
+				systemd.disable_watchdog=true
+				console=ttyS0,115200,n8
+				maxcpus=7
+				swiotlb=0x5f00
+				clk_ignore_unused
+			">
+			<!--kernel filename="linux1.kernel" placement-offset="0x00080000" entry-offset="0x00000000"/ -->
+			<!-- initrd filename="linux1.initrd" placement-offset="0x01300000"/-->
+			<!-- dtb filename="linux1.dtb" placement-offset="0x02600000"/-->
+
+			<!-- Check linux,initrd-start and linux,initrd-end in section chosen in coqoshv-virtualization.dtsi -->
+			<kernel reserved-size="0x1280000" placement-offset="0x00080000" entry-offset="0x00000000"/> <!-- 0x48080000-->
+			<initrd reserved-size="0x1300000" placement-offset="0x01300000"/> <!-- 0x49300000-->
+			<dtb reserved-size="0x20000" placement-offset="0x02600000"/> <!-- 0x4a600000-->
+		</boot-image>
+
+		<!--
+		 Map GIC CPU interface to the end of the first 64K page so that the GIC
+		 region overlaps into the 2nd page, where GICC_DIR is located. The first
+		 4K of the GIC CPU interface region is alias continuously over the entire
+		 first 64K page, which makes this possible. This stunt allows us to use
+		 the same offset GICC_DIR offset of 0x1000 for both 4K and 64K spaced
+		 GICv2 implementations.
+		-->
+		<device-access name="gic" vaddr="0xf1010000" vsize="0x1000"/>
+		<device-access name="gic-vcpu-interface">
+			<reg-mapping gpaddr="0xf1020000" hpaddr="0xf1060000"/>
+		</device-access>
+		<device-access name="vser0" vaddr="0xe6e60000" vsize="0x1000"/>
+		<device-access name="generic-timer-el1-virtual"/>
+
+		<device-access name="avs"/>
+		<device-access name="can@e6c30000"/>
+		<device-access name="can@e6c38000"/>
+      <device-access name="adsp@ec800000"/>
+      <device-access name="adsp-fifo@ec460000"/>
+		<device-access name="chipid@fff00044"/>
+		<device-access name="clock-controller@e6150000"/>
+		<device-access name="csi2@fea80000"/>
+		<device-access name="csi2@feaa0000"/>
+		<device-access name="csi2@feab0000"/>
+		<device-access name="display0@feb00000"/>
+		<device-access name="display2@feb40000"/>
+		<device-access name="display-id@0xfeb90000"/>
+		<device-access name="vsp@fea20000"/>
+		<device-access name="vsp@fea28000"/>
+		<device-access name="vsp@fea30000"/>
+		<device-access name="vsp@fea38000"/>
+		<device-access name="dma-controller@e6460000"/>
+		<device-access name="dma-controller@e6470000"/>
+		<device-access name="dma-controller@e65a0000"/>
+		<device-access name="dma-controller@e65b0000"/>
+		<device-access name="dma-controller@e6700000"/>
+		<device-access name="dma-controller@e7300000"/>
+		<device-access name="dma-controller@e7310000"/>
+		<device-access name="dma-controller@ec700000"/>
+		<device-access name="dma-controller@ec720000"/>
+		<device-access name="fcp@fea27000"/>
+		<device-access name="fcp@fea2f000"/>
+		<device-access name="fcp@fea37000"/>
+		<device-access name="fcp@fea3f000"/>
+		<device-access name="fdpm@fe940000"/>
+		<device-access name="fdpm@fe944000"/>
+		<device-access name="fdpm@fe948000"/>
+		<device-access name="gpio@e6050000"/>
+		<device-access name="gpio@e6051000"/>
+		<device-access name="gpio@e6052000"/>
+		<device-access name="gpio@e6053000"/>
+		<device-access name="gpio@e6054000"/>
+		<device-access name="gpio@e6055000-400-800"/>
+       	<device-access name="gsx@fd000000">
+          <irq-mapping host-irq="0x97" guest-irq="0x97" shared="false"/>
+        </device-access>
+		<device-access name="hdmi0@fead0000"/>
+		<device-access name="hdmi1@feae0000"/>
+		<device-access name="i2c@e60b0000"/>
+		<device-access name="i2c@e6500000"/>
+		<device-access name="i2c@e6508000"/>
+		<device-access name="i2c@e6510000"/>
+		<device-access name="i2c@e66d0000"/>
+		<device-access name="i2c@e66d8000"/>
+		<device-access name="i2c@e66e0000"/>
+		<device-access name="i2c@e66e8000"/>
+		<device-access name="interrupt-controller@e61c0000"/>
+		<device-access name="mfis@e6260000"/>
+		<device-access name="mmu@e67b0000"/>
+		<device-access name="pcie@ee800000"/>
+		<device-access name="pcie@fe000000"/>
+		<device-access name="pfc@e6060000"/>
+		<device-access name="pmu_a53"/>
+		<device-access name="pmu_a57"/>
+		<device-access name="pwm@e6e31000"/>
+		<device-access name="pwm@e6e32000"/>
+		<device-access name="reset-controller@e6160000"/>
+		<device-access name="ethernet@e6800000"/>
+		<device-access name="sata@ee300000"/>
+		<device-access name="sd@ee100000"/>
+		<device-access name="sd@ee120000"/>
+		<device-access name="sd@ee160000"/>
+		<device-access name="serial@e6540000"/>
+		<device-access name="serial@e6550000"/>
+		<device-access name="serial@e6560000"/>
+		<device-access name="serial@e66a0000"/>
+		<device-access name="serial@e66b0000"/>
+		<device-access name="serial@e6c40000"/>
+		<device-access name="serial@e6c50000"/>
+		<device-access name="serial@e6f30000"/>
+		<device-access name="sound@ec500000"/>
+		<device-access name="spi@e6c00000"/>
+		<device-access name="spi@e6c10000"/>
+		<device-access name="spi@e6e90000"/>
+		<device-access name="spi@e6ea0000"/>
+		<device-access name="system-controller@e6180000"/>
+		<device-access name="thermal@0xe6198000"/>
+		<device-access name="thermal@0xe61a0000"/>
+		<device-access name="thermal@0xe61a8000"/>
+		<device-access name="usb@e6590000"/>
+		<device-access name="usb@ee000000"/>
+		<device-access name="usb@ee020000"/>
+		<device-access name="usb@ee080000"/>
+		<device-access name="usb@ee0a0000"/>
+		<device-access name="rpc@ee200000"/>
+		<!--device-access name="usb@ee0c0000"/-->
+		<device-access name="vcp4@fe8a0000"/>
+		<device-access name="vcp4@fe8d0000"/>
+		<device-access name="vcp4@fe8df000"/>
+		<device-access name="vcp4@fe8f0000"/>
+		<device-access name="vcp4@fe8ff000"/>
+		<device-access name="vcp4@fe900000"/>
+		<device-access name="vcp4@fe90f000"/>
+		<device-access name="vcp4@fe910000"/>
+		<device-access name="video@e6ef0000"/>
+		<device-access name="video@e6ef1000"/>
+		<device-access name="video@e6ef2000"/>
+		<device-access name="video@e6ef3000"/>
+		<device-access name="video@e6ef4000"/>
+		<device-access name="video@e6ef5000"/>
+		<device-access name="video@e6ef6000"/>
+		<device-access name="video@e6ef7000"/>
+		<device-access name="vspm1"/>
+		<device-access name="vspm2"/>
+		<device-access name="watchdog@e6020000"/>
+		<device-access name="sd@ee140000"/>
+                <device-access name="busmon@e67e0000"/>
+                <device-access name="dbmon@e6790000"/>
+                <device-access name="busmoniUsed@feb8d000"/>
+		<!-- Shared memory and channel for VNET -->
+		<shmem-access name="shm_vnet_12" mode="r" gpaddr="0xe0000000"/>
+		<shmem-access name="shm_vnet_21" mode="rw" gpaddr="0xe0020000"/>
+		<port-access channel="ch_vnet" sender-local-id="68" receiver-irq-no="108"/>
+
+		<!-- Shared memory and channel for virtual GPU device over VCHAR -->
+		<shmem-access name="shm_vgpu_12" mode="rw"  gpaddr="0xf8100000"/>
+		<shmem-access name="shm_vgpu_21" mode="r" gpaddr="0xf8101000"/>
+		<port-access channel="ch_vgpu" sender-local-id="69" receiver-irq-no="109"/>
+
+		<shmem-access name="shm_vmctrl_21" mode="rw" gpaddr="0xf8102000"/>
+		<shmem-access name="shm_vmctrl_12" mode="r"  gpaddr="0xf8103000"/>
+		<port-access channel="ch_vmctrl" sender-local-id="70" receiver-irq-no="110"/>
+
+		<!-- Shared memory for virtual GPU heaps -->
+		<shmem-access name="shm_vgpu_heap" mode="rw" gpaddr="0x500000000"/>
+
+		<!-- Android memory -->
+		<vmmem-access name="cp0@android" vm="android" mem="cp0" mode="rw" gpaddr="0x04c000000"/>
+		<vmmem-access name="cp1@android" vm="android" mem="cp1" mode="rw" gpaddr="0x064000000"/>
+		<vmmem-access name="cp2@android" vm="android" mem="cp2" mode="rw" gpaddr="0x090000000"/>
+		<vmmem-access name="cp3@android" vm="android" mem="cp3" mode="rw" gpaddr="0x540000000"/>
+		<vmmem-access name="cp4@android" vm="android" mem="cp4" mode="rw" gpaddr="0x5b0000000"/>
+
+		<!-- Shared memory and channels for VirtIO MMIO -->
+		<shmem-access name="shm_vio_mmio0" mode="rw" gpaddr="0x5DFFFE000"/>
+		<port-access channel="ch_vio_mmio0" sender-local-id="91" receiver-irq-no="173"/>
+
+		<shmem-access name="shm_vio_mmio1" mode="rw" gpaddr="0x5DFFFF000"/>
+		<port-access channel="ch_vio_mmio1" sender-local-id="93" receiver-irq-no="174"/>
+
+	</vm-configuration>
+
+	<vm-configuration
+		access-dbg-registers="false"
+		cpu-mask="0xc"
+		force-cache-use="false"
+		irq-crossbar-access="false"
+		logging-access="true"
+		logging-prefix="android_"
+		name="android"
+		power-mgt-access="false"
+		safety-level="QM"
+		trust-level="untrusted"
+		trustzone-access="false"
+		vcpu-type="VE-64"
+		start-on-demand="true"
+		>
+
+
+		<!--
+		 The first memory region is used to locate the guest boot image (see
+		 boot-image below), that means it should be big enough to fit Linux
+		 kernel image plus necessary offset (see placement-offset below)
+		-->
+
+		<!-- initial low memory, ramdisk is stored here -->
+		<memconfig name="cp0" gpaddr="0x04c000000" hpaddr="0x04c000000" size="0x04000000" memref="memory@48000000" cache="writeback"/>
+		<memconfig name="cp1" gpaddr="0x064000000" hpaddr="0x064000000" size="0x0c000000" memref="memory@48000000" cache="writeback"/> <!-- CMA allocations, including generic CMA -->
+		<memconfig name="cp2" gpaddr="0x090000000" hpaddr="0x090000000" size="0x0b800000" memref="memory@48000000" cache="writeback"/>
+		<memconfig name="cp3" gpaddr="0x540000000" hpaddr="0x540000000" size="0x20000000" memref="memory@500000000" cache="writeback"/>
+		<memconfig name="cp4" gpaddr="0x5b0000000" hpaddr="0x5b0000000" size="0x2fffe000" memref="memory@580000000" cache="writeback"/>
+
+		<!-- bootargs are used only if filename is specified for DTB.
+		     Otherwise, bootargs from chosen in android dtb (coqoshv-virtualization.dtsi)
+		-->
+		<boot-image
+			bootargs="
+        earlycon=uart8250,mmio32,0xe6e60000,115200n8
+        androidboot.slot_suffix=_a
+        androidboot.hardware=salvator
+        rootwait
+        ro
+        init=/init
+        androidboot.selinux=permissive
+        androidboot.veritymode=eio
+        androidboot.revision=1.1
+        androidboot.serialno=0123456789ABCDEF
+        buildvariant=userdebug
+        maxcpus=7
+        skip_initramfs
+        clk_ignore_unused
+	root=/dev/vda7
+        swiotlb=0x5f00
+        panic=1000
+        ">
+			<!-- kernel filename="android.kernel" placement-offset="0x00080000" entry-offset="0x00000000"/-->
+			<!-- dtb    filename="android.dtb"    placement-offset="0x02600000"/ -->
+
+			<kernel reserved-size="0x1280000" placement-offset="0x00080000" entry-offset="0x00000000"/> <!-- 0x4c080000-->
+			<dtb    reserved-size="0x20000"   placement-offset="0x02600000"/> <!-- 0x4E600000 -->
+		</boot-image>
+
+		<device-access name="gic" vaddr="0xf1010000" vsize="0x1000"/>
+		<device-access name="gic-vcpu-interface">
+			<reg-mapping gpaddr="0xf1020000" hpaddr="0xf1060000"/>
+		</device-access>
+		<device-access name="vser0" vaddr="0xe6e60000" vsize="0x1000"/>
+		<device-access name="generic-timer-el1-virtual"/>
+		<device-access name="chipid@fff00044"/>
+		<device-access name="clock-controller@e6150000"/>
+
+		<device-access name="gsx@fd010000">
+          <irq-mapping host-irq="0x97" guest-irq="0x97" shared="true"/>
+          </device-access>
+		<device-access name="pfc@e6060000"/>
+		<device-access name="reset-controller@e6160000"/>
+		<device-access name="system-controller@e6180000"/>
+
+		<!-- Shared memory and channel for VNET -->
+		<shmem-access name="shm_vnet_21" mode="r" gpaddr="0xe0000000"/>
+		<shmem-access name="shm_vnet_12" mode="rw" gpaddr="0xe0020000"/>
+		<port-access channel="ch_vnet" sender-local-id="68" receiver-irq-no="108"/>
+
+		<!-- Shared memory and channel for virtual GPU device over VCHAR -->
+		<shmem-access name="shm_vgpu_21" mode="rw" gpaddr="0xf8100000"/>
+		<shmem-access name="shm_vgpu_12" mode="r" gpaddr="0xf8101000"/>
+		<port-access channel="ch_vgpu" sender-local-id="69" receiver-irq-no="109"/>
+
+		<!-- Shared memory for virtual GPU heaps -->
+		<shmem-access name="shm_vgpu_heap" mode="rw" gpaddr="0x500000000"/>
+
+		<!-- Shared memory and channels for VirtIO MMIO -->
+		<shmem-access name="shm_vio_mmio0" mode="rw" gpaddr="0x5DFFFE000"/>
+		<port-access channel="ch_vio_mmio0" sender-local-id="90" receiver-irq-no="163"/>
+
+		<shmem-access name="shm_vio_mmio1" mode="rw" gpaddr="0x5DFFFF000"/>
+		<port-access channel="ch_vio_mmio1" sender-local-id="92" receiver-irq-no="164"/>
+
+	</vm-configuration>
+
+</guest-configuration>

@@ -1,0 +1,57 @@
+inherit: [autotools, make, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only"
+   PKG_VERSION: "1.6.0"
+   PKG_NAME: "iptables"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#   PKG_VERSION: "1.6.0"
+   PKG_DIR: "ext.iptables"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/${PKG_DIR}.git
+    dir: ${PKG_DIR}
+    tag: v1.6.0
+
+buildVars: [PKG_DIR, LIBDIR]
+buildScript: |
+   # Preparing build process (cleanup etc.)
+   rm -rf *
+   rsync -a --delete $1/${PKG_DIR}/ ${PWD}
+   tar -xaf $<<Patches/ext.iptables/iptables_1.6.0_buildFiles.tar.gz>> --strip-components=1
+   find -name "*.t" -type f -delete
+
+   # Run autotools
+   ./autogen.sh
+
+   # Build
+   autotoolsBuild $PWD \
+      --disable-nftables \
+      --enable-libipq \
+      --with-xtlibdir=${LIBDIR}/xtables \
+      --enable-static \
+      --disable-shared
+   find ./include -name \*.h -a \( ! -name \kernel.h ! -name \types.h ! -name filter.h \) | rsync -a --files-from - . ./dist/usr/
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -l ip6tc -I include ext.iptables.iptc
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-iptables" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-iptables " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

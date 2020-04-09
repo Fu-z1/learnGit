@@ -1,0 +1,35 @@
+inherit: [install, make, cmake, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+environment:
+   PKG_VERSION: "1.0"
+
+depends:
+  - system::ext-sqlite-dev
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-npm-sqlite/arm64compiled_npmsqlite3_${PKG_VERSION}.zip
+   digestSHA1: 7695a8ee4d669f502165169ec85a147f3d76a835
+
+buildVars: [CXX]
+buildScript: |
+   rsync -a --delete $1/* ${PWD}
+
+packageScript: |
+   NMPATH=/var/lib/tsd.onlineservices.webapp.management/
+   mkdir -p                           ${PWD}${NMPATH}
+   rsync -a --delete  $1/node_modules ${PWD}${NMPATH}
+
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-npm-sqlite" \
+      -p "emmc.onlineservices" \
+      -m 'wam,wam,0770,/var/lib/tsd.onlineservices.webapp.management/node_modules/sqlite3$'   \
+      -m 'wam,wam,0770,/var/lib/tsd.onlineservices.webapp.management/node_modules/sqlite3/.*' \
+      -o "onlineservices:ext-npm-sqlite " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

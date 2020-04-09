@@ -1,0 +1,75 @@
+inherit: [make, bl2]
+
+metaEnvironment:
+   PKG_LICENSE: "BSD-3-Clause"
+   PKG_VERSION: "1.5"
+   PKG_NAME: "arm-trusted-firmware"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-liblz4-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/arm.trusted.firmware.git
+   #tag: 14.30.40+ yocto3.15
+   branch: main/svw_cns3.0_1480_dev
+
+privateEnvironment:
+   DEBUG: "0"
+   LIFEC_DBSC_PROTECT_ENABLE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_BUS_MONITOR,1),0,1)"
+   BL2_FUSE_REVOC: "0"
+   BL2_FUSE_OPF: "0x86"
+
+buildVars: [CROSS_COMPILE, CONFIG_BOARD, SOC_NAME, DEBUG, LIFEC_DBSC_PROTECT_ENABLE,
+   BL2_FUSE_REVOC, BL2_FUSE_OPF]
+
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   make -e MAKEFLAGS= bl2 bl31 dummytool \
+      DEBUG=${DEBUG} \
+      CFLAGS=-g \
+      LZ4_INCLUDES="-I${BOB_DEP_PATHS['system::ext-liblz4-dev']}/usr/local/include" \
+      LZ4_LDFLAGS="${BOB_DEP_PATHS['system::ext-liblz4-dev']}/usr/lib/liblz4.a" \
+      PLAT=rcar \
+      LSI=${SOC_NAME} \
+      RCAR_DRAM_SPLIT=2 \
+      PMIC_ON_BOARD=0 \
+      RCAR_LOSSY_ENABLE=1 \
+      RCAR_AVS_SETTING_ENABLE=0 \
+      RCAR_SYSTEM_SUSPEND=0 \
+      RCAR_BL2_DCACHE=1 \
+      PSCI_DISABLE_BIGLITTLE_IN_CA57BOOT=0 \
+      RCAR_BL33_EXECUTION_EL=1 \
+      RCAR_LIFEC_NON_SECURE_MASTER=0 \
+      RCAR_REWT_TRAINING=1 \
+      LOG_LEVEL=30 \
+      LIFEC_DBSC_PROTECT_ENABLE=${LIFEC_DBSC_PROTECT_ENABLE} \
+      BL2_FUSE_REVOC=${BL2_FUSE_REVOC} \
+      BL2_FUSE_OPF=${BL2_FUSE_OPF}
+
+
+packageScript: |
+   rm -rf *
+
+   PLATFORM=rcar
+   OUTPUT_DIR=release
+   if [[ ${DEBUG} == "1" ]]; then
+      OUTPUT_DIR=debug
+   fi
+
+   cp $1/build/${PLATFORM}/${OUTPUT_DIR}/bl2.bin .
+   bl2_pad bl2.bin
+
+   cp $1/build/${PLATFORM}/${OUTPUT_DIR}/bl31.bin .
+   bl2_compress bl31.bin
+
+   cp $1/tools/dummy_create/bootparam_sa0.bin .
+   cp $1/tools/dummy_create/cert_header_sa6.bin .
+
+   # copy debug symbols
+   mkdir -p .debug
+   cp -f $1/build/${PLATFORM}/${OUTPUT_DIR}/bl2/bl2.elf .debug/bl2-${CONFIG_BOARD}.elf
+   cp -f $1/build/${PLATFORM}/${OUTPUT_DIR}/bl31/bl31.elf .debug/bl31-${CONFIG_BOARD}.elf
+

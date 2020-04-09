@@ -1,0 +1,23 @@
+inherit: [make, packing-module]
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/axboe/fio.git
+
+buildVars: [CROSS_COMPILE, CC]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   ./configure --cc=${CC}
+   makeParallel CROSS_COMPILE=${CROSS_COMPILE}
+
+packageScript: |
+   mkdir -p usr/bin
+   cp $1/fio usr/bin
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-fio" \
+      -p "emmc.test" \
+      -o "test:ext-fio " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

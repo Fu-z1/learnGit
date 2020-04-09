@@ -1,0 +1,26 @@
+inherit: [packing-module,
+   "sds::asr::resources-origin-pcc",
+   "sds::asr::resources-origin-clm",
+   "sds::asr::resources-origin-vcsa"]
+
+buildScript: |
+   rm -rf *
+   copyCommonResFromPCC
+   copyCommonResFromCLM
+   copyCommonResFromVCSA
+
+packageVars: [VARIANT_LIST, NO_PACKAGE, PCC_RES_VARIANT]
+packageScript: |
+   if [[ ${NO_PACKAGE:-False} == False ]]; then
+      mkdir -p tmp/var/speech/asr
+      cp -r $1/* tmp/var/speech/asr/
+      buildSwupModule -n "sds-asr-resources-common" -p "emmc.sds.asr" -v ${PCC_RES_VARIANT} -o 'sds::asr::resources' -f tmp \
+          -m 'asr,asr,0770,/var/speech/asr$'      \
+          -m 'asr,asr,0770,/var/speech/asr/.*' -- \
+          --variantList $VARIANT_LIST \
+          -U "Partition=rootfs_ro"
+      rm -rf tmp
+   else
+      mkdir -p var/speech/asr
+      cp -r $1/* var/speech/asr/
+   fi

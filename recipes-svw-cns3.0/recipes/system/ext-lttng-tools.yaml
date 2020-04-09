@@ -1,0 +1,49 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later AND LGPL-2.1-or-later)"
+   PKG_VERSION: "2.9.3"
+   PKG_NAME: "lttng-tools"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-liburcu-dev
+  - libs::ext-libxml2-dev
+  - system::ext-libpopt-dev
+  - system::ext-lttng-ust-dev
+  - system::ext-util-linux-dev
+  - use: []
+    depends:
+      - libs::ext-liburcu-target
+      - libs::ext-libxml2-target
+      - system::ext-libpopt-target
+      - system::ext-lttng-ust-target
+      - system::ext-util-linux-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-lttng/lttng-tools-${PKG_VERSION}.tar.bz2
+   digestSHA1: 78fdc9b7fd15f33ac60ea08320d679ce66e18bf7
+
+checkoutVars: [PKG_VERSION]
+buildScript: |
+   export CFLAGS="-I${BOB_DEP_PATHS["libs::ext-libxml2-dev"]}/usr/include/libxml2"
+
+   rsync -a --delete $1/lttng-tools-${PKG_VERSION}/ ${PWD}
+
+   autotoolsBuild ${PWD} --disable-man-pages
+
+packageScript: |
+   autotoolsPackageTarget
+
+   mkdir -p usr/share/xml/lttng/
+   cp $1/src/common/config/session.xsd usr/share/xml/lttng/
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-lttng-tools" \
+      -p "emmc.system" \
+      -o "system:ext-lttng-tools " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps: ["*-target"]

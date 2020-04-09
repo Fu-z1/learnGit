@@ -1,0 +1,62 @@
+inherit: [strip]
+
+packageTools: [toolchain]
+packageVars: [OBJCPY]
+packageScript: |
+   # $1: binary file
+   installStripBinary()
+   {
+      stripBinary "$1" "$OBJCPY"
+   }
+
+   # $1: directory to process
+   installStripAll()
+   {
+      stripAll "$1" "$OBJCPY"
+   }
+
+   # $1: source directory
+   installPackageDev()
+   {
+      # Get rid of libtool files. They cause more harm than good.
+      rsync -aH --exclude '*.la' "$1/" .
+      # fixup pkg-configure files by removing absolute lib dirs
+      find -name '*.pc' -exec sed -i -e '/^Libs/s/-L\/[^ ]* //g' {} \;
+   }
+
+   # arg1: source directory
+   # options: --no-strip       -- do not strip binaries
+   # options: --include-shared -- do not exclude share/ directory
+   installPackageTarget()
+   {
+      local DO_STRIP=1
+      local EXLUDE_SHARED=1
+      local DESTINATION=$1
+
+      while true; do
+         case "${2:-undef}" in
+            --no-strip)
+               DO_STRIP=0
+               shift
+               ;;
+            --include-shared)
+               EXLUDE_SHARED=0
+               shift
+               ;;
+            *)
+               break
+         esac
+      done
+
+      declare -a EXTRA=( )
+      if [[ $EXLUDE_SHARED -eq 1 ]] ;  then
+         EXTRA+=('--exclude' 'share/')
+      fi
+
+      rsync -aH --exclude 'include/' --exclude "lib/cmake/" --exclude 'pkgconfig/' \
+         --exclude '*.la' --exclude '*.a' --exclude '*.exe' ${EXTRA:+"${EXTRA[@]}"} "$DESTINATION/" .
+
+      if [[ ${DO_STRIP} -eq 1 ]] ; then
+         installStripAll .
+      fi
+   }

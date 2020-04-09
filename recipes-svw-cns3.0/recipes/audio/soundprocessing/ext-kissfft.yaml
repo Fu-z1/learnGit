@@ -1,0 +1,34 @@
+inherit: [buildenv, make, packing-module]
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+environment:
+   PKG_VERSION: "1.3.0"
+   KISSFFT_DIR: "kiss_fft130"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-kissfft/kissfft-${PKG_VERSION}.zip
+   digestSHA1: "292f06a7a6fcb658e01d97dad71cfd679741b3fb"
+
+buildVars: [PKG_VERSION, CC, AR, KISSFFT_DIR]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   echo "kiss_fftr: tools/kiss_fftr.c tools/kiss_fftr.h kiss_fft.c kiss_fft.h _kiss_fft_guts.h" >> ${PWD}/${KISSFFT_DIR}/Makefile
+   echo "	${CC} kiss_fft.c tools/kiss_fftr.c -I. -lm -c" >> ${PWD}/${KISSFFT_DIR}/Makefile
+   echo "	${AR} rcs libkissfft.a kiss_fft.o kiss_fftr.o" >> ${PWD}/${KISSFFT_DIR}/Makefile
+   makeParallel -C ${PWD}/${KISSFFT_DIR} kiss_fftr
+
+packageTools: [buildenv]
+packageScript: |
+   mkdir -p ./usr
+   rsync -a --delete $1/${KISSFFT_DIR}/kiss_fft.h $1/${KISSFFT_DIR}/tools/kiss_fftr.h ./usr/include/
+   rsync -a --delete $1/${KISSFFT_DIR}/libkissfft.a ./usr/lib/
+   tsd-buildenv-create-shim.sh -p usr -L lib -l kissfft -I include ext.kissfft
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-kissfft" \
+      -p "emmc.audio.soundprocessing" \
+      -o "audio.soundprocessing:ext-kissfft " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

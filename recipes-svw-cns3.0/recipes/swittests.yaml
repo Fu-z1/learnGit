@@ -1,0 +1,25 @@
+inherit: [root]
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+   TSD_BUILDENV_ENABLE_RPATH: "1"
+   TSD_BUILDENV_IS_SWITTEST: "true"
+   VARIANTS: "301001"
+
+depends:
+   - media::mediaapplication::tsd-media-mib3-swittests
+   - radio::tsd-radio-swittests
+   - radio::tsd-radio-middleware-swittests
+   - system::system-lifecycle::tsd-systemstate-manager-app-swittests
+   - hmi::tsd-gesture-service-swittests
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   cp -a $1/* .

@@ -1,0 +1,64 @@
+inherit: [packing-utils]
+
+packageTools: [pkg, mib3-packing]
+packageVarsWeak: [MODULE_VERSION, PACKAGE_VERSION]
+packageVars: [MANIFEST_VERSION, CHECKSUM]
+packageScript: |
+   # builds a specific swup module which has a script installer.
+   # Arguments:
+   #  -p PACKAGE_NAME   -  package name of the module
+   #  -f FILE           -  is required by 'mib3-packing module'
+   #                       just set a script folder
+   #  -s SCRIPT         -  adds a executable script
+   #  -e EXTRA_FILE     -  adds a file - "ExtraFile" - to the script
+   #  -U USERDATA       -  add user data, e.g. '-U "Optional=True"'
+   buildSwupScriptModule() {
+      PACKAGE_NAME=""
+      FILE=""
+      SCRIPT=""
+      EXTRA_FILES=""
+      OPTIND=1
+      USERDATA=""
+      CONFDATA=""
+      while getopts ":p:f:s:e:U:C:" opt; do
+         case $opt in
+            p) PACKAGE_NAME="$OPTARG" ;;
+            f) FILE="$OPTARG" ;;
+            s) SCRIPT="$OPTARG" ;;
+            e) EXTRA_FILES="${EXTRA_FILES} $OPTARG" ;;
+            U) USERDATA="${USERDATA} -U $OPTARG" ;;
+            C) CONFDATA="${CONFDATA} -C $OPTARG" ;;
+            :) break ;;
+            \?)
+               echo "invalid option $OPTARG" >&2
+               exit 1 ;;
+         esac
+      done
+      shift $((OPTIND-1))
+
+      SCRIPT_JSON="{\"Script\":\"${SCRIPT}\",\"ExtraFiles\":["
+      for i in ${EXTRA_FILES}; do
+         SCRIPT_JSON+="{\"Path\":\"${i}\"},"
+      done
+      SCRIPT_JSON+="{}]}"
+
+      mib3-packing module \
+         --packageName ${PACKAGE_NAME} \
+         --file ${FILE} \
+         --fileType "scriptinstaller" \
+         --packageType="module" \
+         --packageVersion ${PACKAGE_VERSION} \
+         --manifestVersion ${MANIFEST_VERSION} \
+         --moduleVersion ${MODULE_VERSION} \
+         --script ${SCRIPT_JSON} \
+         -o _swupdata \
+         ${USERDATA} \
+         ${CONFDATA}
+
+      if [[ ${CHECKSUM} == "true" ]] ; then
+         mib3-packing checksum \
+            --manifestVersion ${MANIFEST_VERSION} \
+            -o _swupdata \
+            --type "module"
+      fi
+   }

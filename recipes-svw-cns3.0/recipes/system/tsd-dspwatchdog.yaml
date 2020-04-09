@@ -1,0 +1,38 @@
+inherit: [buildenv, werror, packing-module]
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-drivers-dev
+  - system::tsd-watchdog-mib3-api-dev
+
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - system::tsd-drivers-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.dspwatchdog.git
+   dir: tsd.dspwatchdog
+   tag: mqb_sop1_eu-1.0.0
+   branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildModules tsd.dspwatchdog
+
+packageScript: |
+   buildenvPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "dspwatchdog" \
+      -p "emmc.system" \
+      -o "system:tsd-dspwatchdog " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps:
+  - "*-target"

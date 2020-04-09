@@ -1,0 +1,68 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+
+depends:
+  - basic-services::rsi-service-registry::ext-vw-rsi-serviceregistry-dev
+  - basic-services::rsi-service-registry::tsd-rsi-serviceregistryadapter-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - system::tsd-common-dev
+  - system::ext-poco-dev
+  - system::tsd-common-daemon-dev
+  - use: []
+    depends:
+      - basic-services::rsi-service-registry::ext-vw-rsi-serviceregistry-target
+      - basic-services::rsi-service-registry::tsd-rsi-serviceregistryadapter-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - system::tsd-common-target
+      - system::ext-poco-target
+      - system::tsd-common-daemon-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.rsi.serviceregistry.git
+    dir: tsd.rsi.serviceregistry
+    tag: mqb_sop1_eu-3.6.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+         # copy certificates and key (this can be removed if VKMS works)
+         mkdir -p dist/var/lib/tsd.rsi.serviceregistry
+         rsync -a --delete $1/tsd.rsi.serviceregistry/res/ dist/var/lib/tsd.rsi.serviceregistry
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+         # copy certificates and key (this can be removed if VKMS works)
+         mkdir -p dist/var/lib/tsd.rsi.serviceregistry
+         rsync -a --delete $1/tsd.rsi.serviceregistry/res/ dist/var/lib/tsd.rsi.serviceregistry
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p var/lib/tsd.rsi.serviceregistry
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "rsi-serviceregistry" \
+            -p "emmc.basic-svcs" \
+            -m 'rsi,rsi,0775,/var/lib/tsd.rsi.serviceregistry$'                       \
+            -m 'rsi,rsi,0774,/var/lib/tsd.rsi.serviceregistry/.*'                     \
+            -o "basic-services.rsi-service-registry:tsd-rsi-serviceregistry " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

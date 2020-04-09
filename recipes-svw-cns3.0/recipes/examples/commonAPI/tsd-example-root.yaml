@@ -1,0 +1,33 @@
+inherit: [buildenv]
+
+depends:
+   - system::tsd-common-dev
+   - communication::ext-commonapi-runtime-dev
+   - communication::tsd-communication-binding-dev
+   - examples::commonAPI::tsd-example-client-dev
+   - examples::commonAPI::tsd-example-server-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-architecture/tsd.example.root.git
+      dir: tsd.example.root
+      branch: develop
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+         - system::tsd-common-dev
+         - communication::ext-commonapi-runtime-dev
+         - communication::tsd-communication-binding-dev
+         - examples::commonAPI::tsd-example-client-dev
+         - examples::commonAPI::tsd-example-server-dev
+
+   target:
+      packageScript: |
+         buildenvPackageTarget

@@ -1,0 +1,40 @@
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_BUILD_DOCUMENTATION_TARGETS: "ON"
+
+depends:
+   # navigation
+   - navigation::tsd-nav-cloud-comm-client-api-doc
+   - navigation::tsd-nav-cloud-comm-client-doc
+   - navigation::tsd-nav-sdk-mapdisplay-doc
+   - navigation::tsd-nav-sdk-mapdisplay-api-doc
+   - navigation::tsd-nav-mapdisplay-bridge-doc
+   - navigation::tsd-nav-mapdisplay-mib3-doc
+   - navigation::tsd-nav-middleware-interface-doc
+   - navigation::tsd-nav-middleware-nds-2_5_2-doc
+   - navigation::tsd-rds-runtime-doc
+   - navigation::tsd-nav-sdk-mapdataservice-api-doc
+   - navigation::tsd-nav-sdk-mapdataservice-doc
+   - navigation::tsd-nav-mapdataservice-mib3-api-doc
+   - navigation::tsd-nav-mapdataservice-mib3-doc
+   - navigation::tsd-nav-updatemanager-api-doc
+   - navigation::tsd-nav-updatemanager-mib3-ext-api-doc
+   - navigation::tsd-nav-updatemanager-mib3-doc
+   - navigation::tsd-nav-updatemanager-here-wrapper-mib3-doc
+   - navigation::tsd-nav-sdk-pathfinder-api-doc
+   - navigation::tsd-nav-psd-v20-doc
+
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   cp -a $1/* .

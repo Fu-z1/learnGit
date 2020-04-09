@@ -1,0 +1,223 @@
+inherit: [cmake, make, install, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - system::bsp::ext-weston-dev
+ - system::ext-wayland-dev
+ - system::ext-expat-dev
+ - system::bsp::ext-wayland-egl-dev
+ - system::bsp::ext-opengl-dev
+ - system::ext-dbus-dev
+ - system::ext-sqlite-dev
+ - audio::audiorouter::ext-alsa-lib-dev
+ - hmi::ext-freetype-dev
+ - libs::ext-libpng-dev
+ - libs::ext-bzip2-dev
+ - libs::ext-zlib-dev
+ - use: []
+   depends:
+    - system::ext-sqlite-target
+    - system::bsp::ext-weston-target
+    - system::ext-wayland-target
+    - system::ext-expat-target
+    - system::bsp::ext-wayland-egl-target
+    - system::bsp::ext-opengl-target
+    - audio::audiorouter::ext-alsa-lib-target
+    - hmi::ext-freetype-target
+    - libs::ext-libpng-target
+    - libs::ext-bzip2-target
+    - libs::ext-zlib-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/ext.web.browser.git
+   dir: browser
+   tag: mqb_sop1_eu-1.147.0
+
+environment:
+   DEVELOPER_SW: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+
+multiPackage:
+   base:
+      depends:
+       - onlineservices::ext-web-browser-toolchain
+
+      buildTools: [toolchain]
+      buildScript: |
+         for i in "${@:2}" ; do
+            CMAKE_CXX_FLAGS+=" -I$i/usr/include"
+            CMAKE_LINKER_FLAGS+=" -L$i/usr/$LIBDIR -Wl,-rpath-link=$i/usr/$LIBDIR"
+            LIB_DIRS+="-L$i/usr/$LIBDIR -Wl,-rpath-link=$i/usr/$LIBDIR " 
+         done
+
+         rm -rf * .cmake-done
+
+         cmakeConfigure \
+            -DLINK_FLAGS="-L${BOB_DEP_PATHS["onlineservices::ext-web-browser-toolchain"]}/usr/${LIBDIR} -L${BOB_DEP_PATHS["system::ext-dbus-dev"]}/usr/${LIBDIR}" \
+            -DLIBCEF_LIBS="-lnss3 -lnssutil3 -lsmime3 -lnspr4 -lplc4 -lplds4 -Wl,-rpath=${PWD}/aarch64/cef_bin/libmedia_peer ${LIB_DIRS}" \
+            -DWESTON_LIB_DIR=${BOB_DEP_PATHS["system::bsp::ext-weston-dev"]}/usr/${LIBDIR} \
+            -DWESTON_INCLUDE_DIR:PATH=${BOB_DEP_PATHS["system::bsp::ext-weston-dev"]}/usr/include \
+            -DWAYLAND_LIB_DIR:PATH=${BOB_DEP_PATHS["system::ext-wayland-dev"]}/usr/${LIBDIR} \
+            -DWAYLAND_EGL_LIB_DIR:PATH=${BOB_DEP_PATHS["system::bsp::ext-wayland-egl-dev"]}/usr/${LIBDIR} \
+            -DWAYLAND_INCLUDE_DIR:PATH=${BOB_DEP_PATHS["system::ext-wayland-dev"]}/usr/include \
+            -DEGL_LIB_DIR:PATH=${BOB_DEP_PATHS["system::bsp::ext-opengl-dev"]}/usr/${LIBDIR} \
+            -DEGL_INCLUDE_DIR:PATH=${BOB_DEP_PATHS["system::bsp::ext-opengl-dev"]}/usr/include \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPROJECT_ARCH=aarch64 $1/browser \
+            -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" \
+            -DCMAKE_SHARED_LINKER_FLAGS="$CMAKE_LINKER_FLAGS" \
+            -DACS_USE_EXT_MEDIA_DECODER=0 \
+            -DCMAKE_VERBOSE_MAKEFILE=0 \
+            -G "Unix Makefiles"
+         makeParallel
+
+      packageScript: rsync -a --delete $1/* ${PWD}
+
+   target:
+      depends:
+       - onlineservices::ext-web-browser-toolchain
+       - onlineservices::ext-web-browser-base
+
+      buildVars: [SYSROOT, LIBDIR]
+      buildTools: [toolchain]
+      buildScript: |
+         rsync -a --delete ${BOB_DEP_PATHS[onlineservices::ext-web-browser-base]}/* ${PWD}
+
+         mkdir -p rootfs
+         rsync -a --delete ${BOB_DEP_PATHS[onlineservices::ext-web-browser-toolchain]}/* rootfs/
+
+         cp -r ${BOB_DEP_PATHS[onlineservices::ext-web-browser-toolchain]}/.pki rootfs/
+         cp -r $1/browser/resources ${PWD}
+
+      packageVars: [LIBDIR, DEVELOPER_SW]
+      packageScript: |
+         mkdir -p usr/bin
+         mkdir -p usr/bin/web_browser
+         mkdir -p usr/${LIBDIR}/
+         BIN_PATH=$1/aarch64/cef_bin/cefsimple/Release                          #if you use Ninja, remove "/Release"
+         rsync -a --delete ${BIN_PATH}/cefsimple usr/bin/web_browser
+         rsync -a --delete ${BIN_PATH}/chrome-sandbox usr/bin/web_browser
+         rsync -a --delete ${BIN_PATH}/*.pak usr/bin/web_browser
+         rsync -a --delete ${BIN_PATH}/*.dat usr/bin/web_browser
+         rsync -a --delete ${BIN_PATH}/*.dat usr/bin/web_browser
+         rsync -a --delete ${BIN_PATH}/*.bin usr/bin/web_browser
+         rsync -a --delete ${BIN_PATH}/locales usr/bin/web_browser
+         for LIB in `find $1 -name "*.so*"`;
+         do
+         cp -auv ${LIB} usr/${LIBDIR}
+         done
+         rsync -a $1/rootfs/* --exclude=".pki" ${PWD}
+         mkdir -p home/browser/
+         cp -r $1/rootfs/.pki home/browser/
+         rm -f usr/${LIBDIR}/libdbus* #there should be no libdbus
+         cp $1/fake_dbus/libFake_DBus.so usr/${LIBDIR}/libdbus-1.so.3
+
+         rm -f usr/${LIBDIR}/libnssckbi* # there should be only symlink to libnssckbi (has certs->moved to truststore)
+         ln -sf /etc/ssl/cert/libnssckbi.so usr/${LIBDIR}
+
+         cat <<- EOF > usr/bin/start_raw_browser.sh
+         #!/bin/sh
+
+         URL=file:///tsd/volkswagen-logo.png
+         instanceId=0
+         for arg in "\$@"
+         do
+            case \$arg in
+             --url=*)
+               URL=\${arg#*=}
+               echo "URL is set to \$URL"
+              ;;
+             --instanceId=*)
+               instanceId=\${arg#*=}
+               echo "Instance ID is set to \$instanceId"
+               ;;
+            *)
+               #unknown argument
+               ;;
+            esac
+         done
+
+
+
+         PARAMETERS=\$@
+         DEBUGGING_PORT="--remote-debugging-port="
+         NSSDB_PATH="/var/lib/tsd.onlineservices.web.engine/.pki/nssdb"
+
+         #disable Debug Ports in 0-SW
+         if [ "$DEVELOPER_SW" == "True" ]; then
+            PORTNMBR=\$((50301+\$instanceId))
+            echo "Using debugging port: \$PORTNMBR"
+            DEBUGGING_PORT="\${DEBUGGING_PORT}\$PORTNMBR "
+         else
+            DEBUGGING_PORT="\${DEBUGGING_PORT}0"
+         fi
+         TASKSETCMD=""
+
+         if [ -z "\$CPU_AFFINITY_WEBBROWSER" ]; then
+            echo "No CPU affinity for the webbrowser found!"
+         else
+            TASKSETCMD="/usr/bin/taskset \${CPU_AFFINITY_WEBBROWSER}"
+         fi
+
+         TSD_COMMON_CONFIG=web-engine.conf CMD="X_USE_BROWSER_DECODER=1 XDG_RUNTIME_DIR=/run/display LD_PRELOAD=/usr/lib/libwayland-client.so.0 COMMONAPI_CONFIG=/etc/tsd.onlineservices.web.engine/commonapi.ini \$TASKSETCMD /usr/bin/web_browser/tsd.onlineservices.web.engine  --url=\$URL --disable-gpu-sandbox --use-gl=egl --no-sandbox --ozone-platform=egltest --use-input-fep --hide-image-placeholder-for-broken-image --hide-main-scrollbars --disable-pinch --allow-insecure-localhost --allow-running-insecure-content --disable-gpu-watchdog --certificates-path=\$NSSDB_PATH \$DEBUGGING_PORT \$PARAMETERS"
+
+         echo "CMD: \${CMD}"
+         eval \$CMD
+
+         EOF
+         chmod +x usr/bin/start_raw_browser.sh
+
+         installStripAll ${PWD}
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-web-browser" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:ext-web-browser " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+
+      provideDeps: ['*-target']
+      inherit:
+       - packing-module
+
+   dev:
+      depends:
+       - name: onlineservices::ext-web-browser-target
+         use: [result, environment]
+       - onlineservices::ext-web-browser-base
+
+      buildVars: [LIBDIR]
+      buildScript: |
+         rsync -a --delete ${BOB_DEP_PATHS[onlineservices::ext-web-browser-target]}/* ${PWD}
+         cp -au $1/browser/aarch64/cef_bin/include usr/
+         cp -au $1/browser/aarch64/cef_bin/libeglplatform usr/include/
+         cp -au ${BOB_DEP_PATHS[onlineservices::ext-web-browser-base]}/aarch64/cef_bin/libcef_dll/*.a usr/${LIBDIR}
+
+      packageTools: [buildenv]
+      packageScript: |
+         rsync -a --delete $1/* ${PWD}
+         ln -s libeglplatform_shim.so.1 usr/lib/libeglplatform_shim.so
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -I . -I include ext.web.browser
+
+      provideDeps: ['*-dev']
+      provideVars:
+         WEB_BROWSER_LIBS: "-lcef -lnss3 -lnssutil3 -lsmime3 -lnspr4 -lplc4 -lplds4\
+            \ -lcef_dll_wrapper -leglplatform_shim"
+
+   toolchain:
+      buildScript: |
+         rsync -a --delete $1/browser/aarch64/20160927_poky.2.0.1.NFBE.rootfs.setup/ ${PWD}
+
+      packageScript: |
+         mkdir -p usr/${LIBDIR}
+         mkdir -p usr/share
+         rsync -a --delete $1/libs/* usr/${LIBDIR}
+         rsync -a --delete $1/fonts usr/share/
+         cp -r $1/.pki ${PWD}
+         mv usr/${LIBDIR}/libatomic.so.1.1.0 usr/${LIBDIR}/libatomic.so.1
+         rm -f usr/${LIBDIR}/libasound.so.2.0.0
+         rm -f usr/${LIBDIR}/libsqlite3.so.0.8.6
+         rm -f usr/${LIBDIR}/libdbus*

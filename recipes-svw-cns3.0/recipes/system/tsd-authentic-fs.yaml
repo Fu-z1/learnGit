@@ -1,0 +1,189 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - onlineservices::ext-libfuse-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - onlineservices::ext-libfuse-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.authentic.fs.git
+   dir: tsd.authentic.fs
+   tag: mqb_sop1_eu-1.9.0
+   branch: master_mqb_sop1_eu
+
+buildScript: |
+   function renameBinaries()
+   {
+      for FILE in $(find dist -name "tsd.authentic.fs*"); do
+         mv ${FILE} ${FILE/.fs/.fs.$1}
+      done
+   }
+
+packageScript: |
+   # param 1: name
+   # param 2: user
+   function buildSwupModuleSecureFs()
+   {
+      buildenvPackageTarget install
+      d=$(mktemp -d)
+      rsync -a --delete --exclude ".debug" ./ $d
+      buildSwupModule -n "authentic-fs-$1" \
+         -p "emmc.system" \
+         -m "root,$2,0750,/usr/bin/tsd.authentic.fs.$1" \
+         -o "system:tsd-authentic-fs-$1 " -f $d -- \
+         -U "Partition=rootfs_ro"
+      rm -rf $d
+   }
+
+multiPackage:
+   ks:
+      depends:
+        - system::tee::ta::tsd-tee-storage-ta-ks-dev
+        - use: []
+          depends:
+            - system::tee::ta::tsd-tee-storage-ta-ks-target
+
+      buildScript: |
+         buildenvBuildAll
+         renameBinaries ks
+
+      packageScript: |
+         buildSwupModuleSecureFs ks ks
+
+      provideDeps: ['*-target']
+
+   swapsf:
+      depends:
+        - system::tee::ta::tsd-tee-storage-ta-swapsf-dev
+        - use: []
+          depends:
+            - system::tee::ta::tsd-tee-storage-ta-swapsf-target
+
+      buildScript: |
+         buildenvBuildAll
+         renameBinaries swapsf
+
+      packageScript: |
+         buildSwupModuleSecureFs swapsf activation
+
+      provideDeps: ['*-target']
+
+   nav:
+      depends:
+        - system::tee::ta::tsd-tee-storage-ta-nav-dev
+        - use: []
+          depends:
+            - system::tee::ta::tsd-tee-storage-ta-nav-target
+
+      buildScript: |
+         buildenvBuildAll
+         renameBinaries nav
+
+      packageScript: |
+         buildSwupModuleSecureFs nav nav
+
+      provideDeps: ['*-target']
+
+   sal:
+      depends:
+        - system::tee::ta::tsd-tee-storage-ta-sal-dev
+        - use: []
+          depends:
+            - system::tee::ta::tsd-tee-storage-ta-sal-target
+
+      buildScript: |
+         buildenvBuildAll
+         renameBinaries sal
+
+      packageScript: |
+         buildSwupModuleSecureFs sal pulse-access
+
+      provideDeps: ['*-target']
+ 
+   iaa:
+      depends:
+        - system::tee::ta::tsd-tee-storage-ta-iaa-dev
+        - use: []
+          depends:
+            - system::tee::ta::tsd-tee-storage-ta-iaa-target
+
+      buildScript: |
+         buildenvBuildAll
+         renameBinaries iaa
+
+      packageScript: |
+         buildSwupModuleSecureFs iaa iaa
+
+      provideDeps: ['*-target']
+
+   cs:
+      depends:
+        - system::tee::ta::tsd-tee-storage-ta-cs-dev
+        - use: []
+          depends:
+            - system::tee::ta::tsd-tee-storage-ta-cs-target
+
+      buildScript: |
+         buildenvBuildAll
+         renameBinaries cs
+
+      packageScript: |
+         buildSwupModuleSecureFs cs online
+
+      provideDeps: ['*-target']
+
+
+   tpfs:
+      depends:
+        - system::tee::ta::tsd-tee-storage-ta-tpfs-dev
+        - use: []
+          depends:
+            - system::tee::ta::tsd-tee-storage-ta-tpfs-target
+
+      buildScript: |
+         buildenvBuildAll
+         renameBinaries tpfs
+
+      packageScript: |
+         buildSwupModuleSecureFs tpfs wam
+
+      provideDeps: ['*-target']
+
+   vssl:
+      depends:
+        - system::tee::ta::tsd-tee-storage-ta-vssl-dev
+        - use: []
+          depends:
+            - system::tee::ta::tsd-tee-storage-ta-vssl-target
+
+      buildScript: |
+         buildenvBuildAll
+         renameBinaries vssl
+
+      packageScript: |
+         buildSwupModuleSecureFs vssl root
+
+      provideDeps: ['*-target']
+
+   test:
+      depends:
+        - system::tee::ta::tsd-tee-storage-ta-test-dev
+        - system::ext-cppunit-google-mock-dev
+        - use: []
+          depends:
+            - system::tee::ta::tsd-tee-storage-ta-test-target
+
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_TEST_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_TEST_TARGETS=1 \
+            tsd.authentic.fs.test.storage
+
+      packageScript: |
+         buildenvPackageTarget install
+
+      provideDeps: ['*-target']

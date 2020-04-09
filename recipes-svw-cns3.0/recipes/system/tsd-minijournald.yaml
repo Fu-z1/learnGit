@@ -1,0 +1,28 @@
+inherit: [buildenv, werror, packing-module]
+
+depends:
+  - system::ext-systemd-dev
+  - use: []
+    depends:
+      - system::ext-systemd-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.minijournald.git
+   dir: tsd.minijournald
+   tag: 1.2.0
+   branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildAll
+
+packageScript: |
+   buildenvPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "minijournald" \
+      -p "emmc.system" \
+      -o "system:tsd-minijournald " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+provideDeps: ['*-target']

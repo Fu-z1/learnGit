@@ -1,0 +1,37 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends: []
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webapp.manifest.git
+    dir: tsd.onlineservices.webapp.manifest
+    branch: master_mqb_sop1_eu
+buildVars: [AUTOCONF_HOST]
+
+multiPackage:
+   dev:
+      packageScript: buildenvPackageDev
+      provideDeps: []
+
+   
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-webapp-manifest" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-webapp-manifest " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

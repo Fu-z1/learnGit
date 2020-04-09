@@ -1,0 +1,30 @@
+inherit: [packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Base Functions"
+
+environment:
+   FW_NAME: "ext-firmware-si47xx"
+   FW_VERSION: "20190130.1"
+   FW_INSTALL_PATH: "lib/firmware/si47xx"
+
+checkoutSCM:
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/${FW_NAME}/${FW_NAME}-${FW_VERSION}.tar.gz
+    digestSHA1: "80be0e61e55fada6fa6012dd141edec8ed5fd77e"
+
+multiPackage:
+   target:
+      buildScript: |
+         rsync -a --delete $1/ $PWD/
+      packageVars: [FW_NAME, FW_VERSION, FW_INSTALL_PATH]
+      packageScript: |
+         mkdir -p ${FW_INSTALL_PATH}
+         rsync -a  --delete $1/${FW_NAME}-${FW_VERSION}/*.* ${FW_INSTALL_PATH}
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-tuner-firmware" \
+            -p "emmc.radio" \
+            -o "radio:ext-tuner-firmware " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

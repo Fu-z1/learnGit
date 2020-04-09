@@ -1,0 +1,49 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Kartendarstellung"
+
+depends:
+        #- navigation::tsd-nav-configdata-dev
+  - navigation::tsd-nav-crypto-api-dev
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-pathfinder-mib3-api-dev
+  - navigation::tsd-nav-sdk-mapdataservice-api-dev
+  - navigation::tsd-nav-sdk-mapdisplay-api-dev
+  - navigation::tsd-nav-sdk-pathfinder-api-dev
+  - navigation::tsd-nav-sdk-svgrasterizer-api-dev
+  - navigation::tsd-nav-sdk-svgrasterizer-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mapdisplay.bridge.git
+   dir: tsd.nav.mapdisplay.bridge
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildScript: |
+   build(){
+      buildenvBuildAll
+   }
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+      dev:
+        buildScript: build $@
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  unittests:
+      depends:
+         - navigation::tsd-nav-utils-dev
+      buildScript: |
+         buildenvTestAll -DMAPDISPLAY_UNITTESTS=1
+      packageScript: |
+         buildenvPackageTests
+
+  doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,7 @@
+--- a/tsd.stationdb.api/CMakeLists.txt
++++ b/tsd.stationdb.api/CMakeLists.txt
+@@ -1,2 +1,4 @@
+ add_submodules(definition)
+ add_subdirectory(binding)
++
++add_submodules(common)

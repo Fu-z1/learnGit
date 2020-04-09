@@ -1,0 +1,59 @@
+inherit: [buildenv, cloud, rootfs, patch, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Service Cloud"
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_ENABLE_RPATH: "true"
+   VARIANTS: "301001"
+
+depends:
+  - navigation::tsd-nav-cloud-mw-dev
+  - navigation::tsd-nav-routing-cloud-mib3-dev
+  - navigation::tsd-nav-mapdataservice-mib3-cloud-dev
+  - navigation::ext-prometheus-client-cpp-dev
+  - navigation::tsd-nav-middleware-nds-2_5_2-dev
+  - navigation::tsd-nav-cloud-service-penaltymapprovider-dev
+  - system::ext-boost-dev
+  - system::ext-boost-iostream-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.service.routecalcworker.git
+   dir: tsd.nav.cloud.service.routecalcworker
+   branch: snapshot
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+       dev:
+          buildScript: |
+             buildenvBuildAll
+
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+       target:
+          buildScript: |
+             buildenvBuildAll
+          packageScript: |
+             buildenvPackageTarget
+             d=$(mktemp -d)
+             rsync -a --delete --exclude ".debug" ./ $d
+             buildSwupModule -n "routecalcworker" \
+                -p "emmc.navigation.cloud-services" \
+                -o "navigation.cloud-services:routecalcworker " -f $d -- \
+                -U "Partition=rootfs_ro"
+             rm -rf $d
+          provideDeps: ['*-dev']
+
+       unittests:
+          buildScript: |
+             buildenvTestAll
+          packageScript: |
+             buildenvPackageTests

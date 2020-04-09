@@ -1,0 +1,72 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - audio::microphoneprocessing::ext-icc-dev
+  - audio::microphoneprocessing::tsd-audio-microphoneprocessing-tuning-mib3-dev
+  - audio::microphoneprocessing::tsd-audio-pulsemodule-microphoneprocessing-dev
+  - use: []
+    depends:
+      - audio::microphoneprocessing::ext-icc-target
+      - audio::microphoneprocessing::tsd-audio-pulsemodule-microphoneprocessing-target
+      - audio::audiorouter::tsd-audio-pulsemodule-communication-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.icc.mib3.git
+   dir: tsd.audio.icc.mib3
+#   tag: 1.5.1
+   branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=0
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         rm $d/usr/lib/libtsd.audio.icc.mib3.validation.so
+         buildSwupModule -n "icc-mib3" \
+            -p "emmc.audio.micprg" \
+            -o "audio.microphoneprocessing:tsd-audio-icc-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   validation-dev:
+      buildScript: |
+         buildenvBuildModules \
+         tsd.audio.icc.mib3.validation
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   validation-target:
+      buildScript: |
+         buildenvBuildModules \
+         tsd.audio.icc.mib3.validation
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "icc-mib3-validation" \
+            -p "emmc.audio.micprg" \
+            -o "audio.microphoneprocessing:tsd-audio-icc-mib3-validation " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

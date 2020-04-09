@@ -1,0 +1,40 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "LGPL-2.1"
+   PKG_VERSION: "2.2.02.176"
+   PKG_NAME: "libdevmapper"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-lvm/LVM${PKG_VERSION}.tgz
+   digestSHA1: c81acc5e68656144a378e8f49a3cd6dc2598287e
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   rsync -a --delete $1/LVM${PKG_VERSION}/ .
+   export ac_cv_func_malloc_0_nonnull=yes
+   export ac_cv_func_realloc_0_nonnull=yes
+   autotoolsConfigureOnly . --disable-nls --enable-static_link --enable-shared_link
+
+   make device-mapper
+
+   mkdir -p ${PWD}/dist
+   make install_device-mapper DESTDIR=${PWD}/dist
+   chmod +w -R dist/*
+
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageDev $1
+   target:
+      packageScript: |
+         autotoolsPackageTarget $1
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libdevmapper" \
+            -p "emmc.system" \
+            -o "system::ext-libdevmapper" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

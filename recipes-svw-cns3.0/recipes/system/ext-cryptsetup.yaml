@@ -1,0 +1,86 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later AND LGPL-2.1-or-later)"
+   PKG_VERSION: "2.0.0"
+   PKG_NAME: "cryptsetup"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - audio::audiorouter::ext-json-c-static-dev
+  - system::ext-libdevmapper-dev
+  - system::ext-libgcrypt-dev
+  - system::ext-libpopt-static-dev
+  - system::ext-util-linux-static-dev
+  - use: []
+    depends:
+      - audio::audiorouter::ext-json-c-static-target
+        # libcrypt is only needed to sattisfy aclocal during build
+        # process.
+        #- system::ext-libgcrypt-target
+      - system::ext-libpopt-static-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-system/ext.cryptsetup.git
+   tag: v${PKG_VERSION}
+
+multiPackage:
+   min:
+      buildScript: |
+         rsync -a --delete $1/ .
+         export AL_OPTS=-I${BOB_DEP_PATHS['system::ext-libgcrypt-dev']}/usr/share/aclocal/
+         autotoolsBuild . \
+            --disable-udev \
+            --disable-selinux \
+            --disable-nls \
+            --disable-keyring \
+            --disable-cryptsetup \
+            --disable-integritysetup \
+            --disable-cryptsetup-reencrypt \
+            --disable-kernel_crypto \
+            --disable-python \
+            --with-crypto_backend=kernel \
+            --enable-static=yes \
+            --enable-shared=no \
+            --enable-static-cryptsetup
+      packageScript: |
+         autotoolsPackageTarget $1
+         rm -rf usr/sbin/veritysetup
+         rm -rf usr/lib/tmpfiles.d
+         mv usr/sbin/veritysetup.static usr/sbin/veritysetup
+
+   "":
+      depends:
+         - use: []
+           depends:
+            - system::ext-libdevmapper-target
+            - system::ext-util-linux-target
+      buildScript: |
+         rsync -a --delete $1/ .
+         export AL_OPTS=-I${BOB_DEP_PATHS['system::ext-libgcrypt-dev']}/usr/share/aclocal/
+         autotoolsBuild . \
+            --disable-udev \
+            --disable-selinux \
+            --disable-nls \
+            --disable-keyring \
+            --disable-cryptsetup \
+            --enable-integritysetup \
+            --disable-cryptsetup-reencrypt \
+            --disable-kernel_crypto \
+            --disable-python \
+            --with-crypto_backend=kernel \
+            --enable-static=no \
+            --enable-shared=yes
+
+      provideDeps: ['*-target']
+      packageScript: |
+         autotoolsPackageTarget $1
+         rm -rf usr/lib/tmpfiles.d
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-cryptsetup" \
+            -p "emmc.system" \
+            -o "system::ext-cryptsetup" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module, capigen, werror]
+
+depends:
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - communication::ext-commonapi-runtime-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - communication::tsd-communication-binding-target
+      - communication::ext-commonapi-runtime-target
+      - system::tsd-common-target
+
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:onlineservice/jpcc.online.coreservices.api.git
+    dir: jpcc.online.coreservices.api
+    branch: master
+
+checkoutDeterministic: True
+checkoutScript: CapiGenProcessFIDLFiles jpcc.online.coreservices.api
+
+buildScript: buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "jpcc-online-coreservices-api" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:jpcc-online-coreservices-api" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

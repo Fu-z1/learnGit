@@ -1,0 +1,80 @@
+inherit: [cmake, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_VERSION: "1.8.0"
+   PKG_NAME: "ViWi UserManagment Service"
+   PKG_PATCH_VERSION: "1.8.0"
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden"
+
+depends:
+  - libs::ext-openssl-dev
+  - system::ext-poco-dev
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+      - system::ext-poco-target
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.usermanagement.git
+    dir: ext.vw.rsi.usermanagement
+    branch: CNS_SOPP1_KPM8139094
+    #tag: SOP1_v1.40.1
+    #tag: SOP1_v1.40.5
+    #branch: master_mqb_sop1_eu
+
+buildScript: |
+   CMAKE_SRC_PATH="$1/ext.vw.rsi.usermanagement"
+   cmakeConfigure -DSHARED_LIBRARY_VERSION=00
+   makeParallel
+   cmakeInstall install
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+
+         # for debug there is a postfix
+         DbgPostFix=""
+         if [ "${CMAKE_BUILD_TYPE:-}" == "Debug" ]; then
+            DbgPostFix="d"
+         fi
+
+         rsync -a --delete $1/dist/ .
+         if [ "${LIBDIR:-}" != "lib" ]; then
+            mv ./usr/lib ./usr/${LIBDIR}
+         fi
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR}        \
+                                        -l MIBServiceLib${DbgPostFix}          \
+                                        -l MIBUserManagementLib${DbgPostFix}   \
+                                        ext.vw.rsi.usermanagement
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         # the following libs are already build with ServiceRegistry, dont't distribute again
+         find ./usr/${LIBDIR}/ -name "*MIBSecurityLib*" -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceLib*"  -delete
+         find ./usr/${LIBDIR}/ -name "*MIBUtilLib*"     -delete
+         find ./usr/${LIBDIR}/ -name "*MIBBapLib*"      -delete
+         find ./usr/${LIBDIR}/ -name "*MIBMappingServiceLib*" -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceDataLib*"    -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceDBLib*"      -delete
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-vw-rsi-usermanagement" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:ext-vw-rsi-usermanagement " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

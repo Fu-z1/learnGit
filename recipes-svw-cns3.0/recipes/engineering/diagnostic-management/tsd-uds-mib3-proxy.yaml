@@ -1,0 +1,51 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - hmi::tsd-dsi-cpp-dev
+
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - hmi::tsd-dsi-cpp-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.mib3.proxy.git
+    dir: tsd.uds.mib3.proxy
+    tag: mqb_sop1_eu-1.7.5
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "uds-mib3-proxy" \
+            -p "emmc.engineering.diagnostic-management" \
+            -o "engineering.diagnostic-management:tsd-uds-mib3-proxy " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

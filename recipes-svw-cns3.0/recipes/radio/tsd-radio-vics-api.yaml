@@ -1,0 +1,48 @@
+inherit: [buildenv, packing-module, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Application and Services"
+   PKG_ARTEFACT_TYPE: "API"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-binding-dev
+  - communication::ext-commonapi-runtime-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-binding-target
+      - communication::ext-commonapi-runtime-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.vics.api.git
+    dir: tsd.radio.vics.api
+    branch: cns_mqb_sop1
+
+checkoutDeterministic: True
+checkoutScript: CapiGenProcessFIDLFiles tsd.radio.vics.api
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "radio-vics-api" \
+            -p "emmc.radio" \
+            -o "radio:tsd-radio-vics-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

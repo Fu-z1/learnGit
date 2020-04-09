@@ -1,0 +1,76 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+   TSD_BUILDENV_ENABLE_TEST_RUN_TARGETS: "1"
+   TSD_BUILDENV_ENABLE_RPATH: "1"
+
+depends:
+  - basic-services::persistence::tsd-persistence-client-mib3-unittests
+  - basic-services::rsi-library::tsd-rsi-common-unittests
+  - navigation::tsd-nav-middleware-interface-unittests
+  - navigation::tsd-nav-middleware-nds-2_5_2-unittests
+  - navigation::tsd-nav-sdk-mapdataservice-unittests
+  - navigation::tsd-nav-mapdataservice-mib3-unittests
+  - navigation::tsd-nav-psd-v15-unittests
+  #- navigation::tsd-nav-psd-v20-unittests # only for sop1, don't cherry-pick to navi/master
+  - navigation::tsd-nav-sdk-adashorizon-unittests
+  - navigation::tsd-nav-sdk-mapdisplay-unittests
+  - navigation::tsd-nav-sdk-svgrasterizer-unittests
+  - navigation::tsd-nav-sdk-pathfinder-unittests
+  - navigation::tsd-nav-sdk-traffic-unittests
+  - navigation::tsd-rds-runtime-unittests
+  - navigation::tsd-nav-cloud-comm-client-unittests
+  - navigation::tsd-nav-cloud-mw-unittests  # Compilefehler
+   ####### new unittests
+  - navigation::tsd-nav-sdk-common-api-unittests
+  - navigation::tsd-nav-sdk-namebuilder-unittests
+  - navigation::tsd-nav-sdk-roadnumberbuilder-unittests
+  - navigation::tsd-nav-sdk-mapmatching-api-unittests
+  - navigation::tsd-nav-sdk-pathfinder-api-unittests
+  - navigation::tsd-nav-utils-unittests
+  - navigation::tsd-nav-rsi-viwi-unittests
+  - navigation::tsd-nav-utils-api-unittests
+  - navigation::tsd-nav-sdk-adashorizon-api-unittests
+  - navigation::tsd-nav-sdk-mapdisplay-api-unittests
+  - navigation::tsd-nav-sdk-prednav-api-unittests
+  - navigation::tsd-nav-sdk-traffic-api-unittests
+  - navigation::tsd-nav-traffic-apps-unittests
+  - navigation::tsd-nav-traffic-clouddecoder-unittests  #Compilefehler
+  - navigation::tsd-nav-traffic-clouddecoder-api-unittests  #Compilefehler
+  - navigation::tsd-nav-traffic-unittests
+  - navigation::tsd-nav-sdk-prednav-unittests  #Compilefehler
+  - navigation::tsd-nav-prednav-unittests
+  - navigation::tsd-nav-cloud-comm-client-api-unittests
+  - navigation::tsd-nav-mapdisplay-bridge-unittests
+  - navigation::tsd-nav-mapdisplay-mib3-unittests
+  - navigation::tsd-nav-cloud-common-cpp-unittests
+  - navigation::tsd-nav-cloud-mw-api-unittests
+  - navigation::tsd-nav-input-mib3-api-unittests
+  - navigation::tsd-nav-input-mib3-unittests
+  - navigation::tsd-nav-sdk-input-api-unittests
+  - navigation::tsd-nav-sdk-input-unittests
+  - navigation::tsd-nav-memory-mib3-api-unittests
+  - navigation::tsd-nav-memory-mib3-unittests
+  - navigation::tsd-nav-routing-cloud-mib3-unittests
+  - navigation::tsd-nav-pathfinder-mib3-unittests
+  - navigation::tsd-nav-sdk-input-mapcode-unittests
+  - navigation::tsd-nav-imageservices-mib3-unittests
+  - navigation::tsd-nav-sdk-addressformatter-unittests
+  - navigation::tsd-nav-sdk-utils-unittests
+  - navigation::tsd-nav-vehicle-mib3-unittests
+  - navigation::tsd-nav-sdk-imageservices-unittests
+  - system::tsd-cppsqlite-nds-unittests
+  - libs::tsd-rasterimage-unittests
+  - libs::tsd-fontprocessor-unittests
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   cp -a $1/* .

@@ -1,0 +1,45 @@
+inherit: [packing-module, patch]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-Vorintegration"
+
+multiPackage:
+   high-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "high"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_REGION=tw,SW_HMI_BRAND=vw,HW_DISPLAY_VARIANT=1280640,SW_HMI_PROJECT=MQB)"
+
+      checkoutSCM:
+         scm: url
+         url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}src/hmi/hmi_deliveries/HMI_H40.1087.43.0.1/ext.vw.twn.high.tar.gz
+         digestSHA1: "d7763042d73e110ed19b2672b762362511533d78"
+
+   low-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "low"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_REGION=tw,SW_HMI_BRAND=vw,HW_DISPLAY_VARIANT=800480,SW_HMI_PROJECT=MQB)"
+
+      checkoutSCM:
+         scm: git
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.vw.twn.low.git"
+         tag: '39.2.7.1'
+
+checkoutDeterministic: true
+
+buildScript: |
+   rm -rf *
+   ln -sf $1/* .
+
+packageVars: [VARIANT_NAME, VARIANT_LIST]
+packageScript: |
+   mkdir -p tmp/tsd
+   rsync -a --delete $1/ext.vw.twn.${VARIANT_NAME}/tsd/* tmp/tsd
+   mkdir -p tmp/var/lib/hmi
+   buildSwupModule -n "pcc-hmi-vw-twn" -p "emmc.hmi" -v "${VARIANT_NAME}" \
+       -m 'display,display,0700,/var/lib/hmi$'    \
+       -m 'display,display,0700,/var/lib/hmi/.*'  \
+       -o 'hmi::pcc-hmi-vw-twn' -f tmp -- \
+       --variantList $VARIANT_LIST \
+       --requiredBy '{"Packages":[{"PackageName":"prescripts.hmi-delete","Flags":"Selected"},{"PackageName":"scripts.set-hmi-files","Flags":"Selected"},{"PackageName":"emmc.hmi.ext-zulu","Flags":"Selected"}]}' \
+       -U "Partition=rootfs_ro"
+   rm -rf tmp

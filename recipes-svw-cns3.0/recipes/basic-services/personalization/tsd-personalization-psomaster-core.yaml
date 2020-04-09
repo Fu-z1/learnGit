@@ -1,0 +1,45 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - basic-services::personalization::tsd-personalization-psomanager-dev
+
+   # runtime deps
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - basic-services::personalization::tsd-personalization-psomanager-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-personalization/tsd.personalization.psomaster.core.git
+   dir: tsd.personalization.psomaster.core
+   tag: mqb_sop1_eu-3.7.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "personalization-psomaster-core" \
+            -p "emmc.basic-svcs.personalization" \
+            -o "basic-services.personalization:tsd-personalization-psomaster-core " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

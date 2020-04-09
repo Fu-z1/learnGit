@@ -1,0 +1,5 @@
+archive:
+   -
+     backend: http
+     url: "http://mmi1.local"
+     flags: [download, upload]

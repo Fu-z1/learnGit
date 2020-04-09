@@ -1,0 +1,19 @@
+scmOverrides:
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:*-navigation/tsd.nav.sdk.namebuilder.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:*-navigation/tsd.nav.sdk.roadnumberbuilder.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:*-navigation/tsd.nav.sdk.addressformatter.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu

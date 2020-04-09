@@ -1,0 +1,53 @@
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_RESPONSIBLE: "MMI-TTS"
+
+depends:
+   - use: []
+     depends:
+        - sds::tts::ve::ext-ve-common
+        - sds::tts::ve::ext-ve-enu-ava-ml-high
+        - if: "$(or,$(flagIsSet,${VARIANTS},SW_HMI_REGION,eu),$(flagIsSet,${VARIANTS},SW_HMI_REGION,rdw))"
+          depends:
+             - sds::tts::ve::ext-ve-arw-maged-high
+             - sds::tts::ve::ext-ve-bgb-daria-high
+             - sds::tts::ve::ext-ve-czc-zuzana-high
+             - sds::tts::ve::ext-ve-dad-sara-high
+             - sds::tts::ve::ext-ve-dun-claire-ml-high
+             - sds::tts::ve::ext-ve-eng-malcolm-high
+             - sds::tts::ve::ext-ve-eng-serena-high
+             - sds::tts::ve::ext-ve-fif-satu-high
+             - sds::tts::ve::ext-ve-frf-monique-high
+             - sds::tts::ve::ext-ve-ged-ina-high
+             - sds::tts::ve::ext-ve-grg-melina-high
+             - sds::tts::ve::ext-ve-huh-mariska-high
+             - sds::tts::ve::ext-ve-iti-alice-ml-high
+             - sds::tts::ve::ext-ve-non-nora-high
+             - sds::tts::ve::ext-ve-plp-ewa-high
+             - sds::tts::ve::ext-ve-ptb-luciana-high
+             - sds::tts::ve::ext-ve-ptp-catarina-high
+             - sds::tts::ve::ext-ve-ror-ioana-high
+             - sds::tts::ve::ext-ve-rur-katya-ml-high
+             - sds::tts::ve::ext-ve-sks-laura-high
+             - sds::tts::ve::ext-ve-spe-marisol-ml-high
+             - sds::tts::ve::ext-ve-spm-paulina-high
+             - sds::tts::ve::ext-ve-sws-alva-high
+             - sds::tts::ve::ext-ve-hrh-lana-high
+             - sds::tts::ve::ext-ve-trt-cem-ml-high
+             - sds::tts::ve::ext-ve-trt-yelda-high
+        - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,cn)"
+          depends:
+             - sds::tts::ve::ext-ve-cah-sin-ji-pro
+             - sds::tts::ve::ext-ve-mnc-tian-tian-pro
+        - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,jp)"
+          depends:
+             - sds::tts::ve::ext-ve-jpj-ayane-high
+        - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,kr)"
+          depends:
+             - sds::tts::ve::ext-ve-kok-yuna-high
+        - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,tw)"
+          depends:
+             - sds::tts::ve::ext-ve-mnt-mei-jia-pro
+
+provideDeps: ['*']

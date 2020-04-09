@@ -1,0 +1,63 @@
+inherit: [install, make, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "BSD-3-Clause"
+   PKG_VERSION: "2.0.9"
+   #PKG_NAME: "iperf"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#    PKG_VERSION: "2.0.9"
+   PKG_NAME: "ext.iperf2"
+   PKG_INSTALL_DIR: "Install"
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-libs/${PKG_NAME}.git
+    dir: ${PKG_NAME}
+    tag: PCC_2.0.9
+
+buildVars: [PKG_NAME, PKG_INSTALL_DIR, SYSROOT, TARGET_OS, AR, CC, CXX, LD, CPP, LIBDIR,
+   AUTOCONF_HOST]
+buildTools: [toolchain]
+buildScript: |
+   # Definition of common stuff for building the ISC DHCP server
+   CONF_OPTIONS=(
+      --prefix=${PWD}/${PKG_INSTALL_DIR}
+      --host=arm
+   )
+
+   # Preparing build process (cleanup etc.)
+   rsync -a --delete $1/${PKG_NAME}/ ${PWD}
+   mkdir -p ${PKG_INSTALL_DIR}
+
+   # Configuring and building the iperf3 package
+   ./configure "${CONF_OPTIONS[@]}"
+   make
+   make install
+
+   # Copying binaries to dist directory
+   mkdir -p dist/usr/bin dist/usr/include dist/${LIBDIR}
+   cp -R ${PKG_INSTALL_DIR}/bin/* dist/usr/bin
+   #cp -R ${PKG_INSTALL_DIR}/include/* dist/usr/include
+   #cp -R ${PKG_INSTALL_DIR}/lib/* dist/${LIBDIR}
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageScript: |
+         installPackageTarget "$1/dist"
+         cp -R "$1/dist/usr/include" usr/include/
+         cp -R "$1/dist/${LIBDIR}" "${LIBDIR}
+
+   target:
+      packageScript: |
+         installPackageTarget "$1/dist"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-iperf" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-iperf " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

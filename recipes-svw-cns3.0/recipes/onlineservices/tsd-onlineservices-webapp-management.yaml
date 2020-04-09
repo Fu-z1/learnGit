@@ -1,0 +1,139 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - system::tsd-common-daemon-dev
+ - system::tsd-common-dev
+ - system::tsd-vkms-client-dev
+ - onlineservices::tsd-onlineservices-webapp-controller-dev
+ - onlineservices::tsd-onlineservices-webapp-storage-dev
+ - onlineservices::tsd-onlineservices-webapp-manager-dev
+ - onlineservices::tsd-onlineservices-framework-dev
+ - system::ext-cppunit-google-mock-dev
+ - use: []
+   depends:
+    - system::tsd-common-daemon-target
+    - system::tsd-common-target
+    - onlineservices::tsd-onlineservices-framework-target
+    - onlineservices::tsd-onlineservices-webapp-controller-target
+    - onlineservices::tsd-onlineservices-webapp-storage-target
+    - onlineservices::tsd-onlineservices-webapp-manager-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webapp.management.git
+   dir: tsd.onlineservices.webapp.management
+   tag: mqb_sop1_eu-1.144.3
+environment:
+   DEVELOPER_SW: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+
+multiPackage:
+   dev:
+      buildVars: [DEVELOPER_SW]
+      buildScript: |
+         if [[ $DEVELOPER_SW == "True" ]]; then
+            DEVELOPER_SW=1
+         else
+            DEVELOPER_SW=0
+         fi
+
+
+         buildenvBuildAll -DCDEV_ACCESS=$DEVELOPER_SW -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+
+         rsync -a $1/tsd.onlineservices.webapp.management/cfg ${PWD}
+
+      packageScript: |
+         buildenvPackageDev
+         mkdir -p etc/tsd.onlineservices.webapp.management/
+         rsync -a --delete $1/cfg/* etc/tsd.onlineservices.webapp.management/
+
+      provideDeps: ['*-dev']
+
+   target:
+      buildVars: [DEVELOPER_SW]
+      buildScript: |
+         if [[ $DEVELOPER_SW == "True" ]]; then
+            DEVELOPER_SW=1
+         else
+            DEVELOPER_SW=0
+         fi
+
+         buildenvBuildAll -DCDEV_ACCESS=$DEVELOPER_SW -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+
+         rsync -a $1/tsd.onlineservices.webapp.management/cfg ${PWD}
+
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p etc/tsd.onlineservices.webapp.management/
+         rsync -a --delete $1/cfg/* etc/tsd.onlineservices.webapp.management/
+         mkdir -p var/lib/tsd.onlineservices.webapp.management
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "webapp-management" \
+            -p "emmc.onlineservices" \
+            -m 'wam,wam,0770,/var/lib/tsd.onlineservices.webapp.management$'   \
+            -m 'wam,wam,0770,/var/lib/tsd.onlineservices.webapp.management/.*' \
+            -o "onlineservices:tsd-onlineservices-webapp-management " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+      provideDeps: ['*-target']
+      inherit:
+       - packing-module
+
+   pkg:
+      depends:
+       - name: onlineservices::tsd-onlineservices-webapp-management-target
+         use: [result, deps]
+
+      buildScript: |
+         for dep in ${BOB_DEP_PATHS[@]}
+         do
+         if [[ $dep == *"onlineservices-webapp"*"-target"*  ]]
+         then
+            echo "copying dep:"$dep
+            rsync -a $dep/* ${PWD}
+         fi
+         done
+
+      packageScript: |
+         rsync -a --delete $1/* ${PWD}
+         mkdir -p pkg/
+         rsync -a --delete --exclude=".debug" $1/* pkg/
+         buildSwupModule -n onlineservices-webapp-management -p "emmc" \
+                         -o "tsd-onlineservices-webapp-management" -f pkg/ \
+                         -m "wam,wam,0700,/var/lib/tsd.onlineservices.webapp.management$" -- \
+                         -U "Partition=rootfs_ro"
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   autotests-host:
+      depends:
+       - test::ext-cucumber-cpp-dev
+       - test::tsd.test.utils-dev
+       - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DTSD_BUILDENV_ENABLE_TEST_TARGETS_SWTESTS=1 -DHOST_BUILD=1
+      packageScript: |
+         buildenvPackageDev
+   autotests-target:
+      depends:
+       - test::ext-cucumber-cpp-target
+       - test::tsd.test.utils-dev
+       - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DTSD_BUILDENV_ENABLE_TEST_TARGETS_SWTESTS=1
+      packageScript: |
+         buildenvPackageDev
+

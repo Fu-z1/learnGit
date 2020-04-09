@@ -1,0 +1,116 @@
+inherit: [buildenv, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - name: basic-services::persistence::tsd-persistence-api-dev
+    use: [deps, environment, result]
+    forward: true
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - basic-services::persistence::tsd-persistence-testinterface-api-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::persistence::tsd-persistence-api-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - basic-services::persistence::tsd-persistence-testinterface-api-target
+
+checkoutVars: [CONFIG_BOARD]
+checkoutSCM:
+  - if: $(eq,${CONFIG_BOARD:-},"lg")
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.persistence.client.git
+    dir: tsd.persistence.client.mib3
+    branch: master_mqb_sop1_eu
+  - if: $(ne,${CONFIG_BOARD:-},"lg")
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.persistence.client.mib3.git
+    dir: tsd.persistence.client.mib3
+    #tag: mqb_sop1_eu-4.9.0
+    branch: main/svw_cns3.0_1480_dev
+
+multiPackage:
+   dev:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM, TSD_PERSISTENCE_BUILD_APPS]
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_CLIENT_MIB3_LINK_SHARED=1 \
+            -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0} \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=${TSD_PERSISTENCE_BUILD_APPS:-0} -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=${TSD_PERSISTENCE_BUILD_APPS:-0}
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM, TSD_PERSISTENCE_BUILD_APPS]
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_CLIENT_MIB3_LINK_SHARED=1 \
+            -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0} \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=${TSD_PERSISTENCE_BUILD_APPS:-0} -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=${TSD_PERSISTENCE_BUILD_APPS:-0}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "client-mib3" \
+            -p "emmc.basic-svcs.persistence" \
+            -o "basic-services.persistence:tsd-persistence-client-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"
+
+   # initPers App. Needed only for early hardware samples. Will not be
+   # part of release sw.
+      inherit:
+        - packing-module
+   initPersApp-pkg:
+      depends:
+        - name: basic-services::persistence::tsd-persistence-client-mib3-target
+          environment:
+             TSD_PERSISTENCE_BUILD_APPS: "1"
+      inherit: [packing-module]
+
+      buildScript: |
+         mkdir -p sbin
+         cp ${BOB_DEP_PATHS['basic-services::persistence::tsd-persistence-client-mib3-target']}/usr/bin/tsd.persistence.client.mib3.app.InitPersistence sbin/
+
+      packageScript: |
+         buildSwupModule -n 'initpersistence' \
+                -p "emmc.basic-svcs.persistence" \
+                -o 'basic-services.persistence:tsd-persistence-client-mib3-initPersApp-pkg' -f $1 -- \
+                -U "Partition=rootfs_ro"
+
+   unittests:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM]
+      buildScript: |
+         buildenvTestAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0}
+      packageScript: |
+         buildenvPackageTests
+
+   apps:
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_CLIENT_MIB3_LINK_SHARED=1 \
+            -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0} \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+      packageScript: |
+         buildenvPackageDev install
+
+   doc:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM, TSD_PERSISTENCE_BUILD_APPS]
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll -DTSD_PERSISTENCE_CLIENT_MIB3_LINK_SHARED=1 \
+            -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0} \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=${TSD_PERSISTENCE_BUILD_APPS:-0} -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=${TSD_PERSISTENCE_BUILD_APPS:-0}
+      packageScript: buildenvPackageDoc
+
+provideVars:
+   TSD_PERSISTENCE_EMMC: "${TSD_PERSISTENCE_EMMC:-0}"
+   TSD_PERSISTENCE_EEPROM: "${TSD_PERSISTENCE_EEPROM:-0}"
+   TSD_PERSISTENCE_HOST: "${TSD_PERSISTENCE_HOST:-0}"
+   TSD_PERSISTENCE_PATH: "${TSD_PERSISTENCE_PATH}"

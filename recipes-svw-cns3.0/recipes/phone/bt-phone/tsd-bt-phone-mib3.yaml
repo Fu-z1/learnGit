@@ -1,0 +1,73 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - system::tsd-common-dev
+ - system::tsd-common-daemon-dev
+ - communication::tsd-communication-dev
+ - system::tsd-threadmessages-dev
+ - phone::bt-middleware::tsd-blueware-mib3-bluego-dev
+ - phone::bt-handsfree::tsd-bt-handsfree-mib3-dev
+ - phone::bt-devicemanagement::tsd-bt-management-mib3-dev
+ - phone::bt-mediacontroller::tsd-bt-media-mib3-dev
+ - phone::bt-messaging::tsd-bt-messaging-mib3-dev
+ - phone::bt-organizer::tsd-organizer-mib3-dev
+
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - system::tsd-common-daemon-target
+    - communication::tsd-communication-target
+    - system::tsd-threadmessages-target
+    - phone::bt-middleware::tsd-blueware-mib3-bluego-target
+    - phone::bt-handsfree::tsd-bt-handsfree-mib3-target
+    - phone::bt-devicemanagement::tsd-bt-management-mib3-target
+    - phone::bt-mediacontroller::tsd-bt-media-mib3-target
+    - phone::bt-messaging::tsd-bt-messaging-mib3-target
+    - phone::bt-organizer::tsd-organizer-mib3-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.phone.mib3.git
+   dir: tsd.bt.phone.mib3
+   tag: mqb_sop1_eu-1.51.1
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+
+         mkdir -p dist/etc/tsd.bt.phone.mib3
+         cp -au $1/tsd.bt.phone.mib3/depl/commonapi.ini dist/etc/tsd.bt.phone.mib3
+
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p var/lib/tsd.bt.phone.mib3
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "bt-phone-mib3" \
+            -p "emmc.phone.bt-phone" \
+            -m 'phone,phone,0770,/var/lib/tsd.bt.phone.mib3$'   \
+            -m 'phone,phone,0770,/var/lib/tsd.bt.phone.mib3/.*' \
+            -o "phone.bt-phone:tsd-bt-phone-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

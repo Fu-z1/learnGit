@@ -1,0 +1,54 @@
+inherit: [install, patch, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only"
+   PKG_VERSION: "5.40"
+   PKG_NAME: "stunnel"
+   PKG_PATCH_VERSION: "5.40_PCC_VKMS"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+   PKG_VERSION: "5.40"
+   #PKG_NAME: "stunnel"
+
+depends:
+  - libs::ext-openssl-vkms-engine-dev
+  - use: []
+    depends:
+      - libs::ext-openssl-vkms-engine-target
+
+checkoutVars: [PKG_VERSION, PKG_NAME]
+checkoutSCM:
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-${PKG_NAME}/${PKG_NAME}-${PKG_VERSION}.tar.gz
+    digestSHA1: 7dfbbcab4dd56458e74410c788ddc7bcbe2179ba
+
+checkoutDeterministic: true
+checkoutScript: |
+   cd ${PKG_NAME}-${PKG_VERSION}
+   patchApplySeries -p1 -n new $<<Patches/ext.stunnel/*.patch>>
+
+buildVars: [PKG_INSTALL_DIR, SYSROOT, TARGET_OS, AR, CC, CXX,
+   LD, CPP, LIBDIR, AUTOCONF_HOST]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/${PKG_NAME}-${PKG_VERSION}/ .
+   autoreconf -i
+   autotoolsBuild . --with-ssl=${BOB_DEP_PATHS[libs::ext-openssl-dev]}/usr
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageScript: |
+         installPackageDev "$1/dist"
+
+   target:
+      packageScript: |
+         installPackageTarget "$1/dist"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-stunnel" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-stunnel " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

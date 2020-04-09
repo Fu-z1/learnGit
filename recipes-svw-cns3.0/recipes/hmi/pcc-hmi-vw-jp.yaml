@@ -1,0 +1,45 @@
+inherit: [packing-module, patch]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-Vorintegration"
+
+multiPackage:
+   high-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "high"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_REGION=jp,SW_HMI_BRAND=vw,HW_DISPLAY_VARIANT=1280640,SW_HMI_PROJECT=MQB)"
+
+      checkoutSCM:
+         scm: url
+         url: ${DEFAULT_DOWNLOAD_SCM_URL}src/hmi/hmi_deliveries/HMI_H40.60.09.01/ext.vw.jp.high.tar.gz
+         digestSHA1: "761d46288918dfd8627e297997491b0288127e4d"
+
+   low-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "low"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_REGION=jp,SW_HMI_BRAND=vw,HW_DISPLAY_VARIANT=800480,SW_HMI_PROJECT=MQB)"
+
+      checkoutSCM:
+         scm: url
+         url: ${DEFAULT_DOWNLOAD_SCM_URL}src/hmi/hmi_deliveries/HMI_H40.60.09.01/ext.vw.jp.low.tar.gz
+         digestSHA1: "87715c290788ec4853c6327ce2582361a5394210"
+
+checkoutDeterministic: true
+
+buildScript: |
+   rm -rf *
+   ln -sf $1/* .
+
+packageVars: [VARIANT_NAME, VARIANT_LIST]
+packageScript: |
+   mkdir -p tmp/tsd
+   rsync -a --delete $1/ext.vw.jp.${VARIANT_NAME}/tsd/* tmp/tsd
+   mkdir -p tmp/var/lib/hmi
+   buildSwupModule -n "pcc-hmi-vw-jp" -p "emmc.hmi" -v "${VARIANT_NAME}"  \
+       -m 'display,display,0700,/var/lib/hmi$'    \
+       -m 'display,display,0700,/var/lib/hmi/.*'  \
+       -o 'hmi::pcc-hmi-vw-jp' -f tmp -- \
+       --variantList $VARIANT_LIST \
+       --requiredBy '{"Packages":[{"PackageName":"prescripts.hmi-delete","Flags":"Selected"},{"PackageName":"scripts.set-hmi-files","Flags":"Selected"},{"PackageName":"emmc.hmi.ext-zulu","Flags":"Selected"}]}' \
+       -U "Partition=rootfs_ro"
+   rm -rf tmp

@@ -1,0 +1,57 @@
+inherit: [root, rootfs,devdrop]
+depends:
+   -
+      if: $(eq,${TARGET_ENVIRONMENT},"zr3")
+      name: toolchain::aarch64-linux-gnu
+      use: [tools, environment]
+      forward: True
+   -
+      if: $(eq,${TARGET_ENVIRONMENT},"lg")
+      name: toolchain::lg::aarch64-poky-agl
+      use: [tools, environment]
+      forward: True
+   ###stand-alone###
+
+buildVars: [COPYSYMBOLS]
+buildScript: |
+   rm -rf *
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[navi]
+
+   for dep in ${tocopy[@]} ; do
+      cp -au ${dep}/* "${PWD}/"
+   done
+
+   if [[ $COPYSYMBOLS == 0 ]];
+      then
+         # move symbols
+         mkdir -p symbols
+         move_symbols "${PWD}" symbols
+         tar -zcf symbols.tgz -C symbols .
+         rm -rf symbols
+   fi
+
+multiPackage:
+   zr3:
+      environment:
+         TARGET_OS: "linux"
+         COPYSYMBOLS: "0"
+         TARGET_ENVIRONMENT: "zr3"
+   lg:
+      environment:
+         TARGET_OS: "linux"
+         COPYSYMBOLS: "0"
+         TARGET_ENVIRONMENT: "lg"
+   host:
+      environment:
+         TARGET_OS: "linux"
+         COPYSYMBOLS: "0"
+         TARGET_ENVIRONMENT: "host"
+
+
+packageScript: |
+   rsync -a --delete $1/ .
+   env

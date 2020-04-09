@@ -1,0 +1,42 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-swupdate-client-dev
+  - system::tsd-swupdate-viewcontroller-dev
+  - hmi::tsd-dsi-cpp-dev
+  - use: []
+    depends:
+      - system::tsd-swupdate-client-target
+      - system::tsd-swupdate-viewcontroller-target
+      - hmi::tsd-dsi-cpp-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.defaulthmi.git
+   dir: tsd.swupdate.defaulthmi
+   tag: 2.2.0
+   branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-defaulthmi" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-defaulthmi " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

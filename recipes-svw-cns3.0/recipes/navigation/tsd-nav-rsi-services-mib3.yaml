@@ -1,0 +1,85 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+# If built against the target -swittests, the repository tsd.nav.us.verifier.mib3 is checked out, too.
+# If built against the target -swittests, the test cases in the folder binarytests can be linked against and include headers from tsd.nav.us.verifier.mib3
+
+depends:
+   - navigation::tsd-nav-sdk-common-api-dev
+   - navigation::tsd-nav-rsi-viwi-dev
+   - navigation::tsd-nav-pathfinder-mib3-api-dev
+   - navigation::tsd-nav-traffic-mib3-api-dev
+   - navigation::tsd-nav-prednav-api-dev
+   - navigation::tsd-nav-sdk-prednav-api-dev
+   - navigation::tsd-nav-input-mib3-api-dev
+   - navigation::tsd-nav-memory-mib3-api-dev
+   - navigation::tsd-nav-utils-api-dev
+   - navigation::tsd-nav-utils-dev
+   - navigation::tsd-nav-imageservices-mib3-dev
+   - navigation::tsd-nav-middleware-interface-dev
+   - navigation::tsd-nav-mapdataservice-mib3-api-dev
+   - navigation::tsd-nav-mapdisplay-mib3-dev
+   - navigation::tsd-nav-vehicle-mib3-dev
+   - navigation::tsd-nav-sdk-addressformatter-dev
+   - navigation::tsd-nav-sdk-mapdisplay-api-dev
+   - navigation::tsd-nav-traffic-mib3-api-dev
+   - navigation::tsd-nav-cdn-mib3-dev
+   - libs::tsd-rasterimage-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.rsi.services.mib3.git
+      dir: tsd.nav.rsi.services.mib3
+      tag: mqb_sop1_eu-150.0.1    #navi-src (src of the navigation)
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:tip-integration/tsd.nav.us.verifier.mib3.git
+      dir: tsd.nav.us.verifier.mib3
+      tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+      if: "$(ne,${TSD_BUILDENV_IS_SWITTEST:-0},0)"
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.cppunit.git
+      dir: ext.cppunit
+      branch: develop
+      if: "$(ne,${TSD_BUILDENV_IS_SWITTEST:-0},0)"
+
+#TODO: Add the binary tests here!
+
+multiPackage:
+   ? ""
+   :
+      #inherit: [navi_compflags_werror_sanitize]
+      inherit: [navi_compflags_sanitize]
+      multiPackage:
+       dev:
+          buildScript: |
+             buildenvBuildAll
+    # "${TSD_BUILDENV_IS_SWITTEST:+-DTSD_NAV_RSI_VIWI_NAVCLIENTS=${TSD_BUILDENV_IS_SWITTEST}}"
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   swittests:
+      buildVars: [TSD_NAV_RSI_VIWI_NAVCLIENTS]
+      buildScript: |
+         #buildenvBuildAll -DTSD_NAV_RSI_VIWI_NAVCLIENTS=${TSD_BUILDENV_IS_SWITTEST}
+         buildenvTestAll -DTSD_NAV_RSI_VIWI_NAVCLIENTS=${TSD_BUILDENV_IS_SWITTEST}
+      privateEnvironment:
+         #TODO  add class files here too? so lassen nach 107 baseline neu anschauen, achtung: config.yaml so lange nicht NAVI_ALLOWED_WARNINGS rausschmeissen!
+         #CXXFLAGS: "${CXXFLAGS:-} -Werror -Wno-error=deprecated-declarations ${JENKINS_HOME:+ -Wno-deprecated-declarations -Wno-unused-parameter} ${TSD_BUILDENV_IS_SWITTEST:+-DTSD_NAV_RSI_VIWI_NAVCLIENTS=${TSD_BUILDENV_IS_SWITTEST}}"
+         CXXFLAGS: "${CXXFLAGS:-} -Werror ${NAVI_ALLOWED_WARNINGS:-} ${JENKINS_HOME:+${NAVI_SUPPRESSED_WARNINGS:-}}\
+            \ ${CXXFLAGS_ADDRESS_SANITIZE:-} ${TSD_BUILDENV_IS_SWITTEST:+-DTSD_NAV_RSI_VIWI_NAVCLIENTS=${TSD_BUILDENV_IS_SWITTEST}}"
+         LDFLAGS: "${LDFLAGS:-} ${LDFLAGS_ADDRESS_SANITIZE:-}"
+      packageScript: |
+         #buildenvPackageDev install
+         buildenvPackageTests

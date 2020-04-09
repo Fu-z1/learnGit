@@ -1,0 +1,63 @@
+inherit: [cmake, packing-module]
+
+depends:
+  - libs::ext-curl-dev
+  - libs::ext-openssl-dev
+  - libs::ext-nghttp2-dev
+  - libs::ext-c-ares-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/ext.aws.sdk.cpp.git
+   tag: 1.4.29
+buildVars: [LIBDIR]
+buildScript: |
+   if gcc --version|grep -q -F '7.3.' ; then 
+      export CFLAGS="${CFLAGS}  -Wno-error=noexcept-type"
+      export CXXFLAGS="${CXXFLAGS:-} -Wno-error=noexcept-type"
+   fi
+   export CPPFLAGS="-I${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/include -I${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/include -I${BOB_DEP_PATHS["libs::ext-nghttp2-dev"]}/usr/include"
+   export LDFLAGS="-L${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/${LIBDIR} -L${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/${LIBDIR} -L${BOB_DEP_PATHS["libs::ext-nghttp2-dev"]}/usr/${LIBDIR} -L${BOB_DEP_PATHS["libs::ext-c-ares-dev"]}/usr/${LIBDIR}"
+   export LD_LIBRARY_PATH="${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-nghttp2-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-c-ares-dev"]}/usr/${LIBDIR}"
+   export LT_SYS_LIBRARY_PATH="${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-nghttp2-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-c-ares-dev"]}/usr/${LIBDIR}"
+   export LIBS="-lssl -lcrypto -lz -lnghttp2"
+
+   cmakeConfigure \
+      -DBUILD_ONLY="sqs;elasticache;monitoring;s3" \
+      -DBUILD_CURL=0 \
+      -DBUILD_OPENSSL=0 \
+      -DCURL_INCLUDE_DIR=${BOB_DEP_PATHS[libs::ext-curl-dev]}/usr/include \
+      -DCURL_LIBRARY=${BOB_DEP_PATHS[libs::ext-curl-dev]}/usr/${LIBDIR}/libcurl.so \
+      -DOPENSSL_INCLUDE_DIR=${BOB_DEP_PATHS[libs::ext-openssl-dev]}/usr/include \
+
+   makeParallel
+   cmakeInstall install
+
+packageVars: [LIBDIR]
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+         tsd-buildenv-create-shim.sh -p usr -L lib64 \
+            -l aws-cpp-sdk-access-management -l aws-cpp-sdk-cognito-identity -l aws-cpp-sdk-core \
+            -l aws-cpp-sdk-iam -l aws-cpp-sdk-sqs -l aws-cpp-sdk-elasticache -l aws-cpp-sdk-monitoring \
+            -l aws-cpp-sdk-s3 \
+            -I include \
+            -d ext.curl -d ext.openssl -d ext.nghttp2 ext.aws.sdk.cpp
+      provideDeps:
+        - libs::ext-curl-dev
+        - libs::ext-openssl-dev
+        - libs::ext-nghttp2-dev
+        - libs::ext-c-ares-dev
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-aws-sdk-cpp" \
+            -p "emmc.libs" \
+            -o "libs:ext-aws-sdk-cpp " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,99 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-guid-dev
+  - system::tsd-common-daemon-dev
+  - connectivity::networking::tsd-networking-api-dev
+  - basic-services::rsi-library::tsd-rsi-common-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - audio::audiorouter::tsd-audio-audiorouter-client-api-dev
+  - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-dev
+  - media::libraries::tsd-media-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-daemon-target
+      - connectivity::networking::tsd-networking-api-target
+      - basic-services::rsi-library::tsd-rsi-server-target
+      - audio::audiorouter::tsd-audio-audiorouter-client-api-target
+      - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-target
+      - media::libraries::tsd-media-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.audioalgo.git
+    dir: tsd.media.audioalgo
+    tag: mqb_sop1_eu-1.0.1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.demux.git
+    dir: tsd.media.demux
+    tag: mqb_sop1_eu-1.0.5
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.codec.simple.git
+    dir: tsd.media.codec.simple
+    tag: mqb_sop1_eu-1.0.2
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.codec.mpegaudio.git
+    dir: tsd.media.codec.mpegaudio
+    tag: mqb_sop1_eu-1.0.0
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.decoder.git
+    dir: tsd.media.decoder
+    tag: mqb_sop1_eu-1.0.0
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.decoder.simple.git
+    dir: tsd.media.decoder.simple
+    tag: mqb_sop1_eu-1.0.0
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.decoder.mpegaudio.git
+    dir: tsd.media.decoder.mpegaudio
+    tag: mqb_sop1_eu-1.0.0
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.waveplayer.mib3.git
+    dir: tsd.media.waveplayer.mib3
+    tag: mqb_sop1_eu-1.1.18
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildModules \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+         tsd.media.waveplayer.mib3 \
+         tsd.media.waveplayer.mib3.app.target
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildModules \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+         tsd.media.waveplayer.mib3 \
+         tsd.media.waveplayer.mib3.app.target
+
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "waveplayer_mib3" \
+            -p "emmc.media" \
+            -o "media.waveplayer:tsd-media-waveplayer-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

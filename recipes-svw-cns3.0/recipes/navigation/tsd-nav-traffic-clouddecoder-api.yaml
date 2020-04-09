@@ -1,0 +1,33 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.clouddecoder.api.git
+   dir: tsd.nav.traffic.clouddecoder.api
+   tag: v5.2.0
+
+
+buildScript: |
+   build(){
+      buildenvBuildAll
+   }
+
+multiPackage:
+   dev:
+      buildScript: build $@
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

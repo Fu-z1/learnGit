@@ -1,0 +1,44 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only"
+   PKG_VERSION: "0.1.0"
+   #PKG_NAME: "libusbgx"
+   PKG_PATCH_VERSION: "0.1.0_PCC1.0"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+   PKG_NAME: "ext.libusbgx"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/${PKG_NAME}.git
+    branch: main/svw_cns3.0_1480_dev
+
+buildVars: [SYSROOT, PKG_NAME]
+buildTools: [toolchain]
+buildScript: |
+   # parallel build fails every once a while
+   MAKE_JOBS=1
+   rsync -a --delete $1/ ${PWD}
+   autoreconf -i
+   autotoolsBuild ${PWD} --without-libconfig --disable-examples --disable-static
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l usbgx -I include ${PKG_NAME}
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libusbgx" \
+            -p "emmc.connectivity.usb" \
+            -o "connectivity.usb:ext-libusbgx " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

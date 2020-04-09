@@ -1,0 +1,28 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends: []
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.bt.messaging.mib3.client.git
+   dir: tsd.bt.messaging.mib3.client
+   branch: master_mqb_sop1_eu
+buildVars: [AUTOCONF_HOST]
+
+multiPackage:
+   dev:
+      packageScript: buildenvPackageDev
+      provideDeps: []
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageTarget
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

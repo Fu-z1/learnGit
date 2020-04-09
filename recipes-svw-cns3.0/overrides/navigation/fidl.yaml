@@ -1,0 +1,69 @@
+scmOverrides:
+# franca idl
+# do not include in overrides/navigation/override.yaml
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.asr*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.diagnosis*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.testinterface*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.itr*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.gem*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sal*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.security*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.vehiclestatus*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.pos.gps*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.pos.sensors*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.psd.v15.*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu

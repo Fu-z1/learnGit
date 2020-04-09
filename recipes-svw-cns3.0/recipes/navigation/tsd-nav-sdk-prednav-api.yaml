@@ -1,0 +1,49 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - system::tsd-common-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-middleware-interface-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.prednav.api.git
+   dir: tsd.nav.sdk.prednav.api
+   tag: mqb_sop1_eu-150.0.1       #navi-api (internal only interface)
+
+privateEnvironment:
+   SANDBOX: "$(is-sandbox-enabled)"
+
+buildVarsWeak: [SANDBOX]
+buildScript: |
+   build(){
+   buildenvBuildAll -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+
+   # If we are not building within the sandbox we copy the generated 'compile_commands.json' to the src directory for tool support
+   if [[ ${SANDBOX} != true ]] ; then
+       if [ -f compile_commands.json ]; then
+           cp compile_commands.json $1
+       fi
+   fi
+   }
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_werror_sanitize]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: build $@
+        packageScript: |
+           buildenvPackageDev install -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+        provideDeps: ['*-dev']
+
+  unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

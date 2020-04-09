@@ -1,0 +1,48 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary-pcc"
+   PKG_RESPONSIBLE: "System-System"
+
+# The CommonAPI runtime and the binding are two mandatory dependencies
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-architecture/tsd.myservice.api.git
+   dir: tsd.myservice.api
+   branch: master
+
+# This makes the compilation of this module deterministic
+checkoutDeterministic: true
+# The capigen tool is used to generate the binding C++ code from the Fidl files
+checkoutScript: CapiGenProcessFIDLFiles tsd.myservice.api
+
+# The rest is just the usual stuff to copy the compiled files to the right place
+# either on the target or on the development locations
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "myservice-api" \
+            -p "emmc.system" \
+            -o "system:tsd-myservice-api" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

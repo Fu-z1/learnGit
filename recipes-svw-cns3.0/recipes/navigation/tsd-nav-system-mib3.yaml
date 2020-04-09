@@ -1,0 +1,40 @@
+inherit: [buildenv, navi_compflags_werror_sanitize]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+   - system::ext-boost-dev
+   - navigation::tsd-nav-utils-api-dev
+   - navigation::tsd-nav-sdk-common-api-dev
+   - navigation::tsd-nav-input-mib3-api-dev
+   - navigation::tsd-nav-configdata-dev
+   - navigation::tsd-nav-rsi-clients-mib3-dev
+   - navigation::tsd-nav-mapdisplay-mib3-dev
+   - navigation::tsd-nav-rsi-viwi-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.system.mib3.git
+      dir: tsd.nav.system.mib3
+      tag: mqb_sop1_eu-150.0.1      #navi-src (part of the release)
+
+multiPackage:
+   dev:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS:-} -Werror ${NAVI_ALLOWED_WARNINGS:-} ${JENKINS_HOME:+${NAVI_SUPPRESSED_WARNINGS:-}}\
+            \ ${CXXFLAGS_ADDRESS_SANITIZE:-}"
+         LDFLAGS: "${LDFLAGS:-} ${LDFLAGS_ADDRESS_SANITIZE:-}"
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   unittests:
+      buildTools: [protoc]
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

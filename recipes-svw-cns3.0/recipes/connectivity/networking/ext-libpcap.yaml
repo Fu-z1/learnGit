@@ -1,0 +1,58 @@
+inherit: [buildenv, install, make, patch, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "BSD-3-Clause"
+   PKG_VERSION: "1.8.1"
+   #PKG_NAME: "libpcap"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+   PKG_NAME: "ext-libpcap"
+
+depends:
+ - name: connectivity::networking::ext-libnl-dev
+ - use: []
+   depends:
+     # runtime dependencies
+    - name: connectivity::networking::ext-libnl-target
+
+checkoutVars: [PKG_VERSION, PKG_NAME]
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.libpcap.git
+   dir: ${PKG_NAME}
+   tag: libpcap-1.8.1
+
+buildVars: [PKG_NAME, LIBDIR]
+buildTools: [toolchain, autotools]
+buildScript: |
+   # copy cloned source to build directory
+   rsync -a --delete $1/${PKG_NAME}/* ${PWD}/${PKG_NAME}
+
+   export CFLAGS="-I${BOB_DEP_PATHS[connectivity::networking::ext-libnl-dev]}/usr/include/libnl3"
+
+   CONF_OPTIONS=(
+      --with-pcap=linux ac_cv_linux_vers=4 \
+   )
+   autotoolsBuild ${PKG_NAME} "${CONF_OPTIONS[@]}"
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageScript: |
+         installPackageDev $1/dist
+      provideDeps: ["*-dev"]
+
+   target:
+      packageVars: [LIBDIR]
+      packageScript: |
+         # copy the complete dist directory from dev/build to dev/dist
+         installPackageTarget $1/dist
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libpcap" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-libpcap " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

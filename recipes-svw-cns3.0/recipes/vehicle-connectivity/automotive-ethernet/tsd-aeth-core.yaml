@@ -1,0 +1,90 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+environment:
+   PKG_NAME_AETH_CORE: "tsd.aeth.core"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-types-dev
+  - system::tsd-common-daemon-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-aeth-interface-dev
+  - connectivity::networking::ext-libnl-dev
+  - connectivity::networking::ext-iptables-dev
+  - vehicle-connectivity::network-management::tsd-nm-vw-mib-dev
+  - system::tsd-drivers-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-types-target
+      - vehicle-connectivity::automotive-ethernet::tsd-aeth-interface-target
+      - connectivity::networking::ext-libnl-target
+      - connectivity::networking::ext-iptables-target
+      - vehicle-connectivity::network-management::tsd-nm-vw-mib-target
+      - system::tsd-drivers-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.aeth.core.git
+    dir: ${PKG_NAME_AETH_CORE}
+    #tag: mqb_sop1_eu-8.7.0
+    #branch: master_mqb_sop1_eu
+    branch: cns3.0_dev
+
+buildVars: [PKG_NAME_AETH_CORE]
+buildScript: |
+   build_sw()
+   {
+      buildenvBuildAll -DVERSION_AETH_CORE=$(getScmVersion $1 ${PKG_NAME_AETH_CORE})
+   }
+
+   getScmVersion()
+   {
+      echo `git -C $1/$2 symbolic-ref -q --short HEAD \
+         || git -C $1/$2 describe --tags --exact-match \
+         || git -C $1/$2 rev-parse --short HEAD \
+         || echo "unkown"`
+   }
+
+multiPackage:
+   dev:
+      buildScript: |
+         build_sw $1
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         build_sw $1
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "aeth-core" \
+            -p "emmc.vehicle-connectivity.autom-enet" \
+            -o "vehicle-connectivity.automotive-ethernet:tsd-aeth-core " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_NM_VW_MIB_CONFIG: "TSD_NM_VW_MIB_CONFIG_ETH"
+      depends:
+        - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll
+      packageScript: |
+         buildenvPackageDoc

@@ -1,0 +1,45 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-logging-mib3-testinterface-api-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-logging-mib3-testinterface-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.logging.mib3.testinterface.client.git
+   dir: tsd.logging.mib3.testinterface.client
+   tag: 1.2.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "logging-mib3-testinterface-cl" \
+            -p "emmc.system" \
+            -o "system:tsd-logging-mib3-testinterface-client " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

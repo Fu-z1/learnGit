@@ -1,0 +1,27 @@
+inherit: [autotools, packing-module]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-libs/ext.libjpeg.git
+   tag: 9b
+
+buildVars: [CC]
+buildScript: |
+   autotoolsBuild $1
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l jpeg -I include ext.libjpeg
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libjpeg" \
+            -p "emmc.libs" \
+            -o "libs:ext-libjpeg " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

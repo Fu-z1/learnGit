@@ -1,5 +1,6 @@
 
 I have figure it out why cant foeord!
+Now I have create feature2 branch!
 
 I am test git handsome boy!
 learnling GIT ready up! rewrite txt

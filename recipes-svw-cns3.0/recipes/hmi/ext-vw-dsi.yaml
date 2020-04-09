@@ -1,0 +1,27 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "Volkswagen AG"
+   PKG_VERSION: "3.14.1"
+   PKG_NAME: "vw-dsi"
+   PKG_PATCH_VERSION: "1.0.0"
+   PKG_RESPONSIBLE: "MMI-HMI"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.vw.dsi.git
+   dir: ext.vw.dsi
+   branch: 3.14.102
+
+buildScript: |
+   buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/tsd
+
+packageScript: |
+   buildenvPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-vw-dsi" \
+      -p "emmc.hmi" \
+      -o "hmi:ext-vw-dsi " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

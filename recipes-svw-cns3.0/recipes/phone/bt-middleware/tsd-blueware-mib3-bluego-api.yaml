@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module, capigen, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Phone
+
+depends:
+ - communication::ext-commonapi-runtime-dev
+ - communication::tsd-communication-binding-dev
+ - system::tsd-common-dev
+
+ - use: []
+   depends:
+    - communication::ext-commonapi-runtime-target
+    - communication::tsd-communication-binding-target
+    - system::tsd-common-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.blueware.mib3.bluego.api.git
+   dir: tsd.blueware.mib3.bluego.api
+   tag: mqb_sop1_eu-1.60.0
+
+checkoutScript: CapiGenProcessFIDLFiles tsd.blueware.mib3.bluego.api
+checkoutDeterministic: true
+
+buildVars: [LIBDIR]
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "mib3-bluego-api" \
+            -p "emmc.phone.bt-middleware" \
+            -o "phone.bt-middleware:tsd-blueware-mib3-bluego-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+

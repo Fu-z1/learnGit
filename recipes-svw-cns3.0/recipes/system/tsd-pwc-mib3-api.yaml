@@ -1,0 +1,33 @@
+inherit: [buildenv, packing-module]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.pwc.mib3.api.git
+   dir: tsd.pwc.mib3.api
+   tag: 1.14.10
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "pwc-mib3-api" \
+            -p "emmc.system" \
+            -o "system:tsd-pwc-mib3-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

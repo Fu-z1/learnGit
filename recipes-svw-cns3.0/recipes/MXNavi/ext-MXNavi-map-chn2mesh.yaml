@@ -1,0 +1,66 @@
+inherit: [buildenv, packing-module]
+
+checkoutSCM:
+  -  
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}MXNavi/CHN_SOP1_19Q3_09_SH2MESH_2.5.2_CNS3_02.zip
+    digestSHA1: "b2e29583b5ca6ea218e054533bc2d73ac751a6aa"
+    extract: True
+  
+buildScript: |
+      mkdir -p dist/var/MXNavi/NDS
+      mkdir -p dist/usr/lib
+      cp -fr $1/Data/* dist/var/MXNavi/NDS/
+      chmod -R 0777 dist/var/MXNavi/NDS/
+#      SRCPATH=$1
+#      rm -r dist/var
+#      rm -r dist/usr
+#      cp -fr $1/MXNavi/* dist/var/MXNavi
+#      chmod +x dist/var/MXNavi/MXNavi
+#      chmod +x dist/var/MXNavi/HWInfoWrapper
+#      rm -r dist/var/MXNavi/NDS
+#      cp $1/MXNavi/libnds_lib_interface_mib3.so dist/usr/lib
+
+multiPackage:
+      dev:
+#         buildScript: |
+#            mkdir -p dist/var/MXNavi/NDS
+#            mkdir -p dist/usr/lib
+#            cp -fr $1/MXNavi/* dist/var/MXNavi
+#            chmod +x dist/var/MXNavi/MXNavi
+#            chmod +x dist/var/MXNavi/HWInfoWrapper
+#            cp -fr $1/Data/* dist/var/MXNavi/NDS/
+         packageScript: |
+            cmakePackageDev
+            buildSwupModule -n navi \ 
+                     -p "emmc.MXNavi" \
+                     -m "display,display,0755,/var/MXNavi$"   \
+                     -o 'MXNavi:navi' -f . -- \
+                     -U "Partition=rootfs_ro" \
+                     -U "Optional=True"
+      target:
+#         buildScript: |
+#            mkdir -p dist/var/MXNavi/NDS
+#            mkdir -p dist/usr/lib
+#            cp -fr $1/MXNavi/* dist/var/MXNavi
+#            chmod +x dist/var/MXNavi/MXNavi
+#            chmod +x dist/var/MXNavi/HWInfoWrapper
+#            cp -fr $1/Data/* dist/var/MXNavi/NDS/
+         packageScript: |
+            cmakePackageTarget 
+            buildSwupModule -n navimap \
+                            -m "display,display,0755,/var/MXNavi$"   \
+                            -m "display,display,0777,/var/MXNavi/NDS"  \
+                            -p "emmc.MXNavi" \
+                            -o 'MXNavi:navimap' -f . -- \
+                            -U "Partition=rootfs_ro"   \
+                            -U "Optional=True"
+#            rm -rf dist/var/MXNavi/NDS
+            
+#            mkdir -p dist/var/MXNavi/NDS
+#            cp -fr $1/../../../src/MXNavi/* dist/var/MXNavi
+#            chmod +x dist/var/MXNavi/MXNavi
+#            chmod +x dist/var/MXNavi/HWInfoWrapper
+#            buildSwupModule -n navi -p "emmc" -o 'emmc::navi' -f . -- \
+#                                                                -U "Partition=rootfs_ro"
+#            cp -fr $2/Data/* dist/var/MXNavi/NDS/

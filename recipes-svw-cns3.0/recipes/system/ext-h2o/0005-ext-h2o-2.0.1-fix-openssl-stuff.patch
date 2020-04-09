@@ -1,0 +1,453 @@
+diff --git a/x/deps/neverbleed/neverbleed.c b/y/deps/neverbleed/neverbleed.c
+index 098ed95..444afd0 100644
+--- deps/neverbleed/neverbleed.c
++++ deps/neverbleed/neverbleed.c
+@@ -523,6 +523,7 @@ static EVP_PKEY *create_pkey(neverbleed_t *nb, size_t key_index, const char *ebu
+     struct st_neverbleed_rsa_exdata_t *exdata;
+     RSA *rsa;
+     EVP_PKEY *pkey;
++    BIGNUM *e = NULL, *n = NULL;
+ 
+     if ((exdata = malloc(sizeof(*exdata))) == NULL) {
+         fprintf(stderr, "no memory\n");
+@@ -533,15 +534,19 @@ static EVP_PKEY *create_pkey(neverbleed_t *nb, size_t key_index, const char *ebu
+ 
+     rsa = RSA_new_method(nb->engine);
+     RSA_set_ex_data(rsa, 0, exdata);
+-    if (BN_hex2bn(&rsa->e, ebuf) == 0) {
++//    if (BN_hex2bn(&rsa->e, ebuf) == 0) {
++    if (BN_hex2bn(&e, ebuf) == 0) {
+         fprintf(stderr, "failed to parse e:%s\n", ebuf);
+         abort();
+     }
+-    if (BN_hex2bn(&rsa->n, nbuf) == 0) {
++//    if (BN_hex2bn(&rsa->n, nbuf) == 0) {
++    if (BN_hex2bn(&n, nbuf) == 0) {
+         fprintf(stderr, "failed to parse n:%s\n", nbuf);
+         abort();
+     }
+-    rsa->flags |= RSA_FLAG_EXT_PKEY;
++//    rsa->flags |= RSA_FLAG_EXT_PKEY;
++    RSA_set0_key(rsa, n, e, NULL);
++    RSA_set_flags(rsa, RSA_FLAG_EXT_PKEY);
+ 
+     pkey = EVP_PKEY_new();
+     EVP_PKEY_set1_RSA(pkey, rsa);
+@@ -592,6 +597,7 @@ static int load_key_stub(struct expbuf_t *buf)
+     char *fn;
+     FILE *fp = NULL;
+     RSA *rsa = NULL;
++    const BIGNUM *e, *n;
+     size_t key_index = SIZE_MAX;
+     char *estr = NULL, *nstr = NULL, errbuf[NEVERBLEED_ERRBUF_SIZE] = "";
+ 
+@@ -608,9 +614,13 @@ static int load_key_stub(struct expbuf_t *buf)
+         snprintf(errbuf, sizeof(errbuf), "failed to parse the private key");
+         goto Respond;
+     }
++
+     key_index = daemon_set_rsa(rsa);
+-    estr = BN_bn2hex(rsa->e);
+-    nstr = BN_bn2hex(rsa->n);
++//    estr = BN_bn2hex(rsa->e);
++//    nstr = BN_bn2hex(rsa->n);
++    RSA_get0_key(rsa, &n, &e, NULL);
++    estr = BN_bn2hex(e);
++    nstr = BN_bn2hex(n);
+ 
+ Respond:
+     expbuf_dispose(buf);
+@@ -820,33 +830,57 @@ __attribute__((noreturn)) static void daemon_main(int listen_fd, int close_notif
+     }
+ }
+ 
+-static RSA_METHOD rsa_method = {
+-    "privsep RSA method", /* name */
+-    NULL,                 /* rsa_pub_enc */
+-    NULL,                 /* rsa_pub_dec */
+-    priv_enc_proxy,       /* rsa_priv_enc */
+-    priv_dec_proxy,       /* rsa_priv_dec */
+-    NULL,                 /* rsa_mod_exp */
+-    NULL,                 /* bn_mod_exp */
+-    NULL,                 /* init */
+-    NULL,                 /* finish */
+-    RSA_FLAG_SIGN_VER,    /* flags */
+-    NULL,                 /* app data */
+-    sign_proxy,           /* rsa_sign */
+-    NULL,                 /* rsa_verify */
+-    NULL                  /* rsa_keygen */
+-};
++
++// static RSA_METHOD rsa_method = {
++//    "privsep RSA method", /* name */
++//    NULL,                 /* rsa_pub_enc */
++//    NULL,                 /* rsa_pub_dec */
++//    priv_enc_proxy,       /* rsa_priv_enc */
++//    priv_dec_proxy,       /* rsa_priv_dec */
++//    NULL,                 /* rsa_mod_exp */
++//    NULL,                 /* bn_mod_exp */
++//    NULL,                 /* init */
++//    NULL,                 /* finish */
++//    RSA_FLAG_SIGN_VER,    /* flags */
++//    NULL,                 /* app data */
++//    sign_proxy,           /* rsa_sign */
++//    NULL,                 /* rsa_verify */
++//    NULL                  /* rsa_keygen */
++//};
+ 
+ int neverbleed_init(neverbleed_t *nb, char *errbuf)
+ {
+     int pipe_fds[2] = {-1, -1}, listen_fd = -1;
+     char *tempdir = NULL;
+ 
++    const RSA_METHOD *default_method = RSA_PKCS1_OpenSSL();
++    EC_KEY_METHOD *ecdsa_method;
++    const EC_KEY_METHOD *ecdsa_default_method;
++    RSA_METHOD *rsa_method = RSA_meth_new("privsep RSA method", 0);
++
++    RSA_meth_set_priv_enc(rsa_method, priv_enc_proxy);
++    RSA_meth_set_priv_dec(rsa_method, priv_dec_proxy);
++    RSA_meth_set_sign(rsa_method, sign_proxy);
++
++    RSA_meth_set_pub_enc(rsa_method, RSA_meth_get_pub_enc(default_method));
++    RSA_meth_set_pub_dec(rsa_method, RSA_meth_get_pub_dec(default_method));
++    RSA_meth_set_verify(rsa_method, RSA_meth_get_verify(default_method));
++
++    /* setup EC_KEY_METHOD for ECDSA */
++    ecdsa_default_method = EC_KEY_get_default_method();
++    ecdsa_method = EC_KEY_METHOD_new(ecdsa_default_method);
++
++    EC_KEY_METHOD_set_keygen(ecdsa_method, NULL);
++    EC_KEY_METHOD_set_compute_key(ecdsa_method, NULL);
++    /* it seems sign_sig and sign_setup is not used in TLS ECDSA. */
++//    EC_KEY_METHOD_set_sign(ecdsa_method, ecdsa_sign_proxy, NULL, NULL);
++
++/*
+     const RSA_METHOD *default_method = RSA_PKCS1_SSLeay();
+     rsa_method.rsa_pub_enc = default_method->rsa_pub_enc;
+     rsa_method.rsa_pub_dec = default_method->rsa_pub_dec;
+     rsa_method.rsa_verify = default_method->rsa_verify;
+-
++*/
+     /* setup the daemon */
+     if (pipe(pipe_fds) != 0) {
+         snprintf(errbuf, NEVERBLEED_ERRBUF_SIZE, "pipe(2) failed:%s", strerror(errno));
+diff --git a/x/lib/common/http1client.c b/y/lib/common/http1client.c
+index 1484b89..6aae0cf 100644
+--- lib/common/http1client.c
++++ lib/common/http1client.c
+@@ -361,7 +361,8 @@ static void on_handshake_complete(h2o_socket_t *sock, const char *err)
+ 
+     if (err == NULL) {
+         /* success */
+-    } else if (err == h2o_socket_error_ssl_cert_name_mismatch && (client->super.ctx->ssl_ctx->verify_mode & SSL_VERIFY_PEER) == 0) {
++    } else if (err == h2o_socket_error_ssl_cert_name_mismatch &&
++               (SSL_CTX_get_verify_mode(client->super.ctx->ssl_ctx) & SSL_VERIFY_PEER) == 0) {
+         /* peer verification skipped */
+     } else {
+         on_connect_error(client, err);
+diff --git a/x/lib/common/socket.c b/y/lib/common/socket.c
+index 3d99df3..d8d27d3 100644
+--- lib/common/socket.c
++++ lib/common/socket.c
+@@ -122,7 +122,8 @@ static void (*resumption_remove)(h2o_iovec_t session_id);
+ 
+ static int read_bio(BIO *b, char *out, int len)
+ {
+-    h2o_socket_t *sock = b->ptr;
++//    h2o_socket_t *sock = b->ptr;
++    h2o_socket_t *sock = BIO_get_data(b);
+ 
+     if (len == 0)
+         return 0;
+@@ -143,7 +144,8 @@ static int read_bio(BIO *b, char *out, int len)
+ 
+ static int write_bio(BIO *b, const char *in, int len)
+ {
+-    h2o_socket_t *sock = b->ptr;
++//    h2o_socket_t *sock = b->ptr;
++    h2o_socket_t *sock = BIO_get_data(b);
+     void *bytes_alloced;
+ 
+     /* FIXME no support for SSL renegotiation (yet) */
+@@ -173,9 +175,11 @@ static long ctrl_bio(BIO *b, int cmd, long num, void *ptr)
+ {
+     switch (cmd) {
+     case BIO_CTRL_GET_CLOSE:
+-        return b->shutdown;
++//        return b->shutdown;
++        return BIO_get_shutdown(b);
+     case BIO_CTRL_SET_CLOSE:
+-        b->shutdown = (int)num;
++//        b->shutdown = (int)num;
++        BIO_set_shutdown(b, (int)num);
+         return 1;
+     case BIO_CTRL_FLUSH:
+         return 1;
+@@ -184,6 +188,7 @@ static long ctrl_bio(BIO *b, int cmd, long num, void *ptr)
+     }
+ }
+ 
++/*
+ static int new_bio(BIO *b)
+ {
+     b->init = 0;
+@@ -192,7 +197,7 @@ static int new_bio(BIO *b)
+     b->flags = 0;
+     return 1;
+ }
+-
++*/
+ static int free_bio(BIO *b)
+ {
+     return b != NULL;
+@@ -200,12 +205,35 @@ static int free_bio(BIO *b)
+ 
+ static void setup_bio(h2o_socket_t *sock)
+ {
+-    static BIO_METHOD bio_methods = {BIO_TYPE_FD, "h2o_socket", write_bio, read_bio, puts_bio,
++    static BIO_METHOD *bio_methods = NULL;
++    if (bio_methods == NULL) {
++        static pthread_mutex_t init_lock = PTHREAD_MUTEX_INITIALIZER;
++        pthread_mutex_lock(&init_lock);
++        if (bio_methods == NULL) {
++            BIO_METHOD *biom = BIO_meth_new(BIO_TYPE_FD, "h2o_socket");
++            BIO_meth_set_write(biom, write_bio);
++            BIO_meth_set_read(biom, read_bio);
++            BIO_meth_set_puts(biom, puts_bio);
++            BIO_meth_set_ctrl(biom, ctrl_bio);
++            __sync_synchronize();
++            bio_methods = biom;
++        }
++    }
++
++    BIO *bio = BIO_new(bio_methods);
++    if (bio == NULL)
++        h2o_fatal("no memory");
++    BIO_set_data(bio, sock);
++    BIO_set_init(bio, 1);
++    SSL_set_bio(sock->ssl->ssl, bio, bio);
++
++/*    static BIO_METHOD bio_methods = {BIO_TYPE_FD, "h2o_socket", write_bio, read_bio, puts_bio,
+                                      NULL,        ctrl_bio,     new_bio,   free_bio, NULL};
+     BIO *bio = BIO_new(&bio_methods);
+     bio->ptr = sock;
+     bio->init = 1;
+     SSL_set_bio(sock->ssl->ssl, bio, bio);
++*/
+ }
+ 
+ const char *decode_ssl_input(h2o_socket_t *sock)
+@@ -254,7 +282,8 @@ static void clear_output_buffer(struct st_h2o_socket_ssl_t *ssl)
+ 
+ static void destroy_ssl(struct st_h2o_socket_ssl_t *ssl)
+ {
+-    if (!ssl->ssl->server)
++//    if (!ssl->ssl->server)
++    if (!SSL_is_server(ssl->ssl))
+         free(ssl->handshake.client.server_name);
+     SSL_free(ssl->ssl);
+     ssl->ssl = NULL;
+@@ -576,7 +605,8 @@ static void create_ssl(h2o_socket_t *sock, SSL_CTX *ssl_ctx)
+ 
+ static SSL_SESSION *on_async_resumption_get(SSL *ssl, unsigned char *data, int len, int *copy)
+ {
+-    h2o_socket_t *sock = SSL_get_rbio(ssl)->ptr;
++//    h2o_socket_t *sock = SSL_get_rbio(ssl)->ptr;
++    h2o_socket_t *sock = BIO_get_data(SSL_get_rbio(ssl));
+ 
+     switch (sock->ssl->handshake.server.async_resumption.state) {
+     case ASYNC_RESUMPTION_STATE_RECORD:
+@@ -612,7 +642,13 @@ static int on_async_resumption_new(SSL *ssl, SSL_SESSION *session)
+ 
+ static void on_async_resumption_remove(SSL_CTX *ssl_ctx, SSL_SESSION *session)
+ {
+-    h2o_iovec_t session_id = h2o_iovec_init(session->session_id, session->session_id_length);
++    const unsigned char *id;
++    unsigned id_len;
++
++    id = SSL_SESSION_get_id(session, &id_len);
++
++//    h2o_iovec_t session_id = h2o_iovec_init(session->session_id, session->session_id_length);
++    h2o_iovec_t session_id = h2o_iovec_init(id, id_len);
+     resumption_remove(session_id);
+ }
+ 
+@@ -647,7 +683,8 @@ static void proceed_handshake(h2o_socket_t *sock, const char *err)
+     }
+ 
+ Redo:
+-    if (sock->ssl->ssl->server) {
++//    if (sock->ssl->ssl->server) {
++    if (SSL_is_server(sock->ssl->ssl)) {
+         ret = SSL_accept(sock->ssl->ssl);
+     } else {
+         ret = SSL_connect(sock->ssl->ssl);
+@@ -692,7 +729,8 @@ Redo:
+         flush_pending_ssl(sock, ret == 1 ? on_handshake_complete : proceed_handshake);
+     } else {
+         if (ret == 1) {
+-            if (!sock->ssl->ssl->server) {
++//            if (!sock->ssl->ssl->server) {
++            if (SSL_is_server(sock->ssl->ssl)) {
+                 X509 *cert = SSL_get_peer_certificate(sock->ssl->ssl);
+                 if (cert != NULL) {
+                     switch (validate_hostname(sock->ssl->handshake.client.server_name, cert)) {
+diff --git a/x/lib/handler/configurator/proxy.c b/y/lib/handler/configurator/proxy.c
+index 9086bf4..e190e29 100644
+--- lib/handler/configurator/proxy.c
++++ lib/handler/configurator/proxy.c
+@@ -85,20 +85,24 @@ static void update_ssl_ctx(SSL_CTX **ctx, X509_STORE *cert_store, int verify_mod
+ 
+     /* inherit the properties that weren't specified */
+     if (cert_store == NULL)
+-        cert_store = (*ctx)->cert_store;
+-    CRYPTO_add(&cert_store->references, 1, CRYPTO_LOCK_X509_STORE);
++//        cert_store = (*ctx)->cert_store;
++        cert_store = SSL_CTX_get_cert_store(*ctx);
++//    CRYPTO_add(&cert_store->references, 1, CRYPTO_LOCK_X509_STORE);
++    X509_STORE_up_ref(cert_store);
+     if (verify_mode == -1)
+-        verify_mode = (*ctx)->verify_mode;
+-
++//        verify_mode = (*ctx)->verify_mode;
++          verify_mode = SSL_CTX_get_verify_mode(*ctx);
+     /* free the existing context */
+     if (*ctx != NULL)
+         SSL_CTX_free(*ctx);
+ 
+     /* create new ctx */
+     *ctx = create_ssl_ctx();
+-    if ((*ctx)->cert_store != NULL)
+-        X509_STORE_free((*ctx)->cert_store);
+-    (*ctx)->cert_store = cert_store;
++//    if ((*ctx)->cert_store != NULL)
++    if (SSL_CTX_get_cert_store(*ctx) != NULL)
++        X509_STORE_free(SSL_CTX_get_cert_store(*ctx));
++//    (*ctx)->cert_store = cert_store;
++    SSL_CTX_set_cert_store(*ctx, cert_store);
+     SSL_CTX_set_verify(*ctx, verify_mode, NULL);
+ }
+ 
+@@ -173,7 +177,8 @@ static int on_config_enter(h2o_configurator_t *_self, h2o_configurator_context_t
+         free(ca_bundle);
+         SSL_CTX_set_verify(self->vars->ssl_ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+     } else {
+-        CRYPTO_add(&self->vars->ssl_ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
++//        CRYPTO_add(&self->vars->ssl_ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
++        SSL_CTX_up_ref(self->vars->ssl_ctx);
+     }
+ 
+     return 0;
+diff --git a/x/lib/handler/proxy.c b/y/lib/handler/proxy.c
+index 7afe8c4..e0f17e6 100644
+--- lib/handler/proxy.c
++++ lib/handler/proxy.c
+@@ -156,5 +156,6 @@ void h2o_proxy_register_reverse_proxy(h2o_pathconf_t *pathconf, h2o_url_t *upstr
+     h2o_strtolower(self->upstream.host.base, self->upstream.host.len);
+     self->config = *config;
+     if (self->config.ssl_ctx != NULL)
+-        CRYPTO_add(&self->config.ssl_ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
++//        CRYPTO_add(&self->config.ssl_ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
++        SSL_CTX_up_ref(self->config.ssl_ctx);
+ }
+diff --git a/x/src/ssl.c b/y/src/ssl.c
+index 192a829..37399ad 100644
+--- src/ssl.c
++++ src/ssl.c
+@@ -172,18 +172,19 @@ static struct {
+ struct st_session_ticket_t *new_ticket(const EVP_CIPHER *cipher, const EVP_MD *md, uint64_t not_before, uint64_t not_after,
+                                        int fill_in)
+ {
+-    struct st_session_ticket_t *ticket = h2o_mem_alloc(sizeof(*ticket) + cipher->key_len + md->block_size);
++    int key_len = EVP_CIPHER_key_length(cipher), block_size = EVP_MD_block_size(md);
++    struct st_session_ticket_t *ticket = h2o_mem_alloc(sizeof(*ticket) + key_len + block_size);
+ 
+     ticket->cipher.cipher = cipher;
+     ticket->cipher.key = (unsigned char *)ticket + sizeof(*ticket);
+     ticket->hmac.md = md;
+-    ticket->hmac.key = ticket->cipher.key + cipher->key_len;
++    ticket->hmac.key = ticket->cipher.key + key_len;
+     ticket->not_before = not_before;
+     ticket->not_after = not_after;
+     if (fill_in) {
+         RAND_bytes(ticket->name, sizeof(ticket->name));
+-        RAND_bytes(ticket->cipher.key, ticket->cipher.cipher->key_len);
+-        RAND_bytes(ticket->hmac.key, ticket->hmac.md->block_size);
++        RAND_bytes(ticket->cipher.key, key_len);
++        RAND_bytes(ticket->hmac.key, block_size);
+     }
+ 
+     return ticket;
+@@ -191,7 +192,8 @@ struct st_session_ticket_t *new_ticket(const EVP_CIPHER *cipher, const EVP_MD *m
+ 
+ static void free_ticket(struct st_session_ticket_t *ticket)
+ {
+-    h2o_mem_set_secure(ticket, 0, sizeof(*ticket) + ticket->cipher.cipher->key_len + ticket->hmac.md->block_size);
++    int key_len = EVP_CIPHER_key_length(ticket->cipher.cipher), block_size = EVP_MD_block_size(ticket->hmac.md);
++    h2o_mem_set_secure(ticket, 0, sizeof(*ticket) + key_len + block_size);
+     free(ticket);
+ }
+ 
+@@ -246,7 +248,8 @@ static int ticket_key_callback(SSL *ssl, unsigned char *key_name, unsigned char
+         }
+         memcpy(key_name, ticket->name, sizeof(ticket->name));
+         EVP_EncryptInit_ex(ctx, ticket->cipher.cipher, NULL, ticket->cipher.key, iv);
+-        HMAC_Init_ex(hctx, ticket->hmac.key, ticket->hmac.md->block_size, ticket->hmac.md, NULL);
++//        HMAC_Init_ex(hctx, ticket->hmac.key, ticket->hmac.md->block_size, ticket->hmac.md, NULL);
++        HMAC_Init_ex(hctx, ticket->hmac.key, EVP_MD_block_size(ticket->hmac.md), ticket->hmac.md, NULL);
+         if (temp_ticket != NULL)
+             free_ticket(ticket);
+         ret = 1;
+@@ -263,7 +266,9 @@ static int ticket_key_callback(SSL *ssl, unsigned char *key_name, unsigned char
+         goto Exit;
+     Found:
+         EVP_DecryptInit_ex(ctx, ticket->cipher.cipher, NULL, ticket->cipher.key, iv);
+-        HMAC_Init_ex(hctx, ticket->hmac.key, ticket->hmac.md->block_size, ticket->hmac.md, NULL);
++//        HMAC_Init_ex(hctx, ticket->hmac.key, ticket->hmac.md->block_size, ticket->hmac.md, NULL);
++        HMAC_Init_ex(hctx, ticket->hmac.key, EVP_MD_block_size(ticket->hmac.md), ticket->hmac.md, NULL);
++
+         ret = i == 0 ? 1 : 2; /* request renew if the key is not the newest one */
+     }
+ 
+@@ -317,9 +322,13 @@ static int serialize_ticket_entry(char *buf, size_t bufsz, struct st_session_tic
+ {
+     char *name_buf = alloca(sizeof(ticket->name) * 2 + 1);
+     h2o_hex_encode(name_buf, ticket->name, sizeof(ticket->name));
+-    char *key_buf = alloca((ticket->cipher.cipher->key_len + ticket->hmac.md->block_size) * 2 + 1);
+-    h2o_hex_encode(key_buf, ticket->cipher.key, ticket->cipher.cipher->key_len);
+-    h2o_hex_encode(key_buf + (ticket->cipher.cipher->key_len) * 2, ticket->hmac.key, ticket->hmac.md->block_size);
++    int key_len = EVP_CIPHER_key_length(ticket->cipher.cipher), block_size = EVP_MD_block_size(ticket->hmac.md);
++//    char *key_buf = alloca((ticket->cipher.cipher->key_len + ticket->hmac.md->block_size) * 2 + 1);
++    char *key_buf = alloca((key_len + block_size) * 2 + 1);
++//    h2o_hex_encode(key_buf, ticket->cipher.key, ticket->cipher.cipher->key_len);
++//    h2o_hex_encode(key_buf + (ticket->cipher.cipher->key_len) * 2, ticket->hmac.key, ticket->hmac.md->block_size);
++    h2o_hex_encode(key_buf, ticket->cipher.key, key_len);
++    h2o_hex_encode(key_buf + key_len * 2, ticket->hmac.key, block_size);
+ 
+     return snprintf(buf, bufsz, "- name: %s\n"
+                                 "  cipher: %s\n"
+@@ -383,7 +392,8 @@ static struct st_session_ticket_t *parse_ticket_entry(yoml_t *element, char *err
+         }
+     });
+     FETCH("key", {
+-        size_t keylen = cipher->key_len + hash->block_size;
++//        size_t keylen = cipher->key_len + hash->block_size;
++        size_t keylen = EVP_CIPHER_key_length(cipher) + EVP_MD_block_size(hash);
+         if (strlen(t->data.scalar) != keylen * 2) {
+             sprintf(errstr, "length of the `key` attribute is incorrect (is %zu, must be %zu)\n", strlen(t->data.scalar),
+                     keylen * 2);
+@@ -416,8 +426,11 @@ static struct st_session_ticket_t *parse_ticket_entry(yoml_t *element, char *err
+ 
+     ticket = new_ticket(cipher, hash, not_before, not_after, 0);
+     memcpy(ticket->name, name, sizeof(ticket->name));
+-    memcpy(ticket->cipher.key, key, cipher->key_len);
+-    memcpy(ticket->hmac.key, key + cipher->key_len, hash->block_size);
++//    memcpy(ticket->cipher.key, key, cipher->key_len);
++//    memcpy(ticket->hmac.key, key + cipher->key_len, hash->block_size);
++    memcpy(ticket->cipher.key, key, EVP_CIPHER_key_length(cipher));
++    memcpy(ticket->hmac.key, key + EVP_CIPHER_key_length(cipher), EVP_MD_block_size(hash));
++
+     return ticket;
+ }
+ 

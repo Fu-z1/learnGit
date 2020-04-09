@@ -1,0 +1,59 @@
+diff -Nurp /data/tmp/FreeRTOSV8.2.3/FreeRTOS/Source/include/FreeRTOS.h FreeRTOSV8.2.3/FreeRTOS/Source/include/FreeRTOS.h
+--- /data/tmp/FreeRTOSV8.2.3/FreeRTOS/Source/include/FreeRTOS.h	2015-10-16 14:13:00.000000000 +0200
++++ FreeRTOSV8.2.3/FreeRTOS/Source/include/FreeRTOS.h	2017-11-28 12:59:30.765710023 +0100
+@@ -231,6 +231,10 @@ extern "C" {
+ 	#define portCRITICAL_NESTING_IN_TCB 0
+ #endif
+ 
++#ifndef configTASK_LIST_SHOW_FREE_STACK
++   #define configTASK_LIST_SHOW_FREE_STACK 1
++#endif
++
+ #ifndef configMAX_TASK_NAME_LEN
+ 	#define configMAX_TASK_NAME_LEN 16
+ #endif
+diff -Nurp /data/tmp/FreeRTOSV8.2.3/FreeRTOS/Source/tasks.c FreeRTOSV8.2.3/FreeRTOS/Source/tasks.c
+--- /data/tmp/FreeRTOSV8.2.3/FreeRTOS/Source/tasks.c	2015-10-16 14:13:00.000000000 +0200
++++ FreeRTOSV8.2.3/FreeRTOS/Source/tasks.c	2017-11-28 12:59:30.766710023 +0100
+@@ -510,7 +510,7 @@ static TCB_t *prvAllocateTCBAndStack( co
+  * This function determines the 'high water mark' of the task stack by
+  * determining how much of the stack remains at the original preset value.
+  */
+-#if ( ( configUSE_TRACE_FACILITY == 1 ) || ( INCLUDE_uxTaskGetStackHighWaterMark == 1 ) )
++#if ( (( configUSE_TRACE_FACILITY == 1 ) && (configTASK_LIST_SHOW_FREE_STACK == 1)) || ( INCLUDE_uxTaskGetStackHighWaterMark == 1 ) )
+ 
+ 	static uint16_t prvTaskCheckFreeStackSpace( const uint8_t * pucStackByte ) PRIVILEGED_FUNCTION;
+ 
+@@ -3232,16 +3232,17 @@ TCB_t *pxNewTCB;
+ 					pxTaskStatusArray[ uxTask ].ulRunTimeCounter = 0;
+ 				}
+ 				#endif
+-
++				#if ( configTASK_LIST_SHOW_FREE_STACK == 1)
+ 				#if ( portSTACK_GROWTH > 0 )
+ 				{
+ 					pxTaskStatusArray[ uxTask ].usStackHighWaterMark = prvTaskCheckFreeStackSpace( ( uint8_t * ) pxNextTCB->pxEndOfStack );
+ 				}
+ 				#else
+ 				{
+-					pxTaskStatusArray[ uxTask ].usStackHighWaterMark = prvTaskCheckFreeStackSpace( ( uint8_t * ) pxNextTCB->pxStack );
++                    pxTaskStatusArray[ uxTask ].usStackHighWaterMark = prvTaskCheckFreeStackSpace( ( uint8_t * ) pxNextTCB->pxStack );
+ 				}
+ 				#endif
++				#endif
+ 
+ 				uxTask++;
+ 
+@@ -3254,11 +3255,10 @@ TCB_t *pxNewTCB;
+ 
+ 		return uxTask;
+ 	}
+-
+ #endif /* configUSE_TRACE_FACILITY */
+ /*-----------------------------------------------------------*/
+ 
+-#if ( ( configUSE_TRACE_FACILITY == 1 ) || ( INCLUDE_uxTaskGetStackHighWaterMark == 1 ) )
++#if ( (( configUSE_TRACE_FACILITY == 1 ) && (configTASK_LIST_SHOW_FREE_STACK == 1)) || ( INCLUDE_uxTaskGetStackHighWaterMark == 1 ) )
+ 
+ 	static uint16_t prvTaskCheckFreeStackSpace( const uint8_t * pucStackByte )
+ 	{

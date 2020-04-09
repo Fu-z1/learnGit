@@ -1,0 +1,54 @@
+inherit: [packing-module]
+depends:
+  - name: toolchain::aarch64-linux-gnu
+    use: [tools, environment]
+    forward: true
+  - system::tsd-system-test
+  - system::ext-glmark2
+
+buildScript: |
+   rm -rf *
+   mkdir -p synthtests-zr3
+   pushd synthtests-zr3
+
+   # collect dependencies
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      echo "Calc deps..."
+      echo ${BOB_DEP_PATHS[$key]}
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+
+   # copy/overwrite target specific files
+   echo "Now copy deps..."
+   for dep in ${tocopy[@]} ; do
+      echo ${dep}
+      rsync -a ${dep}/ .
+   done
+
+   mkdir -p etc/systemd/system/multi-user.target.wants
+   pushd etc/systemd/system/multi-user.target.wants
+   ln -sf /usr/lib/systemd/system/fsck-test.timer fsck-test.timer
+   ln -sf /usr/lib/systemd/system/cpu-stress.timer cpu-stress.timer
+   ln -sf /usr/lib/systemd/system/gpu-stress.timer gpu-stress.timer
+   ln -sf /usr/lib/systemd/system/ram-stress.timer ram-stress.timer
+
+   popd
+   popd
+
+packageScript: |
+   rsync -a --exclude=.debug $1/* .
+   tar zcf synthtests-zr3.tgz -C synthtests-zr3 .
+   rm -rf synthtests-zr3
+   cat << EOF > pcc.sh
+   #!/bin/bash
+   tar -xzf \$1/synthtests-zr3.tgz -C /
+   EOF
+   chmod +x ./pcc.sh
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "synthtests" \
+      -p "emmc.system" \
+      -o "system:tsd-synthtests " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

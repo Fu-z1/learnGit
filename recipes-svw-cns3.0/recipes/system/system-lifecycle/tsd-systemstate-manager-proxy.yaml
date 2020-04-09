@@ -1,0 +1,51 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - hmi::tsd-dsi-cpp-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - hmi::tsd-dsi-cpp-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.manager.proxy.git
+    dir: tsd.systemstate.manager.proxy
+    tag: mqb_sop1_eu-1.16.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "systemstate-manager-proxy" \
+            -p "emmc.system.system-lifecycle" \
+            -o "system.system-lifecycle:tsd-systemstate-manager-proxy " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

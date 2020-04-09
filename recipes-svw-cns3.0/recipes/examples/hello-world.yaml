@@ -1,0 +1,34 @@
+# Small and simple hello world
+# for building it use bob dev hello-world
+# If you want to build it for host and target, just look at navi.yaml
+
+inherit: [root, buildenv]
+
+environment:
+   TARGET_OS: "linux"
+   VARIANTS: "101001"
+
+depends:
+   # For target builds
+   # -
+   #    name: toolchain::m3::linux-arm64
+   #    use: [tools, environment]
+   #    forward: True
+   - system::tsd-common-dev
+
+checkoutScript: |
+   # here you can for example copy it from your own directory /home/user/foobar
+   if [ ! -d hello-world ]; then                 # checkout only one
+      mkdir hello-world                          # Create source
+      pushd hello-world                          # cd to it and save the orignal path
+      tar xzvf $<<hello-world/hello-world.tgz>>  # unzip
+      popd                                       # back
+   fi
+
+buildScript: |
+   # we are in the build dir, if you want to reference the source, then use $1
+   buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/
+
+packageScript: |
+   # we are here in the dist dir, if you want to reference the build dir, then use $1
+   buildenvPackageTarget

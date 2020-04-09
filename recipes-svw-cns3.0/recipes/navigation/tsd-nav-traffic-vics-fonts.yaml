@@ -1,0 +1,44 @@
+inherit: [packing-module]
+
+metaEnvironment:
+   PKG_NAME: "traffic-vics-fonts"
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+environment:
+   NOTO_FONT_NAME: "NotoSansMonoCJKjp-*.otf"
+   NOTO_FONT_VERSION: "1.004-pcc3"
+   ARIB_FONT_NAME: "AribExternal.ttf"
+   ARIB_REPO_NAME: "ext.font.arib"
+   FONT_INSTALL_PATH: "usr/share/fonts"
+
+checkoutSCM:
+  - scm: url
+    url: "${DEFAULT_DOWNLOAD_SCM_URL}/src/ext-google-notocjk/noto-cjk-${NOTO_FONT_VERSION}.tar.gz"
+    digestSHA1: "6e2ff02caf00ad92bf32c7b4db4ed62d99109b54"
+    dir: noto-cjk
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/${ARIB_REPO_NAME}.git
+    dir: ${ARIB_REPO_NAME}
+    tag: 75.0.1
+
+multiPackage:
+   target: # Resource-files
+      buildVars: [NOTO_FONT_VERSION, NOTO_FONT_NAME, ARIB_FONT_NAME, ARIB_REPO_NAME]
+      buildScript: |
+         cp $1/noto-cjk/noto-cjk-${NOTO_FONT_VERSION}/${NOTO_FONT_NAME} $PWD/
+         cp $1/${ARIB_REPO_NAME}/${ARIB_FONT_NAME} $PWD/
+
+      packageVars: [FONT_INSTALL_PATH]
+      packageScript: |
+         mkdir -p ${FONT_INSTALL_PATH}
+         rsync -a --delete $1/ ${FONT_INSTALL_PATH}/
+         chmod -R +r ${FONT_INSTALL_PATH}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "nav-traffic-vics-fonts" \
+            -p "emmc.navigation" \
+            -o "navigation:tsd-nav-traffic-vics-fonts " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      inherit:
+        - packing-module

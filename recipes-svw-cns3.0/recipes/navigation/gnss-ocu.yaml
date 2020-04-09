@@ -1,0 +1,65 @@
+inherit: [root, rootfs]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   VARIANTS: "101001"
+buildScript: |
+   rm -rf *
+
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[navi]
+
+   for dep in ${tocopy[@]} ; do
+      cp -au ${dep}/* "${PWD}/"
+   done
+
+   mkdir -p usr/bin/lib
+   #[ -d usr/lib ] && mv usr/lib/* usr/bin/lib
+   [ -d usr/lib64 ] && mv usr/lib64/* usr/bin/lib
+   #[ -d usr/local/lib ] && mv usr/local/lib/* usr/bin/lib
+   [ -d usr/local/lib64 ] && mv usr/local/lib64/* usr/bin/lib
+   # move symbols
+   mkdir -p symbols
+   move_symbols "${PWD}" symbols
+   tar -zcf symbols.tgz -C symbols .
+   rm -rf symbols
+
+multiPackage:
+   zr3:
+      environment:
+         TARGET_OS: "linux"
+
+      depends:
+        - name: toolchain::aarch64-linux-gnu
+          use: [tools, environment]
+          forward: true
+
+        - communication::ext-commonapi-runtime-target
+        - communication::tsd-communication-binding-target
+        - communication::tsd-communication-target
+        - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-target
+        - navigation::tsd-nav-pos-gps-api-target
+        - system::ext-boost-target
+        - system::tsd-common-target
+        - navigation::tsd-gnss-ocu
+   host:
+      environment:
+         TARGET_OS: "linux"
+         TSD_BUILDENV_RPATH_USE_LINK_PATH: "true"
+
+      depends:
+        - communication::ext-commonapi-runtime-target
+        - communication::tsd-communication-binding-target
+        - communication::tsd-communication-target
+        - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-target
+        - system::ext-boost-target
+        - system::tsd-common-target
+        - navigation::tsd-gnss-ocu
+
+packageScript: |
+   rsync -a --delete $1/ .

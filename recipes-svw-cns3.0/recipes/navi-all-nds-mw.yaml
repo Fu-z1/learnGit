@@ -1,0 +1,53 @@
+inherit: [root]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   VARIANTS: "101001"
+depends:
+   -
+      if: $(eq,${TARGET_ENVIRONMENT},"zr3")
+      name: toolchain::aarch64-linux-gnu
+      use: [tools, environment]
+      forward: True
+
+   - navigation::tsd-nav-middleware-nds-2_5_2-target
+
+buildVars: [COPYSYMBOLS]
+buildScript: |
+   rm -rf *
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[navi]
+
+   for dep in ${tocopy[@]} ; do
+      cp -au ${dep}/* "${PWD}/"
+   done
+
+   if [[ $COPYSYMBOLS == 0 ]];
+      then
+         # move symbols
+         mkdir -p symbols
+         move_symbols "${PWD}" symbols
+         tar -zcf symbols.tgz -C symbols .
+         rm -rf symbols
+   fi
+
+multiPackage:
+   zr3:
+      environment:
+         TARGET_OS: "linux"
+         COPYSYMBOLS: "1"
+         TARGET_ENVIRONMENT: "zr3"
+   host:
+      environment:
+         TARGET_ENVIRONMENT: "host"
+         TARGET_OS: "linux"
+         TSD_BUILDENV_ENABLE_RPATH: "true"
+         COPYSYMBOLS: "1"
+
+packageScript: |
+   rsync -a --delete $1/ .

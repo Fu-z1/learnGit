@@ -1,0 +1,23 @@
+environment:
+   FILE: "env.sh"
+
+buildVars: [AUTOCONF_HOST, FILE]
+buildScript: |
+   if [[ "${AUTOCONF_HOST}" =~ x86_64-linux-.* ]]; then
+      rm -rf ${FILE}
+      {
+         for i in ${@:2}; do
+            find $i -type f -name "*.so*" -printf '%h\n' | gawk '!a[$0]++'
+         done
+      } | gawk 'BEGIN{ printf("export LD_LIBRARY_PATH=")}{ printf("%s:", $0) }END{ printf("${LD_LIBRARY_PATH}\n") }' >> ${FILE}
+   fi
+
+packageVars: [AUTOCONF_HOST, FILE]
+packageScript: |
+   BUILD=${1}
+   printEvn()
+   {
+      if [[ "${AUTOCONF_HOST}" =~ x86_64-linux-.* ]]; then
+         cp -au ${BUILD}/${FILE} $1
+      fi
+   }

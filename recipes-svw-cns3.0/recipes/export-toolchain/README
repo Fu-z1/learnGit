@@ -1,0 +1,9 @@
+Run setup.sh once to create the environment file.
+
+Then setup your environment in the current shell by sourcing the created
+environment file:
+
+ $ . environment-setup-aarch64-linux-gnu
+
+Now the PATH and further enviroment varianted (e.g. CC, LD, ...) are setup
+correctly for a cross build.

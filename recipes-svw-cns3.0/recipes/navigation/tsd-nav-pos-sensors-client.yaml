@@ -1,0 +1,30 @@
+inherit: [buildenv]
+# package for tsd.nav.pos.sensors.api 'client' mockup
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - navigation::tsd-nav-pos-sensors-api-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - navigation::tsd-nav-pos-sensors-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.pos.sensors.client.git
+   dir: tsd.nav.pos.sensors.client
+   branch: master_mqb_sop1_eu      #navi-tool (not a part of the release)
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   target: # Executable
+      packageScript: |
+         buildenvPackageTarget
+      provideDeps: ['*-target']

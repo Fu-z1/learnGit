@@ -1,0 +1,60 @@
+inherit: [autotools,packing-module]
+
+environment:
+   PKG_VERSION: "0.2.4"
+
+depends:                                                                                                                                                                                                    
+   -  system::ext-systemd-dev
+   -  system::ext-libtirpc-dev
+   -  system::ext-libcap-dev
+   -  system::ext-xz-dev
+   - use: []
+     depends:
+      -  system::ext-systemd-target
+      -  system::ext-libtirpc-target
+      -  system::ext-libcap-target
+      -  system::ext-xz-target
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}/external/rpcbind-${PKG_VERSION}.tar.bz2
+   digestSHA1: "8a6045dd3397e9f71bf3a7c9d269e255cca537bd"
+   extract: no
+
+buildVars: [CC]
+buildScript: |
+   tar --strip-components=1 -xjf $1/rpcbind-${PKG_VERSION}.tar.bz2
+    # without autotools due to unknnown option '--build'
+    #   export LDFLAGS=-L${BOB_DEP_PATHS["system::ext-libevent-dev"]}/usr/lib
+    export PKG_CONFIG_PATH=${BOB_DEP_PATHS["system::ext-systemd-dev"]}/usr/lib/pkgconfig
+    export TIRPC_CFLAGS="-I${BOB_DEP_PATHS["system::ext-libtirpc-dev"]}/usr/include -I${BOB_DEP_PATHS["system::ext-libtirpc-dev"]}/usr/include/tirpc"
+    export TIRPC_LIBS="-L${BOB_DEP_PATHS["system::ext-libtirpc-dev"]}/usr/lib"
+    export SYSTEMD_CFLAGS="-I${BOB_DEP_PATHS["system::ext-systemd-dev"]}/usr/include"
+    export LDFLAGS="-L${BOB_DEP_PATHS["system::ext-systemd-dev"]}/usr/lib -L${BOB_DEP_PATHS["system::ext-libtirpc-dev"]}/usr/lib -L${BOB_DEP_PATHS["system::ext-libcap-dev"]}/usr/lib -L${BOB_DEP_PATHS["system::ext-xz-dev"]}/usr/lib"
+    export LIBS="-ltirpc -lcap -llzma"
+    ./configure   --host=arm-linux --with-systemdsystemunitdir="/usr/lib/systemd/system"
+    make
+    make install DESTDIR=`pwd`/dist
+    rm -rf dist/lib
+    rm dist/usr/lib/systemd/system/*
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+      provideDeps: [ "*-dev" ]
+         #tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l z ext.zlib
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-rpcbind" \
+             -p "emmc.system" \
+             -m 'root,root,0644,/usr/lib/systemd/system/*' \
+             -o "system:ext-rpcbind " -f $d -- \
+             -U "Partition=rootfs_ro" 
+         rm -rf $d
+      provideDeps: [ "*-target" ]

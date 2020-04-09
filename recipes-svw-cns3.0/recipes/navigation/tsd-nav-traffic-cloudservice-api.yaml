@@ -1,0 +1,28 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-cloud-mw-api-dev
+  - navigation::tsd-nav-sdk-traffic-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.cloudservice.api.git
+   dir: tsd.nav.traffic.cloudservice.api
+   tag: mqb_sop1_eu-150.0.1       #navi-api (internal only interface)
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

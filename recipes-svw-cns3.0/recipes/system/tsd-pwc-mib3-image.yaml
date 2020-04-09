@@ -1,0 +1,44 @@
+inherit: [buildenv]
+
+environment:
+   TARGET_OS: "bare"
+   CMAKE_TARGET_FILE: "armv7_m0_bare.cmake"
+   CMAKE_BUILD_TYPE: "MinSizeRel"
+
+depends:
+  - name: toolchain::arm-bare-m0-eabi
+    use: [tools, environment]
+    forward: true
+  - system::tsd-pwc-mib3-api-dev
+
+checkoutSCM:
+   scm: git
+   #url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.pwc.mib3.git
+   url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-system/tsd.pwc.mib3.git
+   dir: tsd.pwc.mib3
+   #tag: 1.22.14
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1520_dev
+
+multiPackage:
+   ? ""
+   :  buildVars: [CMAKE_BUILD_TYPE]
+      packageScript: |
+         rsync -a --delete $1/dist/*srec .
+      multiPackage:
+         app1:
+            buildVars: [OBJCPY]
+            buildScript: |
+               buildenvBuildAll -DTSD_PWC_MIB3_BUILD_APP2:BOOL=OFF
+               ${OBJCPY} -O srec "dist/usr/bin/tsd.pwc.mib3" "dist/tsd.pwc.mib3.app1.srec"
+
+         app2:
+            buildVars: [OBJCPY]
+            buildScript: |
+               buildenvBuildAll -DTSD_PWC_MIB3_BUILD_APP2:BOOL=ON
+               ${OBJCPY} -O srec "dist/usr/bin/tsd.pwc.mib3" "dist/tsd.pwc.mib3.app2.srec"
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,31 @@
+From 721b272e681300c7132e68fa421fa740d78d4cc9 Mon Sep 17 00:00:00 2001
+From: Karsten Heinze <karsten.heinze@preh.de>
+Date: Mon, 5 Feb 2018 11:02:42 +0100
+Subject: [PATCH 3/4] Fixed crash in server mode when TLS PSK connect fails.
+
+SSL_SESSION_free(sess) was called in any case which
+led to a failed assertion in OpenSSL and stunnel stop.
+---
+ src/ctx.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/ctx.c b/src/ctx.c
+index a23b097..dc04ac3 100644
+--- a/src/ctx.c
++++ b/src/ctx.c
+@@ -983,9 +983,10 @@ NOEXPORT void sess_remove_cb(SSL_CTX *ctx, SSL_SESSION *sess) {
+ 
+     s_log(LOG_DEBUG, "Remove session callback");
+     opt=SSL_CTX_get_ex_data(ctx, index_opt);
+-    if(opt->option.sessiond)
++    if(opt->option.sessiond) {
+         cache_remove(ctx, sess);
+-    SSL_SESSION_free(sess);
++        SSL_SESSION_free(sess);
++    }
+ }
+ 
+ /**************************************** sessiond functionality */
+-- 
+2.11.0
+

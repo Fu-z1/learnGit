@@ -1,0 +1,48 @@
+root: True
+
+# common sandbox and toolchain setup
+depends:
+   -
+      name: system::tsd-buildenv
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::cmake
+      use: [tools]
+      forward: True
+   -
+      name: prejenkins::toolchain::host
+      use: [environment]
+      forward: True
+   -
+      name: toolchain::dtc-compiler
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::node-npm
+      use: [tools]
+      forward: True
+   -
+      name: system::ext-wayland-scanner
+      use: [tools]
+      forward: True
+   -
+      name: libs::ext-glib2-tool
+      use: [tools]
+      forward: True
+   -
+      name: system::ext-pkg-host-tools
+      use: [tools]
+      forward: True
+   -
+      if: "$(ne, ${RUN_UNITTESTS:-false}, false)"
+      depends:
+         -
+            name: toolchain::lcov2cobertura
+            use: [tools]
+            forward: True
+         -
+            name: toolchain::lcov
+            use: [tools]
+            forward: True
+

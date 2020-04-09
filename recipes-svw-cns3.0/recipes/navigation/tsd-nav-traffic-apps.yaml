@@ -1,0 +1,46 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - navigation::tsd-nav-cloud-publicservices-api-dev
+  - navigation::tsd-nav-sdk-traffic-api-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-sdk-pathfinder-api-dev
+  - navigation::tsd-nav-sdk-pathfinder-dev
+  - navigation::tsd-nav-sdk-mapdataservice-dev
+  - navigation::tsd-nav-traffic-clouddecoder-dev
+  - navigation::tsd-nav-traffic-clouddecoder-api-dev
+  - navigation::tsd-nav-traffic-dev
+  - navigation::ext-tinyxml-dev
+  - system::ext-boost-dev
+  - system::ext-boost-program-options-dev
+  - system::ext-boost-filesystem-dev
+  - system::ext-boost-system-dev
+  - navigation::tsd-nav-middleware-nds-2_5_2-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.apps.git
+   dir: tsd.nav.traffic.apps
+   branch: master       #navi-tool (not a part of the release)
+
+buildScript: |
+   buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+   mkdir -p dist/usr/bin
+   rsync -a --delete $1/tsd.nav.traffic.apps/app/ini dist/usr/bin/
+   rsync -a --delete $1/tsd.nav.traffic.apps/src/tsd/nav/trafficapps/tileregions/data dist/usr/bin/
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+         rsync -a --delete $1/tsd.nav.traffic.apps/test/tsd/nav/trafficapps/tileregions/TEST-borders dist/usr/bin/
+      packageScript: |
+          buildenvPackageTests

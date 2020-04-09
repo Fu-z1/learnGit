@@ -1,0 +1,132 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - audio::amplifiercontroller::tsd-audio-ampcontrol-api-dev
+  - audio::audiomanager::tsd-audio-audiomgr-audiocontrol-dev
+  - audio::audiomanager::tsd-audio-audiomgr-testclient-mib3-api-dev
+  - audio::audiomanager::tsd-audio-common-dev
+  - audio::audiomanager::tsd-audio-common-mib3-dev
+  - audio::microphoneprocessing::tsd-audio-microphoneprocessing-am-mib3-api-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - system::tsd-activation-api-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - engineering::gem::tsd-gem-generic-api-dev
+  - system::tsd-common-dev
+  - basic-services::rsi-library::tsd-rsi-client-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - basic-services::personalization::tsd-personalization-client-api-dev
+  - system::tsd-dataformats-dev
+  - system::tsd-infotainmentrecorder-api-dev
+  - basic-services::car-function-management::tsd-carssw-api-dev
+  - media::mountingservice::tsd-media-mount-status-api-dev
+
+   # runtime deps
+  - use: []
+    depends:
+       # target
+      - audio::audiomanager::tsd-audio-audiomgr-testclient-mib3-api-target
+      - audio::audiomanager::tsd-audio-common-target
+      - audio::audiomanager::tsd-audio-common-mib3-target
+      - audio::microphoneprocessing::tsd-audio-microphoneprocessing-am-mib3-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - engineering::gem::tsd-gem-generic-api-target
+      - audio::amplifiercontroller::tsd-audio-ampcontrol-api-target
+      - system::tsd-activation-api-target
+      - system::tsd-common-target
+      - basic-services::rsi-library::tsd-rsi-client-target
+      - basic-services::rsi-library::tsd-rsi-server-target
+      - basic-services::personalization::tsd-personalization-client-api-target
+      - system::tsd-dataformats-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - system::tsd-infotainmentrecorder-api-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - basic-services::car-function-management::tsd-carssw-api-target
+      - media::mountingservice::tsd-media-mount-status-api-target
+       # host
+      - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-apps
+       # apps
+      - audio::audiomanager::tsd-audio-audiomgr-testclient-mib3-api-apps
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiomgr.mib3.git
+    dir: tsd.audio.audiomgr.mib3
+#    tag: 2.2.43
+    branch: release/cns_mqb
+
+  - if: "${CONFIG_AUDIO_TEST:-False}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiomgr.mib3.test.git
+    remote-gerrit: http://esxi-amb1-slave-gerrit.mib3.technisat-digital:8080/tsd.audio.audiomgr.mib3.test
+    dir: tsd.audio.audiomgr.mib3.test
+    branch: master
+
+multiPackage:
+   dev:
+      privateEnvironment:
+         DEV_SW: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1),1,0)"
+         A2B_AVAILABLE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_SPEAKER_LOCALIZATION,1),1,0)"
+      buildVars: [DEV_SW, A2B_AVAILABLE]
+      depends:
+        - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-dev
+        - system::tsd-tee-cpstate-dev
+        - system::tsd-theftdetection-api-dev
+        - use: []
+          depends:
+             - system::tsd-tee-cpstate-target
+             - system::tsd-theftdetection-api-target
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=0 -DDEV_SW=${DEV_SW} -DTSD_AUDIO_WITH_COMPONENT_PROTECTION=0 -DA2B_AVAILABLE=${A2B_AVAILABLE}
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - '*-dev'
+
+   dev-host:
+      depends:
+        - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-dev-host
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - '*-dev'
+        - '*-dev-host'
+
+   apps:
+      depends:
+        - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-dev-host
+      buildScript: |
+         buildenvBuildModules \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+         tsd.audio.audiomgr.mib3 \
+         tsd.audio.audiomgr.mib3.app
+      packageScript: |
+         buildenvPackageTarget
+      provideDeps:
+        - '*-apps'
+
+   unittests:
+      depends:
+        - audio::audiomanager::tsd-audio-common-test-dev
+        - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-dev-host
+        - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvTestTargets tsd.audio.audiomgr.mib3.test
+      packageScript: |
+         buildenvPackageTests
+      provideDeps:
+        - '*-dev'
+        - '*-dev-host'
+
+   doc:
+      depends:
+        - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-dev-host
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

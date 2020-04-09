@@ -1,0 +1,17 @@
+diff --git a/boost/asio/detail/impl/scheduler.ipp b/boost/asio/detail/impl/scheduler.ipp
+index 7af390701..d326e6ab9 100644
+--- a/boost/asio/detail/impl/scheduler.ipp
++++ b/boost/asio/detail/impl/scheduler.ipp
+@@ -271,8 +271,10 @@ void scheduler::restart()
+ 
+ void scheduler::compensating_work_started()
+ {
+-  thread_info_base* this_thread = thread_call_stack::contains(this);
+-  ++static_cast<thread_info*>(this_thread)->private_outstanding_work;
++  if (thread_info_base* this_thread = thread_call_stack::contains(this))
++  {
++    ++static_cast<thread_info*>(this_thread)->private_outstanding_work;
++  }
+ }
+ 
+ void scheduler::post_immediate_completion(

@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.dsi.cpp.git"
+     del: [commit, tag]
+     set:
+        branch: "master"
+        commit: "0bd127cb946423efea312ad09b9a6ce40f4e037d"

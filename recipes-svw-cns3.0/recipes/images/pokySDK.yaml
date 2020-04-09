@@ -1,0 +1,74 @@
+# Disabled by default
+root: True
+
+inherit: [patch]
+
+environment:
+   PKG_VERSION: "SV00_Yocto390Software"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/yocto/${PKG_VERSION}.tgz
+    digestSHA1: 812cfe7a72ca0e3f6a132e469ef0c073afdcf237
+    dir: ${PKG_VERSION}
+  - scm: git
+    url: https://git.linaro.org/openembedded/meta-linaro.git
+    dir: meta-linaro
+    commit: 75dfb67bbb14a70cd47afda9726e2e1c76731885
+  - scm: git
+    url: http://git.openembedded.org/meta-openembedded
+    dir: meta-openembedded
+    commit: dacfa2b1920e285531bec55cd2f08743390aaf57
+  - scm: git
+    url: https://github.com/renesas-rcar/meta-renesas.git
+    dir: meta-renesas
+    commit: fd078b6ece537d986852cb827bd21e022a797b2f
+  - scm: git
+    url: https://git.yoctoproject.org/git/poky
+    dir: poky
+    commit: 342fbd6a3e57021c8e28b124b3adb241936f3d9d
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/pokySDK.git
+    dir: pcc-pokySDK-config
+
+# apply patches
+checkoutScript: |
+   pushd meta-renesas
+   PATCH_DIR=meta-rcar-gen3/docs/sample/patch/patch-for-linaro-gcc
+   patchApplySeries ${PATCH_DIR}/0001-rcar-gen3-add-readme-for-building-with-Linaro-Gcc.patch
+   popd
+
+   pushd poky
+   PATCH_DIR="../pcc-pokySDK-config/patches/2016_04_01_Yocto-BSP-v2.7.0_H3_RGX_MMP_e-avb"
+   patchApplySeries ${PATCH_DIR}/0004-gcc-tsd-add-build-id.patch
+   popd
+
+buildScript: |
+   mkdir -p build/conf PKGS_DIR
+   export LANG=en_US.UTF-8
+   # copy recipes
+   rsync -a --delete --exclude '.git' $1/poky                ${PWD}
+   rsync -a --delete --exclude '.git' $1/meta-linaro         ${PWD}
+   rsync -a --delete --exclude '.git' $1/meta-openembedded   ${PWD}
+   rsync -a --delete --exclude '.git' $1/meta-renesas        ${PWD}
+
+   # copy config
+   cp -f $1/pcc-pokySDK-config/pokySDK_m3_local.conf         build/conf/local.conf
+   cp -f $1/pcc-pokySDK-config/bblayers-m3.conf              build/conf/bblayers.conf
+
+   # copy vendor packages
+   find $1/${PKG_VERSION}/ -iname "*.zip" -exec cp -f {} PKGS_DIR \;
+   pushd meta-renesas
+   bash meta-rcar-gen3/docs/sample/copyscript/copy_proprietary_softwares.sh ../PKGS_DIR
+   popd
+
+   # build, bitbake controls exceptions
+   set +euo
+   . ./poky/oe-init-build-env build
+   ../poky/bitbake/bin/bitbake core-image-weston -c populate_sdk
+   #  ../poky/bitbake/bin/bitbake core-image-weston
+
+packageScript: |
+   mkdir -p flash
+   cp -f $1/build/tmp/deploy/sdk/poky*.sh ${PWD}

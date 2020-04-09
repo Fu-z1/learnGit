@@ -1,0 +1,56 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - communication::tsd-communication-binding-dev
+  - communication::tsd-communication-runtime-dev
+  - system::tsd-common-dev
+   # runtime dependencies
+  - use: []
+    depends:
+      - communication::tsd-communication-binding-target
+      - communication::tsd-communication-runtime-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.microphoneprocessing.mib3.api.git
+   dir: tsd.audio.microphoneprocessing.mib3.api
+#   tag: 1.4.0
+   branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "audio-micproc-mib3-api" \
+            -p "emmc.audio.micprg" \
+            -o "audio.microphoneprocessing:tsd-audio-microphoneprocessing-mib3-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - '*-target'
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildScript: |
+         buildenvTestTargets tsd.audio.microphoneprocessing.mib3.api.test
+      packageScript: |
+         buildenvPackageTests

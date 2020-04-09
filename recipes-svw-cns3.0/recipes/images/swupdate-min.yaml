@@ -1,0 +1,189 @@
+inherit: [rootfs, bl2]
+
+environment:
+  CONFIG_TARGET: "swupdatemin"
+
+depends:
+  -
+     name: toolchain::aarch64-linux-gnu
+     use: [tools, environment]
+     forward: True
+  - system::ext-busybox
+  -
+     name: system::bsp::ext-linux-modules
+     use: [result, environment]
+  - system::tsd-config-swdl-mib3-buildcfg
+  - system::tsd-config-swdl-mib3-target
+  - system::tsd-config-emmc-layout
+  - libs::ext-openssl-binary-static-target
+  - system::ext-util-linux-target
+  - system::ext-mtd-utils
+  - system::ext-e2fsprogs-target
+
+checkoutSCM:
+  - if: $(ne,${SIGNING_EXTERNAL:-"False"},"True")
+    scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/4dummy_keys.git
+    dir: keypairs
+    branch: master
+
+  - if: $(eq,${SIGNING_EXTERNAL:-"False"},"True")
+    scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/jpcc.dummyrootkeyparis.cns3.csample
+    dir: keypairs
+    tag: cns3_rootkey-1.0.0
+
+buildVarsWeak: [TFTP]
+buildTools: [mkimage]
+buildVars: [STRIP, KERNEL_VERSION]
+buildScript: |
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[min]
+   unset tocopy[system::bsp::ext-linux-modules]
+   unset tocopy[system::tsd-config-swdl-mib3-buildcfg]
+   unset tocopy[system::tsd-config-emmc-layout]
+   unset tocopy[system::ext-util-linux-target]
+   unset tocopy[system::ext-mtd-utils]
+   unset tocopy[system::ext-e2fsprogs-target]
+
+
+   rm -rf tmp tmp_sec symbols flash
+   mkdir -p tmp tmp_sec symbols flash
+
+   # copy/overwrite target specific files
+   for dep in ${tocopy[@]} ; do
+      rsync -a --exclude _swupdata ${dep}/ tmp/
+   done
+
+   # copy rootfs from SDK
+   copyFromFile ${BOB_DEP_PATHS["system::tsd-config-swdl-mib3-buildcfg"]}/rootfs.txt tmp
+   copyFromFile ${BOB_DEP_PATHS["system::tsd-config-swdl-mib3-buildcfg"]}/rootfs-secrescue.txt tmp_sec
+
+   # copy secrescue deps
+   mkdir -p tmp_sec/usr/bin tmp_sec/usr/sbin tmp_sec/usr/lib tmp_sec/etc
+   cp -a ${BOB_DEP_PATHS[system::tsd-config-emmc-layout]}/* tmp_sec/
+   cp ${BOB_DEP_PATHS[system::ext-mtd-utils]}/usr/bin/flashcp tmp_sec/usr/bin/
+   cp ${BOB_DEP_PATHS[system::ext-e2fsprogs-target]}/usr/sbin/mkfs.ext4 tmp_sec/usr/sbin/
+   cp ${BOB_DEP_PATHS[system::ext-e2fsprogs-target]}/etc/mke2fs.conf tmp_sec/etc/
+   cp ${BOB_DEP_PATHS[system::ext-util-linux-target]}/sbin/fdisk tmp_sec/usr/sbin/
+   for FDISK_DEP in libuuid libblkid libsmartcols libfdisk; do
+      cp -d ${BOB_DEP_PATHS[system::ext-util-linux-target]}/usr/lib/${FDISK_DEP}* tmp_sec/usr/lib/
+   done
+
+   pushd tmp
+   rsync -a --exclude _swupdata "${BOB_DEP_PATHS[system::bsp::ext-linux-modules]}/" .
+   find lib/modules/*/kernel/ -type f \
+      -not -name "usb-storage.ko" \
+      -not -name "ehci-platform.ko" \
+      -not -name "ehci-hcd.ko" \
+      -not -name "asix.ko" \
+      -not -name "ax88179_178a.ko" \
+      -not -name "usbnet.ko" \
+      -not -name "mii.ko" \
+      -not -name "usbcore.ko" \
+      -not -name "usb-common.ko" \
+      -not -name "usb-storage.ko" \
+      -not -name "lockd.ko" \
+      -not -name "grace.ko" \
+      -not -name "sunrpc.ko" \
+      -not -name "sd_mod.ko" \
+      -not -name "*nfs*" \
+      -not -name "loop.ko" \
+      -not -name "extcon-core.ko" \
+      -not -name "phy-rcar-gen3-usb2.ko" \
+      -not -name "rpc_hyperflash.ko" \
+      -exec rm -rf {} +
+   popd
+
+   move_symbols tmp symbols
+   move_symbols tmp_sec symbols
+
+   # find missing dependencies
+   checkSharedLibraries tmp
+   checkSharedLibraries tmp_sec
+
+   fakeroot bash <<- EOF
+   # inherit shell settings and traps
+   $(set +o)
+   $(trap -p)
+
+   # add default directories and special files
+   pushd tmp
+   mkdir -p etc
+   mkdir -p dev/pts
+   mkdir -p lib
+   mkdir -p proc
+   mkdir -p root
+   mkdir -p sys
+   mkdir -p tmp
+   mkdir -p var
+   mkdir -p usr/share/keys
+   mknod dev/console c 5 1
+   popd
+
+   # add users
+   echo "root:gdOF8VqEfQxto:0:0:root:/root:/bin/sh" >  tmp/etc/passwd
+   echo "ftp::1:1:FTP User:/:/bin/sh"               >> tmp/etc/passwd
+   echo "root:x:0:root"                             >  tmp/etc/group
+   echo "ftp:x:1:root"                              >> tmp/etc/group
+   echo -n "PATH=/bin:/sbin:/usr/bin:/usr/sbin:"    >  tmp/etc/profile
+   chmod 644 tmp/etc/passwd
+   chmod 644 tmp/etc/group
+
+   mv tmp/init_* .
+
+   # move in the public secure boot key
+   cp $1/keypairs/sb_keys/sb_public.pem tmp/usr/share/keys/sb_public.pem
+
+   # create ramdisk. This will be loaded by BL2 so no u-boot header is
+   # needed.
+   rm -rf swupdate-min.cpio
+   pushd tmp
+   find . | cpio -H newc -o | gzip -9 -n > ../swupdate-min.cpio
+   popd
+
+   # make special ramdisk for boardupdater. This one is loaded using
+   # u-boot. Call mkimage to add the uboot header
+   mv init_boardupdater tmp/init
+   sed -i "s@{KERNEL_VERSION}@${KERNEL_VERSION}@g" tmp/init
+   chmod +x tmp/init
+   rm -rf swupdate-min.rescue.cpio
+
+   pushd tmp
+   find . | cpio -H newc -o | gzip -9 -n > ../_min.cpio
+   mkimage -A arm64 -T ramdisk -C gzip -d ../_min.cpio ../swupdate-min.rescue.cpio
+   popd
+
+
+   # make special ramdisk for rescueing sec devices. This one is loaded using
+   # u-boot. Call mkimage to add the uboot header
+
+   cp -dR --preserve=mode,timestamps,links,xattr tmp_sec/* tmp/
+
+   mv init_secrescue tmp/init
+   sed -i "s@{KERNEL_VERSION}@${KERNEL_VERSION}@g" tmp/init
+   chmod +x tmp/init
+   rm -rf swupdate-sec.rescue.cpio
+
+   pushd tmp
+   find . | cpio -H newc -o | gzip -9 -n > ../_min.cpio
+   mkimage -A arm64 -T ramdisk -C gzip -d ../_min.cpio ../swupdate-sec.rescue.cpio
+   popd
+
+   EOF
+
+   # clean up
+   rm -rf tmp tmp_sec _min.cpio
+
+packageScript: |
+  mkdir -p _flashcontainer/flash
+  cp $1/swupdate-min.rescue.cpio _flashcontainer/flash
+  cp $1/swupdate-sec.rescue.cpio _flashcontainer/flash
+
+  cp $1/swupdate-min.cpio initrd
+  bl2_compress initrd
+
+  tar -C $1/symbols -cvzf symbols.tgz .

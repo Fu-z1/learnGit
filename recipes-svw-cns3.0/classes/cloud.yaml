@@ -1,0 +1,24 @@
+root: True
+
+# common sandbox and toolchain setup
+depends:
+   -
+      name: system::tsd-buildenv-tool
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::host
+      use: [environment, tools]
+      forward: True
+   -
+      if: "$(ne, ${RUN_UNITTESTS:-false}, false)"
+      depends:
+         -
+            name: toolchain::lcov2cobertura
+            use: [tools]
+            forward: True
+         -
+            name: toolchain::lcov
+            use: [tools]
+            forward: True
+

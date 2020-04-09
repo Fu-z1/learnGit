@@ -1,0 +1,37 @@
+inherit: [autotools, packing-module, buildenv]
+
+metaEnvironment:
+   PKG_LICENSE: "(MIT AND X11)"
+   PKG_VERSION: "0.5.0"
+   PKG_NAME: "libxkbcommon"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libxkbcommon/libxkbcommon-${PKG_VERSION}.tar.xz
+   digestSHA256: 90bd7824742b9a6f52a6cf80e2cadd6f5349cf600a358d08260772615b89d19c
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/libxkbcommon-${PKG_VERSION} \
+      --disable-x11 \
+      --with-xkb-config-root=/usr/share/X11/xkb \
+      --with-x-locale-root=/usr/share/X11/locale
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l xkbcommon -I include ext.xkbcommon
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libxkbcommon" \
+            -p "emmc.system" \
+            -o "system:ext-libxkbcommon " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

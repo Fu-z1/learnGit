@@ -1,0 +1,39 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - hmi::tsd-dsi-cpp-dev
+  - hmi::ext-wxwidgets-dev
+
+   # target shared library dependencies
+  - use: []
+    depends:
+      - hmi::ext-wxwidgets-target
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.hmi.wxkeypanel.mib3.git
+    dir: tsd.hmi.wxkeypanel.mib3
+    branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildAll -DWXKEYPANEL_DISPLAYMANAGER_EMULATION=0 -DCMAKE_INSTALL_PREFIX=/
+
+packageScript: |
+   buildenvPackageDev help
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "hmi-wxkeypanel" \
+      -p "emmc.hmi" \
+      -o "hmi:tsd-hmi-wxkeypanel " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps:
+  - hmi::ext-wxwidgets-target

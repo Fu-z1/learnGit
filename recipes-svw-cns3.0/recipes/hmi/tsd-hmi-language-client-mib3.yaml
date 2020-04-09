@@ -1,0 +1,67 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-guid-dev
+  - system::tsd-common-daemon-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+  - basic-services::tsd-settings-api-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.hmi.language.client.mib3.git
+    dir: tsd.hmi.language.client.mib3
+    #tag: mqb_sop1_eu-1.9.2
+    #branch: master_mqb_sop1_eu
+    branch: main/svw_cns3.0_1480_dev
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule \
+            -n "tsd-hmi-language-client-mib3" \
+            -p "emmc.hmi" \
+            -o "hmi:tsd-hmi-language-client-mib3 " -f $d   \
+            -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+      inherit:
+        - packing-module
+
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.hmi.language.client.mib3.app.testcomp
+      packageScript: buildenvPackageTarget
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget
+

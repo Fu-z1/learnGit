@@ -1,0 +1,52 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - media::libraries::ext-cinemo-dev
+  - media::libraries::ext-spotify-dev
+  - use: []
+    depends:
+      - media::libraries::ext-cinemo-target
+      - media::libraries::ext-spotify-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/ext.cinemo.spotify.git
+   dir: ext.cinemo.spotify
+   tag: 1.0.1
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-cinemo-spotify" \
+            -p "emmc.media.mediaapplication" \
+            -o "media.libraries:ext-cinemo-spotify " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll -DCINEMO_PLUGIN_INIT="${BOB_DEP_PATHS[media::libraries::ext-cinemo-dev]}/usr/lib64/cinemo"
+
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

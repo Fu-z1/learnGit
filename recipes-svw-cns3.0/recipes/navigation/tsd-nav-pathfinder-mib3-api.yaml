@@ -1,0 +1,30 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+depends:
+   - navigation::tsd-nav-sdk-pathfinder-api-dev
+   - navigation::tsd-nav-rsi-viwi-dev
+   - navigation::tsd-nav-common-mib3-api-dev
+   - navigation::tsd-nav-input-mib3-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.pathfinder.mib3.api.git
+   dir: tsd.nav.pathfinder.mib3.api
+   tag: mqb_sop1_eu-150.0.1       #navi-api (internal only interface)
+
+buildScript: |
+   buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+      dev:
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']

@@ -1,0 +1,278 @@
+inherit: [root]
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_BUILD_DOCUMENTATION_TARGETS: "ON"
+   KERNEL_BRANCH: v4.9+rcar-3.5.8+gitbef6058b+pcc
+   VARIANTS: "301001"
+
+depends:
+   -  name: toolchain::doxygen
+      use: [tools]
+      forward: True
+   -  name: toolchain::dot
+      use: [tools]
+      forward: True
+
+   - examples::unittest::examples-unittest-bar-doc
+   - examples::unittest::examples-unittest-doc
+   - examples::comMgrAPI::examples-commgr-api-doc
+   - basic-services::systeminfo::tsd-systeminformation-features-doc
+   - basic-services::systeminfo::tsd-systeminformation-hardware-doc
+
+   # audio
+   - audio::amplifiercontroller::tsd-audio-ampcontrol-api-doc
+   - audio::amplifiercontroller::tsd-audio-ampcontrol-mib3-doc
+   - audio::amplifiercontroller::tsd-audio-ampcontrol-doc
+   #- audio::audiomanager::tsd-audio-audiomgr-app-mib3-doc
+   - audio::audiomanager::tsd-audio-audiomgr-audiocontrol-doc
+   - audio::audiomanager::tsd-audio-audiomgr-mib3-doc
+   - audio::audiomanager::tsd-audio-audiomgr-testclient-mib3-api-doc
+   - audio::audiomanager::tsd-audio-common-doc
+   - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-doc
+   - audio::audiorouter::tsd-audio-audiorouter-client-api-doc
+   - audio::audiorouter::tsd-audio-audiorouter-service-api-doc
+   #- audio::audiorouter::tsd-audio-pulsemodule-communication-doc
+   #- audio::microphoneprocessing::tsd-audio-ec-mib3-doc
+   #- audio::microphoneprocessing::tsd-audio-icc-mib3-doc
+   - audio::microphoneprocessing::tsd-audio-miccontrol-mib3-doc
+   - audio::microphoneprocessing::tsd-audio-microphoneprocessing-am-mib3-api-doc
+   - audio::microphoneprocessing::tsd-audio-microphoneprocessing-mib3-api-doc
+   - audio::microphoneprocessing::tsd-audio-microphoneprocessing-tuning-mib3-doc
+   #- audio::microphoneprocessing::tsd-audio-pulsemodule-microphoneprocessing-doc
+   - audio::soundprocessing::tsd-audio-soundproc-blocklibrary-doc
+   - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-doc
+   - audio::soundprocessing::tsd-audio-soundproc-mib3-doc
+
+   # media
+   - media::libraries::tsd-media-common-doc
+   - media::libraries::tsd-media-mib3-stream-api-doc
+   - media::mediaapplication::tsd-media-engine-cinemo-doc
+   - media::mediaapplication::tsd-media-engine-doc
+   - media::mediaapplication::tsd-media-mib3-gem-api-doc
+   - media::mediaapplication::tsd-media-mib3-picturelink-doc
+   - media::mediaapplication::tsd-media-mib3-doc
+   - media::mountingservice::tsd-media-io-doc
+   - media::mountingservice::tsd-media-mount-control-api-doc
+   - media::mountingservice::tsd-media-mount-status-api-doc
+   - media::mountingservice::tsd-media-mount-status-service-mib3-doc
+   - media::pictureserver::tsd-media-picserver-mib3-doc
+   - media::pictureserver::tsd-media-picserver-doc
+   - media::waveplayer::tsd-media-waveplayer-mib3-doc
+
+   # speech
+
+   # hmi
+   #- hmi::tsd-anim-interpreter-doc
+   - hmi::tsd-dsi-cpp-doc
+   #- hmi::tsd-dsi-native-doc
+   - hmi::tsd-gesture-service-doc
+   - hmi::tsd-ime-doc
+   - hmi::tsd-i18n-doc
+   - hmi::tsd-i18n-mib3-doc
+   - hmi::tsd-keypanel-doc
+
+   # Carcom
+   - vehicle-connectivity::canstack::tsd-canstack-api-doc
+   - vehicle-connectivity::canstack::tsd-canstack-mib3-doc
+   - system::system-lifecycle::tsd-systemstate-manager-api-doc
+   - system::system-lifecycle::tsd-systemstate-manager-base-doc
+   - system::system-lifecycle::tsd-systemstate-manager-core-doc
+   - system::system-lifecycle::tsd-systemstate-manager-app-doc
+   - system::system-lifecycle::tsd-systemstate-manager-proxy-doc
+   - carcom::tsd-carcom-proxy-mib3-doc
+   - carcom::tsd-carcom-datapool-api-doc
+   - carcom::tsd-carcom-datapool-doc
+   - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-doc
+   - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-doc
+   - vehicle-connectivity::automotive-ethernet::tsd-aeth-interface-doc
+   #- vehicle-connectivity::automotive-ethernet::tsd-ethernet-middleware-doc
+   - vehicle-connectivity::automotive-ethernet::tsd-aeth-base-doc
+   - engineering::diagnostic-management::tsd-uds-doc
+   - engineering::diagnostic-management::tsd-uds-api-doc
+   - engineering::diagnostic-management::tsd-uds-api-mib3-doc
+   - engineering::diagnostic-management::tsd-uds-mib3-doc
+   - vehicle-connectivity::canstack::tsd-canstack-psd-proxy-doc
+   - carcom::tsd-carcom-config-api-doc
+   #- carcom::tsd-carcom-mib3-image-doc
+   #- basic-services::car-function-management::tsd-carssw-api-doc
+   #- basic-services::car-function-management::tsd-carssw-caninterface-doc
+   - basic-services::car-function-management::tsd-carssw-carfunctionsadapter-doc
+   #- basic-services::car-function-management::tsd-carssw-mib3-doc
+   - basic-services::car-function-management::tsd-carssw-viwicarservice-mib3-doc
+   - basic-services::car-function-management::tsd-carssw-viwicarserviceadapter-doc
+   - basic-services::car-function-management::tsd-carssw-viwinavsdclient-mib3-doc
+   - basic-services::car-function-management::tsd-carssw-viwinavsdclientadapter-doc
+   - basic-services::car-function-management::tsd-carssw-viwipsodataexchangeservice-adapter-doc
+   - basic-services::car-function-management::tsd-carssw-viwipsodataexchangeservice-mib3-doc
+   - basic-services::car-function-management::tsd-carssw-viwiusermanagementservice-adapter-doc
+   - basic-services::car-function-management::tsd-carssw-viwiusermanagementservice-mib3-doc
+   - communication::tsd-communication-runtime-doc
+   - vehicle-connectivity::network-management::tsd-nm-api-doc
+   - vehicle-connectivity::network-management::tsd-nm-vw-mib-doc
+   - carcom::tsd-peripheral-controller-doc
+   - carcom::tsd-peripheral-controller-api-doc
+   - carcom::tsd-peripheral-controller-proxy-doc
+   - system::system-lifecycle::tsd-pwc-proxy-doc
+   - system::system-lifecycle::tsd-pwc-proxy-api-doc
+   - basic-services::rsi-service-registry::tsd-rsi-serviceregistry-doc
+   - basic-services::rsi-service-registry::tsd-rsi-serviceregistryadapter-doc
+   - system::system-lifecycle::tsd-systemstate-guard-api-mib3-doc
+   - system::system-lifecycle::tsd-systemstate-guard-mib3-doc
+   - system::system-lifecycle::tsd-systemstate-manager-adapt-doc
+   - system::tsd-tcpprocinfo-doc
+
+
+   # navigation
+   #- navigation::doxygen
+
+   # radio
+   - radio::tsd-common-networksvr-doc
+   - radio::tsd-common-timer-doc
+   - radio::tsd-communication-modaptor-doc
+   - radio::tsd-radio-doc
+   - radio::tsd-radio-eventqueue-doc
+   - radio::tsd-radio-middleware-doc
+   - radio::tsd-radio-tss-api-doc
+   - radio::tsd-stationdb-api-doc
+   - radio::tsd-stationdb-app-doc
+
+   #phone
+   - phone::bt-devicemanagement::tsd-bt-management-mib3-api-doc
+   - phone::bt-devicemanagement::tsd-bt-management-mib3-client-doc
+   - phone::bt-devicemanagement::tsd-bt-management-mib3-service-doc
+   - phone::bt-devicemanagement::tsd-bt-management-mib3-doc
+   - phone::bt-devicemanagement::tsd-bt-management-doc
+   - phone::bt-handsfree::tsd-bt-handsfree-mib3-doc
+   - phone::bt-handsfree::tsd-bt-handsfree-doc
+   - phone::bt-mediacontroller::tsd-bt-media-mib3-api-doc
+   - phone::bt-mediacontroller::tsd-bt-media-mib3-doc
+   - phone::bt-mediacontroller::tsd-bt-media-doc
+   - phone::bt-messaging::tsd-bt-messaging-doc
+   - phone::bt-messaging::tsd-bt-messaging-mib3-doc
+   - phone::bt-middleware::tsd-blueware-api-doc
+   - phone::bt-middleware::tsd-blueware-bluego-doc
+   - phone::bt-middleware::tsd-blueware-mib3-bluego-doc
+   - phone::bt-organizer::tsd-organizer-mib3-api-doc
+   - phone::bt-organizer::tsd-organizer-mib3-doc
+   - phone::bt-organizer::tsd-organizer-doc
+   - phone::bt-phone::tsd-bt-phone-mib3-doc
+   - phone::phonemanager::tsd-phonemanager-doc
+   - phone::tsd-parser-phonenumber-doc
+   - phone::tsd-parser-vobject-api-doc
+   - phone::tsd-parser-vobject-doc
+
+   # connectivity
+   - connectivity::networking::tsd-networking-mib3-doc
+   - connectivity::networking::tsd-networking-api-doc
+   - connectivity::networking::tsd-networking-wlan-api-doc
+   - connectivity::usb::tsd-usb-doc
+   - connectivity::usb::tsd-usb-api-doc
+   - connectivity::usb::tsd-usb-common-doc
+   - connectivity::usb::tsd-usb-mib3-doc
+   - connectivity::usb::tsd-usb-osal-doc
+   - connectivity::usb::tsd-usb-osal-linux-doc
+
+   # sal
+   - sal::tsd-android-aoa-doc
+   - sal::tsd-sal-api-doc
+   - sal::tsd-sal-app-doc
+   - sal::tsd-sal-audio-doc
+   - sal::tsd-sal-audio-mib3-doc
+#   - sal::tsd-sal-carlife-doc
+   - sal::tsd-sal-carplay-doc
+   - sal::tsd-sal-cinemo-doc
+   - sal::tsd-sal-common-doc
+   - sal::tsd-sal-config-mib3-doc
+   - sal::tsd-sal-gal-doc
+   - sal::tsd-sal-guidance-doc
+   - sal::tsd-sal-iap2-doc
+   - sal::tsd-sal-mirrorlink-mib3-doc
+   - sal::tsd-sal-video-doc
+   - sal::tsd-sal-video-cinemo-doc
+   - sal::viwiproxy::tsd-sal-viwiproxy-doc
+   - sal::viwiproxy::tsd-sal-viwiproxy-api-doc
+   - media::libraries::tsd-cinemo-transport-mib3-doc
+
+   # system
+   - system::tsd-common-doc
+   - hmi::tsd-rvc-mib3-doc
+   - system::tsd-drivers-doc
+   - system::tsd-pwc-mib3-api-doc
+   - system::tsd-pwc-mib3-image-doc
+   - system::tsd-pwc-mib3-updater-doc
+   - system::tsd-clock-mib3-doc
+   - system::tsd-common-daemon-doc
+   - system::tsd-common-guid-doc
+   - system::tsd-common-types-doc
+   - system::tsd-watchdog-mib3-api-doc
+   - system::tsd-clock-service-mib3-doc
+
+   # basefunctions
+   - system::tsd-activation-api-doc
+   - system::tsd-activation-client-doc
+   - system::tsd-activation-intern-api-doc
+   - system::tsd-activation-intern-client-doc
+   - communication::tsd-communication-binding-doc
+   - system::tsd-dataformats-doc
+   - engineering::gem::tsd-gem-generic-api-doc
+   - engineering::gem::tsd-gem-generic-client-doc
+   - engineering::gem::tsd-gem-generic-service-doc
+   - engineering::gem::tsd-gem-service-doc
+   - system::tsd-infotainmentrecorder-api-doc
+   - system::tsd-infotainmentrecorder-client-doc
+   - system::tsd-infotainmentrecorder-service-doc
+   - system::tsd-infotainmentrecorder-testinterface-api-doc
+   - system::tsd-infotainmentrecorder-testinterface-client-doc
+   - system::tsd-infotainmentrecorder-testinterface-service-doc
+   - system::tsd-logging-mib3-testinterface-api-doc
+   - system::tsd-logging-mib3-testinterface-client-doc
+   - system::tsd-logging-mib3-testinterface-service-doc
+   - system::tsd-logging-r7-doc
+   #- engineering::manufacturing::tsd-manufacturingapp-doc
+   #- engineering::manufacturing::tsd-manufacturingapp-commandprocessing-doc
+   #- system::tsd-minihmi-doc
+   - navigation::tsd-nav-secure-fs-api-doc
+   - navigation::tsd-nav-secure-fs-service-doc
+   - basic-services::tsd-notificationservice-adapter-doc
+   - hmi::tsd-notificationservice-mib3-doc
+   - basic-services::persistence::tsd-persistence-cache-doc
+   - basic-services::persistence::tsd-persistence-api-doc
+   - basic-services::persistence::tsd-persistence-client-doc
+   - basic-services::persistence::tsd-persistence-client-mib3-doc
+   - basic-services::persistence::tsd-persistence-core-doc
+   - basic-services::persistence::tsd-persistence-dsi-service-doc
+   - basic-services::persistence::tsd-persistence-eeprom-doc
+   - basic-services::persistence::tsd-persistence-emmc-doc
+   - basic-services::persistence::tsd-persistence-service-doc
+   - basic-services::persistence::tsd-persistence-service-mib3-doc
+   - basic-services::persistence::tsd-persistence-testinterface-api-doc
+   - system::tsd-infotainmentrecorder-doc
+   - system::tsd-logging-mib3-doc
+
+   # onlineservices
+   - onlineservices::tsd-onlineservices-webapp-manager-doc
+   - onlineservices::tsd-onlineservices-webapp-common-doc
+   - onlineservices::tsd-onlineservices-common-doc
+   - onlineservices::tsd-onlineservices-backendcomcore-doc
+   - onlineservices::tsd-onlineservices-diagnosis-doc
+   - onlineservices::tsd-onlineservices-downloadmanager-doc
+   - onlineservices::tsd-onlineservices-framework-doc
+   - onlineservices::tsd-onlineservices-remoteupdate-doc
+ # - onlineservices::tsd-onlineservices-web-engine-doc
+   - onlineservices::tsd-onlineservices-webapp-management-doc
+   - onlineservices::tsd-onlineservices-webapp-controller-doc
+   - onlineservices::tsd-onlineservices-webapp-storage-doc  
+  # - onlineservices::tsd-onlineservices-webengine-api-doc
+   - onlineservices::tsd-onlineservices-webengine-media-doc
+   - onlineservices::tsd-onlineservices-webserver-doc
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   cp -a $1/* .

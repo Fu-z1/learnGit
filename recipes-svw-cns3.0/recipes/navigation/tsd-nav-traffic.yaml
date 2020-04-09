@@ -1,0 +1,82 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - navigation::tsd-nav-sdk-traffic-api-dev
+  - navigation::tsd-nav-sdk-traffic-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-sdk-mapdataservice-api-dev
+  - navigation::tsd-nav-sdk-pathfinder-api-dev
+  - navigation::tsd-nav-cloud-comm-client-api-dev
+  - navigation::tsd-nav-configdata-dev
+  - navigation::tsd-nav-utils-api-dev
+  - system::ext-boost-filesystem-dev
+  - system::ext-boost-system-dev
+  - system::ext-boost-locale-dev
+  - hmi::ext-freetype-dev
+  - libs::ext-cairo-dev
+  - libs::ext-protobuf-dev
+  - hmi::tsd-i18n-dev
+  - use: []
+    depends:
+      - system::ext-boost-target
+      - hmi::ext-freetype-target
+      - libs::ext-cairo-target
+      - libs::ext-protobuf-target
+      - hmi::tsd-i18n-target
+
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.git
+   dir: tsd.nav.traffic
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildTools: [protoc]
+
+multiPackage:
+  ? ""
+  :
+    #inherit: [navi_compflags_werror_sanitize]
+    inherit: [navi_compflags_protobuf]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: |
+           buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=0
+
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+     unittests:
+        depends:
+           - navigation::tsd-nav-traffic-vics-fonts-target
+        buildScript: |
+           buildenvTestAll -DTSD_NAV_TRAFFIC_VICS_FONTS=${BOB_DEP_PATHS[navigation::tsd-nav-traffic-vics-fonts-target]}/usr \
+                           -DTSD_NAV_TRAFFIC_VICS_TEST_DATA=${BOB_ALL_PATHS[navigation::tsd-nav-traffic-unittests]}/tsd.nav.traffic/test/moduleTest/tsd/nav/traffic/moduleTest/vics-test-data/
+           rsync -a --delete $1/tsd.nav.traffic/test/moduleTest/tsd/nav/traffic/moduleTest/vics-test-data dist/usr/bin/
+        packageScript: |
+           buildenvPackageTests
+
+     swittests:
+        buildScript: |
+           buildenvTestAll
+        packageScript: |
+           buildenvPackageTests
+
+     eventloophardening:
+        depends:
+          - navigation::tsd-nav-traffic-dev
+          - system::ext-boost-dev
+          - system::ext-boost-program-options-dev
+          - system::ext-boost-filesystem-dev
+          - system::ext-boost-system-dev
+
+        buildScript: |
+           buildenvBuildModules tsd.nav.traffic.app.eventloophardening -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+
+        packageScript: |
+           buildenvPackageTarget tsd.nav.traffic.app.eventloophardening.install

@@ -1,0 +1,59 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "StaticLib"
+
+depends:
+   # build dependencies
+ - sal::tsd-sal-audio-dev
+ - system::ext-boost-dev
+ - system::tsd-common-dev
+ - libs::tsd-common-stm-dev
+ - system::tsd-threadmessages-dev
+ - libs::ext-libxml2-dev
+
+   # runtime dependencies
+ - use: []
+   depends:
+    - sal::tsd-sal-audio-target
+    - system::ext-boost-target
+    - system::tsd-common-target
+    - libs::tsd-common-stm-target
+    - system::tsd-threadmessages-target
+    - libs::ext-libxml2-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.sal.common.git
+   dir: tsd.sal.common
+   branch: main/svw_cns3.0_1480_dev
+multiPackage:
+   ? ""
+   :  buildVars: [AUTOCONF_HOST]
+      buildScript: buildenvBuildAll
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "sal-common" \
+                  -p "emmc.sal" \
+                  -o "sal:tsd-sal-common " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

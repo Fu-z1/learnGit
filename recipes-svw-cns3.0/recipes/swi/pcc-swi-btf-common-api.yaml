@@ -1,0 +1,39 @@
+inherit: [buildenv]
+
+depends:
+   - system::tsd-common-dev
+   - system::ext-cppunit-google-mock-dev
+   - navigation::ext-tinyxml-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@git-repo.server.technisat-digital:swi-btf/pcc.swi.btf.common.api.git
+      dir: pcc.swi.btf.common.api
+      branch: master_mqb_sop1_eu
+      tag: "${PCC_SWI_BTF_COMMON_API_VERSION:-}"
+
+buildVars: [PCC_SWI_BTF_COMMON_API_VERSION]
+multiPackage:
+   dev:
+      buildScript: |
+         if [ -d "$1/pcc.swi.btf.common/.git" ]; then
+            # get the real version from git
+            pushd $1/pcc.swi.btf.common
+            GIT_VERSION=$(git describe --abbrev=4 --dirty --always --tags)
+            popd
+         else
+            # we are in sandbox and can take the git tag checked output
+            GIT_VERSION=${PCC_SWI_BTF_COMMON_API_VERSION:-unknown}
+         fi
+         buildenvBuildAll -DGIT_VERSION=$GIT_VERSION
+
+      packageScript: |
+         buildenvPackageDev
+
+      provideDeps: [ "*-dev" ]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

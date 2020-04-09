@@ -1,0 +1,107 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - onlineservices::tsd-onlineservices-webapp-common-dev
+ - onlineservices::tsd-onlineservices-webapp-storage-dev
+ - onlineservices::tsd-onlineservices-webapp-controller-dev
+ - onlineservices::tsd-onlineservices-downloadmanager-dev
+ - onlineservices::tsd-onlineservices-framework-dev
+ - system::tsd-common-dev
+ - system::ext-wslay-dev
+ - system::ext-libarchive-dev
+ - onlineservices::ext-libfuse-dev
+ - basic-services::rsi-library::tsd-rsi-client-dev
+ - basic-services::rsi-library::tsd-rsi-server-dev
+ - hmi::tsd-hmi-language-client-mib3-dev
+ - system::tsd-dataformats-dev
+ - system::tsd-vkms-api-dev
+ - vehicle-connectivity::canstack::tsd-canstack-api-dev
+ - use: []
+   depends:
+    - onlineservices::tsd-onlineservices-webapp-controller-target
+    - basic-services::rsi-library::tsd-rsi-client-target
+    - basic-services::rsi-library::tsd-rsi-server-target
+    - onlineservices::ext-libfuse-target
+    - hmi::tsd-hmi-language-client-mib3-target
+    - onlineservices::tsd-onlineservices-downloadmanager-target
+    - onlineservices::tsd-onlineservices-webapp-common-target
+    - onlineservices::tsd-onlineservices-webapp-storage-target
+    - onlineservices::tsd-onlineservices-framework-target
+    - system::tsd-common-target
+    - system::ext-libarchive-target
+    - system::tsd-dataformats-target
+    - system::tsd-vkms-api-target
+    - vehicle-connectivity::canstack::tsd-canstack-api-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webapp.manager.git
+   dir: tsd.onlineservices.webapp.manager
+   tag: mqb_sop1_eu-1.148.9
+buildVars: [AUTOCONF_HOST]
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
+         rsync -a $1/tsd.onlineservices.webapp.manager/ini ${PWD}
+
+      packageScript: |
+         buildenvPackageDev
+         mkdir -p etc/tsd.onlineservices.webapp.manager/
+         rsync -a --delete $1/ini/* etc/tsd.onlineservices.webapp.manager/
+
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
+
+         rsync -a $1/tsd.onlineservices.webapp.manager/ini ${PWD}
+
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p etc/tsd.onlineservices.webapp.manager/
+         rsync -a --delete $1/ini/* etc/tsd.onlineservices.webapp.manager/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-webapp-manager" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-webapp-manager " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+      provideDeps: ['*-target']
+   autotests-host:
+      depends:
+       - test::ext-cucumber-cpp-dev
+       - test::tsd.test.utils-dev
+       - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DTSD_BUILDENV_ENABLE_TEST_TARGETS_SWTESTS=1 -DHOST_BUILD=1
+      packageScript: |
+         buildenvPackageDev
+   autotests-target:
+      depends:
+       - test::ext-cucumber-cpp-target
+       - test::tsd.test.utils-dev
+       - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DTSD_BUILDENV_ENABLE_TEST_TARGETS_SWTESTS=1
+      packageScript: |
+         buildenvPackageDev
+
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+

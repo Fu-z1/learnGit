@@ -1,0 +1,156 @@
+inherit: [root]
+
+environment:
+   TARGET_OS: "linux"
+   CONFIG_BOARD: zr3
+   CONFIG_TARGET: "${CONFIG_TARGET:-normal}"
+   MINIMON_BRANCH: mib3zr3
+   #UBOOT_BRANCH: tsd-mib3-rcar-3.3.1
+   UBOOT_BRANCH: cns-master
+   UBOOT_BOARD: r8a7795_pcc-zr3
+   KERNEL_BRANCH: v4.14+rcar-3.6.2+gita95d91d+renesas+pcc 
+   KERNEL_BOARD: tsd-zr3-h3n
+   NORMAL_DTB: "renesas/r8a7795-pcc-zr3"
+   HYPERVISOR_DTB: "renesas/r8a7795-pcc-zr3-HV-overlay"
+   ANDROID_DTB: "renesas/r8a7795-pcc-zr3-android-overlay"
+   ANDROID_BRANCH: android-kernel
+   ANDROID_BOARD: android_salvator-x
+   ANDROID_VERSION: "8.0.0_r4"
+   SOC_FAMILY: r8a7795
+   SOC_NAME: H3N
+
+   MAJOR: "095"
+   DELIVERY: "0"
+   BUILDREF: "1"
+
+   MAP_MAJOR: "913"
+   MAP_DELIVERY: "0"
+   MAP_BUILDREF: "1"
+
+   CHECKSUM: "true"
+   SIGNATURE: "true"
+   MAP_VARIANT: "empty"
+
+depends:
+   -
+      name: system::bsp::ext-u-boot-tools
+      use: [tools]
+      forward: True
+   -
+      name: system::ext-liblz4-tool
+      use: [tools]
+      forward: True
+
+   -
+      name: system::tsd-synthtests
+      if: "$(eq,${CONFIG_SYNTHETIC_TESTS:-0},1)"
+
+   -
+      name: export-tools-linux
+      if: "$(eq,${EXPORT_TOOLS:-0},1)"
+   -
+      name: export-tools-win32
+      if: "$(eq,${EXPORT_TOOLS:-0},1)"
+
+   # variants that build develop
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-},SK_CHN)"
+     name: zr3-variant-SK_CHN
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-},SK_TW)"
+     name: zr3-variant-SK_TW
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-VW_CHN},VW_CHN)"
+     name: zr3-variant-VW_CHN
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-},VW_TW)"
+     name: zr3-variant-VW_TW
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-},VW_HM)"
+     name: zr3-variant-VW_HM
+   # variants that build secure
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-},SK_CHN_sec)"
+     name: zr3-variant-SK_CHN_sec
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-},SK_TW_sec)"
+     name: zr3-variant-SK_TW_sec
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-},VW_CHN_sec)"
+     name: zr3-variant-VW_CHN_sec
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-},VW_TW_sec)"
+     name: zr3-variant-VW_TW_sec
+   - if: "$(filterVariant,${CONFIG_VARIANTS:-},VW_HM_sec)"
+     name: zr3-variant-VW_HM_sec
+
+   # variants that build navimap
+   - zr3-navimap-CHN
+   - zr3-navimap-TW
+   - zr3-navimap-CHN_2mesh
+   - zr3-navimap-CHN_sec
+   - zr3-navimap-TW_sec
+
+#   - zr3-navimap-DACHCZ_sec
+#   - zr3-navimap-EU1_sec
+#   - zr3-navimap-EU2_sec
+#   - zr3-navimap-RDW1_sec
+#   - zr3-navimap-RDW2_sec
+#   - zr3-navimap-RDW2_INDIEN_sec
+#   - zr3-navimap-JP_sec
+#   - zr3-navimap-KR_sec
+#   - zr3-navimap-CHN
+#   - zr3-navimap-TW
+
+   # Map multireleases
+   #  - builds normal and sec container in a multi release
+   #- zr3-navimap-multirelease-DACHCZ
+   #- zr3-navimap-multirelease-EU1
+   #- zr3-navimap-multirelease-EU2
+   #- zr3-navimap-multirelease-RDW1
+   #- zr3-navimap-multirelease-RDW2
+   #- zr3-navimap-multirelease-RDW2_INDIEN
+   #- zr3-navimap-multirelease-JP
+   #- zr3-navimap-multirelease-KR
+
+   # Customer Update SAL
+   - zr3-cu-sal-mqb
+   - zr3-cu-sal-mqb-sec
+
+   # Customer Update WLAN
+   - zr3-cu-wlan-mqb
+   - zr3-cu-wlan-mqb-sec
+
+   # Customer Update BT_PHONE
+   - zr3-cu-bt-phone-mqb
+   - zr3-cu-bt-phone-mqb-sec
+
+   # Customer Update WEB BROWSER
+   - zr3-cu-web-browser-mqb
+   - zr3-cu-web-browser-mqb-sec
+
+   # Customer Update StationDB
+   - zr3-cu-stationdb-mqb
+   - zr3-cu-stationdb-mqb-sec
+   - zr3-cu-stationdb-mqb_fbu
+   - zr3-cu-stationdb-mqb_fbu-sec
+
+   # Customer Update RADIO TUNER
+   - zr3-cu-radio-tuner-mqb
+   - zr3-cu-radio-tuner-mqb-sec
+
+   # Customer Update ASR resources
+   #- zr3-cu-sds-asr-resources-mqb
+   #- zr3-cu-sds-asr-resources-mqb-sec
+
+   # Customer Update MEDIA
+   - zr3-cu-media-mqb
+   - zr3-cu-media-mqb-sec
+
+   # Customer Update NAVIGATION
+   #- zr3-cu-navigation-mqb
+   - zr3-cu-certificate-mqb
+   - zr3-cu-certificate-mqb-sec
+
+
+buildScript: |
+   rm -rf *
+   for i in "${!BOB_DEP_PATHS[@]}" ; do
+      dir="${i#zr3-variant-}"
+      mkdir -p $dir
+      cp -a ${BOB_DEP_PATHS[$i]}/* $dir/
+   done
+
+packageScript: |
+   rsync -a --delete $1/ .

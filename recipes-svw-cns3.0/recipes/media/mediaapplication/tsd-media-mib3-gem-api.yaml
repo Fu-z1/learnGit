@@ -1,0 +1,60 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   - scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mib3.gem.api.git
+     dir: tsd.media.mib3.gem.api
+     tag: mqb_sop1_eu-1.1.1
+   - if: "${CONFIG_CAPI_MOCKS:-0}"
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mib3.gem.client.git
+     dir: tsd.media.mib3.gem.client
+     branch: master_mqb_sop1_eu
+   - if: "${CONFIG_CAPI_MOCKS:-0}"
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mib3.gem.service.git
+     dir: tsd.media.mib3.gem.service
+     branch: master_mqb_sop1_eu
+
+checkoutScript: CapiGenProcessFIDLFiles tsd.media.mib3.gem.api
+checkoutDeterministic: True
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "mib3-gem-api" \
+            -p "emmc.media.mediaapp" \
+            -o "media.mediaapplication:tsd-media-mib3-gem-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

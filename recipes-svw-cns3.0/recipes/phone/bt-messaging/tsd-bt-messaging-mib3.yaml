@@ -1,0 +1,73 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - system::tsd-common-dev
+ - system::tsd-threadmessages-dev
+ - phone::bt-messaging::tsd-bt-messaging-dev
+ - phone::bt-messaging::tsd-bt-messaging-mib3-api-dev
+ - phone::bt-organizer::tsd-organizer-dev
+ - phone::bt-devicemanagement::tsd-bt-management-dev
+ - phone::tsd-phone-common-mib3-dev
+ - hmi::tsd-dsi-cpp-dev
+ - basic-services::persistence::tsd-persistence-client-mib3-dev
+ - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+ - communication::tsd-communication-runtime-dev
+ - basic-services::rsi-library::tsd-rsi-client-dev
+ - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+ - phone::tsd-phone-common-dev
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - system::tsd-threadmessages-target
+    - phone::bt-messaging::tsd-bt-messaging-target
+    - phone::bt-messaging::tsd-bt-messaging-mib3-api-target
+    - phone::bt-organizer::tsd-organizer-target
+    - phone::bt-devicemanagement::tsd-bt-management-target
+    - phone::tsd-phone-common-mib3-target
+    - hmi::tsd-dsi-cpp-target
+    - basic-services::persistence::tsd-persistence-client-mib3-target
+    - engineering::diagnostic-management::tsd-uds-api-mib3-target
+    - communication::tsd-communication-runtime-target
+    - basic-services::rsi-library::tsd-rsi-client-target
+    - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+    - phone::tsd-phone-common-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.messaging.mib3.git
+   dir: tsd.bt.messaging.mib3
+   tag: mqb_sop1_eu-1.52.1
+buildVars: [AUTOCONF_HOST]
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "bt-messaging-mib3" \
+            -p "emmc.phone.bt-messaging" \
+            -o "phone.bt-messaging:tsd-bt-messaging-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

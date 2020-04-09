@@ -1,0 +1,43 @@
+scmOverrides:
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.dhd.cypress.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.wpasupplicant.cypress.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-internet/tsd.networking.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-internet/tsd.networking.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-internet/tsd.networking.ocu.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-internet/tsd.networking.rsi.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-internet/tsd.networking.wlan.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"

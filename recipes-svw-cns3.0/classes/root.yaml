@@ -1,0 +1,99 @@
+root: True
+
+# common sandbox and toolchain setup
+depends:
+   -
+      name: sandbox::debian-stretch-x86_64
+      use: [sandbox]
+      forward: True
+   -
+      name: system::tsd-buildenv-tool
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::cmake
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::host
+      use: [environment, tools]
+      forward: True
+   -
+      name: toolchain::pkg-config
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::dtc-compiler
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::node-npm
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::java
+      use: [tools]
+      forward: True
+   -
+      name: system::ext-wayland-scanner
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::protoc
+      use: [tools]
+      forward: True
+   -
+      name: libs::ext-glib2-tool
+      use: [tools]
+      forward: True
+   -
+      name: system::ext-pkg-host-tools
+      use: [tools]
+      forward: True
+   -
+      name: system::ext-renesas-signingtool
+      use: [tools]
+      forward: True
+   -
+      name: libs::ext-openssl-tool
+      use: [tools]
+      forward: True
+   -
+      name: communication::ext-commonapi-generator
+      use: [tools]
+      forward: true
+   -
+      name: communication::tsd-communication-binding-generator
+      use: [tools]
+      forward: true
+   -
+      name: toolchain::android-tools-fsutils
+      use: [tools]
+      forward: true
+   -
+      name: toolchain::fakeroot
+      use: [tools]
+      forward: true
+   -
+      name: toolchain::e2fsdroid
+      use: [tools]
+      forward: true
+   -
+      name: toolchain::ota_from_target_files
+      use: [tools]
+      forward: true
+   -
+      name: toolchain::zip
+      use: [tools]
+      forward: true
+   -
+      if: "$(ne, ${RUN_UNITTESTS:-false}, false)"
+      depends:
+         -
+            name: toolchain::lcov2cobertura
+            use: [tools]
+            forward: True
+         -
+            name: toolchain::lcov
+            use: [tools]
+            forward: True

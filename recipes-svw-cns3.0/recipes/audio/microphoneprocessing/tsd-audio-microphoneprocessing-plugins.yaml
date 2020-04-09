@@ -1,0 +1,204 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+   - audio::audiorouter::ext-pulseaudio-module-dev
+   - libs::ext-libtool-dev
+   - system::tsd-common-dev
+   - use: []
+     depends:
+      - libs::ext-libtool-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.microphoneprocessing.plugins.git
+   dir: tsd.audio.microphoneprocessing.plugins
+#   tag: 1.2.4
+   branch: release/cns_mqb
+
+privateEnvironment:
+   A2B_AVAILABLE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_SPEAKER_LOCALIZATION,1),1,0)"
+
+buildVars: [A2B_AVAILABLE]
+
+multiPackage:
+
+   handsfree:
+      multiPackage:
+         api:
+            multiPackage:
+               dev:
+                  buildScript: |
+                     buildenvBuildModules tsd.audio.microphoneprocessing.plugins.handsfree.api \
+                     -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+                     -DTSD_BUILDENV_ENABLE_INSTALLABLE_APP_TARGETS=1 \
+                     -DA2B_AVAILABLE=${A2B_AVAILABLE}
+                  packageScript: |
+                     buildenvPackageDev
+                  provideDeps: ['*-dev']
+
+               target:
+                  buildScript: |
+                     buildenvBuildModules tsd.audio.microphoneprocessing.plugins.handsfree.api \
+                     -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+                     -DTSD_BUILDENV_ENABLE_INSTALLABLE_APP_TARGETS=1 \
+                     -DA2B_AVAILABLE=${A2B_AVAILABLE}
+                  packageScript: |
+                     buildenvPackageTarget
+                     d=$(mktemp -d)
+                     rsync -a --delete --exclude ".debug" ./ $d
+                     buildSwupModule -n "plugins-handsfree-api" \
+                        -p "emmc.audio.micprg" \
+                        -o "audio.microphoneprocessing:tsd-audio-microphoneprocessing-plugins-handsfree-api " -f $d -- \
+                        -U "Partition=rootfs_ro"
+                     rm -rf $d
+                  provideDeps: ['*-target']
+         target:
+            depends:
+               - audio::microphoneprocessing::tsd-audio-ec-mib3-dev
+               - use: []
+                 depends:
+                    - audio::microphoneprocessing::tsd-audio-ec-mib3-ld-target
+            buildScript: |
+               buildenvBuildModules tsd.audio.microphoneprocessing.plugins.handsfree -DA2B_AVAILABLE=${A2B_AVAILABLE}
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "plugins-handsfree" \
+                  -p "emmc.audio.micprg" \
+                  -o "audio.microphoneprocessing:tsd-audio-microphoneprocessing-plugins-handsfree " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ['*-target']
+
+   vocon:
+       multiPackage:
+          target:
+             depends:
+               - audio::microphoneprocessing::tsd-audio-ec-mib3-dev
+               - use: []
+                 depends:
+                    - audio::microphoneprocessing::tsd-audio-ec-mib3-ld-target
+
+             buildScript: |
+                   buildenvBuildModules \
+                   tsd.audio.microphoneprocessing.plugins.vocon -DA2B_AVAILABLE=${A2B_AVAILABLE}
+
+             packageScript: |
+                buildenvPackageTarget
+                d=$(mktemp -d)
+                rsync -a --delete --exclude ".debug" ./ $d
+                buildSwupModule -n "plugins-vocon" \
+                   -p "emmc.audio.micprg" \
+                   -o "audio.microphoneprocessing:tsd-audio-microphoneprocessing-plugins-vocon " -f $d -- \
+                   -U "Partition=rootfs_ro"
+                rm -rf $d
+             provideDeps:
+                - '*-target'
+
+   icc:
+       multiPackage:
+          target:
+             depends:
+                - audio::microphoneprocessing::tsd-audio-icc-mib3-dev
+                - use: []
+                  depends:
+                      - audio::microphoneprocessing::tsd-audio-icc-mib3-target
+
+             buildScript: |
+                   buildenvBuildModules \
+                   tsd.audio.microphoneprocessing.plugins.icc -DA2B_AVAILABLE=${A2B_AVAILABLE}
+
+             packageScript: |
+                buildenvPackageTarget
+                d=$(mktemp -d)
+                rsync -a --delete --exclude ".debug" ./ $d
+                buildSwupModule -n "plugins-icc" \
+                   -p "emmc.audio.micprg" \
+                   -o "audio.microphoneprocessing:tsd-audio-microphoneprocessing-plugins-icc " -f $d -- \
+                   -U "Partition=rootfs_ro"
+                rm -rf $d
+             provideDeps:
+                - '*-target'
+
+   synchronized-null-sink-target:
+      depends:
+         - audio::audiorouter::ext-alsa-lib-dev
+         - use: []
+           depends:
+              - audio::audiorouter::ext-alsa-lib-target
+      buildScript: |
+         buildenvBuildModules \
+              -DTSD_BUILDENV_ENABLE_APP_TARGETS=0 \
+              -DTSD_BUILDENV_ENABLE_INSTALLABLE_APP_TARGETS=0 \
+              tsd.audio.microphoneprocessing.plugins.synchronized.null.sink
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "plugins-sync-null-sink" \
+            -p "emmc.audio.micprg" \
+            -o "audio.microphoneprocessing:tsd-audio-microphoneprocessing-plugins-synchronized-null-sink " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   tools-target:
+      depends:
+         - audio::audiorouter::ext-alsa-lib-dev
+         - use: []
+           depends:
+              - audio::audiorouter::ext-alsa-lib-target
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_ENABLE_TEST_TARGETS=0 \
+            audio-tools
+      packageScript: |
+         buildenvPackageTarget
+
+
+   interleave:
+       multiPackage:
+          target:
+             buildScript: |
+                   buildenvBuildModules \
+                   tsd.audio.microphoneprocessing.plugins.interleave
+
+             packageScript: |
+                buildenvPackageTarget
+                d=$(mktemp -d)
+                rsync -a --delete --exclude ".debug" ./ $d
+                buildSwupModule -n "plugins-interleave" \
+                   -p "emmc.audio.micprg" \
+                   -o "microphoneprocessing-plugins-interleave " -f $d -- \
+                   -U "Partition=rootfs_ro"
+                rm -rf $d
+             provideDeps:
+                - '*-target'
+   target:
+        depends:
+           - use: []
+             depends:
+                - audio::microphoneprocessing::tsd-audio-microphoneprocessing-plugins-handsfree-target
+                - audio::microphoneprocessing::tsd-audio-microphoneprocessing-plugins-vocon-target
+                - audio::microphoneprocessing::tsd-audio-microphoneprocessing-plugins-icc-target
+                # only CNS version
+                - name: audio::microphoneprocessing::tsd-audio-microphoneprocessing-plugins-synchronized-null-sink-target
+                  if: "$(or,$(flagIsSet,${VARIANTS},Region,CHINA), \
+                            $(flagIsSet,${VARIANTS},Region,TAIWAN), \
+                            $(flagIsSet,${VARIANTS},Region,HONGKONG_MACAO))"
+                # only dev version
+                - name: audio::microphoneprocessing::tsd-audio-microphoneprocessing-plugins-tools-target
+                  if: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+                - audio::microphoneprocessing::tsd-audio-microphoneprocessing-plugins-interleave-target
+        provideDeps:
+           - "*-target"
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

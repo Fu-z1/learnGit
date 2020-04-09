@@ -1,0 +1,52 @@
+inherit: [buildenv, packing-module, werror]
+
+depends:
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - system::ext-vkms-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-common-dev
+  - system::tsd-vkms-api-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - use: []
+    depends:
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - system::ext-vkms-target
+      - system::tsd-common-target
+      - system::tsd-vkms-api-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.vkms.git
+   dir: tsd.vkms
+   tag: mqb_sop1_eu-2.5.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+         mkdir -p dist/etc/vkms
+         rsync -a --delete $1/tsd.vkms/depl/commonapi.ini dist/etc/vkms/commonapi.ini
+         rsync -a --delete $1/tsd.vkms/depl/cert.der dist/etc/vkms/cert.der
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "vkms" \
+            -p "emmc.system" \
+            -o "system:tsd-vkms " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"

@@ -1,0 +1,22 @@
+shared: True
+
+environment:
+   PKG_VERSION: "3.0.11"
+   PKG_SHA1_SUM: "8b9a3841475a82f90a746feb529cc8539ad81736"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-zip/zip-${PKG_VERSION}.tar.bz2
+   digestSHA1: ${PKG_SHA1_SUM}
+   extract: no
+
+buildScript: |
+   ln -sf $1/*.tar.bz2 .
+
+
+packageScript: |
+   tar -xjf $1/*.tar.bz2
+
+provideTools:
+   zip:
+      path: "usr/bin"

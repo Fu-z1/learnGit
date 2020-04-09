@@ -1,0 +1,73 @@
+inherit: [cmake, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_VERSION: "3.00.286"
+   PKG_NAME: "ViWi ServiceRegistry"
+   PKG_PATCH_VERSION: "3.00.286"
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - libs::ext-openssl-dev
+  - system::ext-poco-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+      - system::ext-poco-target
+      - system::tsd-common-target
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/ext.vw.rsi.serviceregistry.git
+    dir: ext.vw.rsi.serviceregistry
+    #tag: SOP1_v3.00.0562
+    #branch: master_mqb_sop1_eu
+    branch: main/svw_cns3.0_1520_dev
+
+buildScript: |
+   CMAKE_SRC_PATH="$1/ext.vw.rsi.serviceregistry"
+   cmakeConfigure -DSHARED_LIBRARY_VERSION=00
+   makeParallel
+   cmakeInstall install
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+
+         # for debug there is a postfix
+         DbgPostFix=""
+         if [ "${CMAKE_BUILD_TYPE:-}" == "Debug" ]; then
+            DbgPostFix="d"
+         fi
+
+         rsync -a --delete $1/dist/ .
+         if [ "${LIBDIR:-}" != "lib" ]; then
+            mv ./usr/lib ./usr/${LIBDIR}
+         fi
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR}             \
+                                        -l MIBServiceRegistryLib${DbgPostFix}   \
+                                        -l MIBAuthServiceLib${DbgPostFix}       \
+                                        -l MIBSecurityLib${DbgPostFix}          \
+                                        -l MIBServiceLib${DbgPostFix}           \
+                                        -l MIBServiceDataLib${DbgPostFix}       \
+                                        -l MIBUtilLib${DbgPostFix}     ext.vw.rsi.serviceregistry
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-vw-rsi-serviceregistry" \
+            -p "emmc.basic-svcs" \
+            -o "basic-services.rsi-service-registry:ext-vw-rsi-serviceregistry " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

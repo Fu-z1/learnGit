@@ -1,0 +1,62 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-Vorintegration"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.icu.git
+    dir: ext.icu
+    tag: mqb_sop1_eu-57.1.1
+
+
+multiPackage:
+   host:
+      depends:
+        - name: toolchain::host
+          use: [environment, tools]
+      buildTools: [host-toolchain]
+      buildScript: |
+         autotoolsBuild ${1}/ext.icu/icu/source
+
+      packageScript: |
+         rsync -a --delete $1/ .
+
+      provideTools:
+         icu: .
+
+   dev:
+      depends:
+        - name: tip::ext-icu-host
+          use: [tools]
+
+      buildVars: [CROSS_COMPILE, SYSROOT, CC, CPP, LIBDIR]
+      buildTools: [icu]
+      buildScript: |
+         autotoolsBuild ${1}/ext.icu/icu/source --with-cross-build="${BOB_TOOL_PATHS[icu]}"
+
+      packageTools: [buildenv]
+      packageVars: [LIBDIR]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l icuuc -l icui18n ext.icu
+
+   target:
+      depends:
+        - name: tip::ext-icu-host
+          use: [tools]
+
+      buildVars: [CROSS_COMPILE, SYSROOT, CC, CPP, LIBDIR]
+      buildTools: [icu]
+      buildScript: |
+         autotoolsBuild ${1}/ext.icu/icu/source --with-cross-build="${BOB_TOOL_PATHS[icu]}"
+
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-icu" \
+            -p "emmc.tip" \
+            -o "tip:ext-icu " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

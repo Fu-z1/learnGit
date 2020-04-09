@@ -1,0 +1,37 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - system::tsd-common-daemon-dev
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.truststoreupdater.git
+   dir: tsd.onlineservices.truststoreupdater
+   tag: mqb_sop1_eu-1.130.6
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+
+   target:
+      buildScript: "buildenvBuildAll\nrsync -a $1/tsd.onlineservices.truststoreupdater/certificates\
+         \ ${PWD}"
+
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p etc/ssl/
+         mkdir -p usr/bin/certificates/
+         rsync -a --delete $1/certificates/* usr/bin/certificates/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "truststoreupdater" \
+            -m 'truststore,truststore,0400,/usr/bin/certificates/.*' \
+            -m 'truststore,truststore,0500,/usr/bin/certificates$*' \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-truststoreupdater " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+         # provideDeps: ["*-target"]
+

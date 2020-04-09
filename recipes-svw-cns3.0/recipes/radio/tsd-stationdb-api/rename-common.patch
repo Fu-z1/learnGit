@@ -1,0 +1,27 @@
+--- a/tsd.stationdb.api/binding/CMakeLists.txt
++++ b/tsd.stationdb.api/binding/CMakeLists.txt
+@@ -1,1 +1,1 @@
+-add_submodules(proxy stub common)
++add_submodules(proxy stub capicommon)
+--- a/tsd.stationdb.api/binding/proxy/CMakeLists.txt
++++ b/tsd.stationdb.api/binding/proxy/CMakeLists.txt
+@@ -11,7 +11,7 @@
+
+ module_dependencies(PUBLIC
+    tsd.stationdb.api.definition
+-   tsd.stationdb.api.common
++   tsd.stationdb.api.capicommon
+    tsd.common
+    tsd.communication.event
+    tsd.communication.messaging
+--- a/tsd.stationdb.api/binding/stub/CMakeLists.txt
++++ b/tsd.stationdb.api/binding/stub/CMakeLists.txt
+@@ -11,7 +11,7 @@
+
+ module_dependencies(PUBLIC
+    tsd.stationdb.api.definition
+-   tsd.stationdb.api.common
++   tsd.stationdb.api.capicommon
+    tsd.common
+    tsd.communication.event
+    tsd.communication.messaging

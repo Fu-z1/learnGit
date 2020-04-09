@@ -1,0 +1,22 @@
+shared: True
+
+environment:
+   PKG_VERSION: "v02"
+   PKG_SHA1_SUM: "fa497261b216c1114360ed70b08465589246c293"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-e2fsdroid/e2fsdroid_${PKG_VERSION}.tar.bz2
+   digestSHA1: ${PKG_SHA1_SUM}
+   extract: no
+
+buildScript: |
+   ln -sf $1/*.tar.bz2 .
+
+
+packageScript: |
+   tar -xjf $1/*.tar.bz2
+
+provideTools:
+   e2fsdroid:
+      path: "usr/bin"

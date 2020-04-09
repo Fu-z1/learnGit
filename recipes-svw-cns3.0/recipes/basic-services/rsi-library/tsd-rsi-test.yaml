@@ -1,0 +1,42 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - basic-services::rsi-library::tsd-rsi-client-dev
+  - basic-services::rsi-library::tsd-rsi-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::rsi-library::tsd-rsi-server-target
+      - basic-services::rsi-library::tsd-rsi-client-target
+      - basic-services::rsi-library::tsd-rsi-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tools/tsd.rsi.test.git
+   dir: tsd.rsi.test
+   tag: mqb_sop1_eu-1.3.0
+   branch: develop
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll \
+               -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+               -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+      provideDeps: ['*-target']
+

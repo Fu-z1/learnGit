@@ -1,0 +1,95 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_NAME: "2019_01_25_pnav_0.10.19_pcc"
+   PKG_VERSION: "0.10.19"
+   PKG_NAME_LG: "2019_01_25_pnav_0.20.8_lg"
+   PKG_NAME_VERSION: "2019_01_25_pnav_0.20.8"
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+privateEnvironment:
+   PKG_NAME: "2019_01_25_pnav_0.10.19_pcc"
+   PKG_LOCATION: "ext-vw-prednavcore/MIB3/"
+   PKG_CHECKSUM: "cf2f7da5a95d7ee5823e0e6c33d55c5421e03099"
+   PKG_ROOT_DIR: "ext.vw.prednavcore/2019_01_25_pnav_0.10.19_pcc/"
+   PKG_NAME_LG: "2019_01_25_pnav_0.20.8_lg"
+   PKG_LOCATION_LG: "ext-vw-prednavcore/LGE/"
+   PKG_CHECKSUM_LG: "5c2d9a7cf12a4f5927ee6032b29a0bbe9657d152"
+   PKG_ROOT_DIR_LG: "ext.vw.prednavcore_lg/2019_01_25_pnav_0.20.8_lg/"
+
+checkoutVars: [PKG_NAME, PKG_LOCATION, PKG_NAME_LG, PKG_LOCATION_LG]
+checkoutSCM:
+ - scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/${PKG_LOCATION}${PKG_NAME}.tgz
+   digestSHA1: ${PKG_CHECKSUM}
+   fileName: "${PKG_NAME}.tgz"
+   dir: ext.vw.prednavcore
+ - scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/${PKG_LOCATION_LG}${PKG_NAME_LG}.tgz
+   digestSHA1: ${PKG_CHECKSUM_LG}
+   fileName: "${PKG_NAME_LG}.tgz"
+   dir: ext.vw.prednavcore_lg
+
+buildTools: [toolchain]
+
+buildVars: [AUTOCONF_HOST, PKG_ROOT_DIR, PKG_ROOT_DIR_LG]
+packageVars: [LIBDIR]
+
+buildScript: |
+   copy_shared_lib() {
+      if [[ "${AUTOCONF_HOST}" =~ x86_64-linux-.*  ]]; then
+         ROOT_DIR=${PKG_ROOT_DIR}
+         LIBRARY_DIR=host-x86_64
+      elif [[ "${AUTOCONF_HOST}" =~ aarch64-agl-linux ]]; then
+         ROOT_DIR=${PKG_ROOT_DIR_LG}
+         LIBRARY_DIR=aarch64-agl-linux
+      elif [[ "${AUTOCONF_HOST}" =~ aarch64.*linux.* ]]; then
+         ROOT_DIR=${PKG_ROOT_DIR}
+         LIBRARY_DIR=aarch64-poky-renesas
+      else
+        (>&2 echo "Unknown architecture")
+        exit 1
+      fi
+      cp $1/${ROOT_DIR}${LIBRARY_DIR}/libpnav.so* dist/usr/${LIBDIR}/libpnav.so
+   }
+
+multiPackage:
+   dev:
+      buildScript: |
+         mkdir -p dist/usr/${LIBDIR}
+         mkdir -p dist/usr/include
+         mkdir -p dist/usr/lib/cmake/ext.vw.prednavcore
+         if [[ "${AUTOCONF_HOST}" =~ x86_64-linux-.*  ]]; then
+            ROOT_DIR=${PKG_ROOT_DIR}
+         elif [[ "${AUTOCONF_HOST}" =~ aarch64-agl-linux ]]; then
+            ROOT_DIR=${PKG_ROOT_DIR_LG}
+         elif [[ "${AUTOCONF_HOST}" =~ aarch64.*linux.* ]]; then
+            ROOT_DIR=${PKG_ROOT_DIR}
+         else
+           (>&2 echo "Unknown architecture")
+           exit 1
+         fi
+         cp $1/${ROOT_DIR}include/* dist/usr/include
+         copy_shared_lib $@
+
+      packageTools: [buildenv]
+      packageScript: |
+         buildenvPackageDev install
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l pnav -I include ext.vw.prednavcore
+
+   target:
+      buildScript: |
+         # LIBDIR on zr3 is 'lib' not 'lib64'
+         mkdir -p dist/usr/${LIBDIR}
+         mkdir -p dist/usr/lib/cmake/ext.vw.prednavcore
+         copy_shared_lib $@
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-vw-prednavcore" \
+            -p "emmc.navigation" \
+            -o "navigation:ext-vw-prednavcore " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

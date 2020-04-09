@@ -1,0 +1,59 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - basic-services::car-function-management::ext-vw-rsi-onlineremoteupdate-dev
+  - basic-services::car-function-management::tsd-carssw-api-dev
+  - basic-services::car-function-management::tsd-carssw-generaladapters-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - system::tsd-tcpprocinfo-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - basic-services::car-function-management::ext-vw-rsi-onlineremoteupdate-target
+      - basic-services::car-function-management::tsd-carssw-api-target
+      - basic-services::car-function-management::tsd-carssw-generaladapters-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwionlineremoteupdateclient.adapter.git
+    dir: tsd.carssw.viwionlineremoteupdateclientadapter
+    tag: mqb_sop1_eu-1.3.0
+    branch: master_mqb_sop1_eu
+
+
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+      buildScript: |
+         buildenvBuildAll
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "carssw-viwioruclient-adapter" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:tsd-carssw-viwionlineremoteupdateclient-adapter " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+      buildScript: |
+         buildenvBuildAll
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

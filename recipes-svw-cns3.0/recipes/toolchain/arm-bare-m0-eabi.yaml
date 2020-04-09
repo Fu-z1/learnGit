@@ -1,0 +1,157 @@
+shared: True
+
+environment:
+   TOOLCHAIN_NAME: "gcc-arm-none-eabi-5_2-2015q4-20151219-linux"
+   URL:            "${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/gcc-arm"
+   ARM_ROOTFS:     "sysroot"
+
+checkoutSCM:
+   scm: url
+   url: "${URL}/${TOOLCHAIN_NAME}.tar.bz2"
+   digestSHA1: e25dae0165541fb09d3e73e6d81b776cba41de82
+   extract: no
+
+buildScript: |
+   ln -sf $1/*.tar.bz2
+
+packageVars: [TOOLCHAIN_NAME, ARM_ROOTFS]
+packageVarsWeak: [KLOCWORK_BIN_PATH]
+packageScript: |
+   if [ ! -e ${TOOLCHAIN_NAME}/sysroots ] ; then
+      tar xf $1/*.tar.bz2
+   fi
+
+   # add sysroot for compiler and linker
+   mkdir -p bin
+   # SETTINGS: C
+   for i in gcc; do
+      cat > bin/arm-none-eabi-$i <<EOF
+   #!/bin/sh
+   \${0%/*}/../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-$i "\$@"
+   EOF
+      chmod a+x bin/arm-none-eabi-$i
+   done
+   # SETTINGS: C++
+   for i in ld g++; do
+      cat > bin/arm-none-eabi-$i <<EOF
+   #!/bin/sh
+   \${0%/*}/../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-$i "\$@"
+   EOF
+      chmod a+x bin/arm-none-eabi-$i
+   done
+
+   # just symlink the rest
+   pushd bin
+      #ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/pkg-config
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-ar
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-as
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-nm
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-objcopy
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-objdump
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-ranlib
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-readelf
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-size
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-strings
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-strip
+      ln -sf ../gcc-arm-none-eabi-5_2-2015q4/bin/arm-none-eabi-gdb
+   popd
+
+   #
+   # Create toolchain file
+   #
+
+   cat >linux_bare_armv7-klocwork.toolchain <<EOF
+   # kw wrapper toolchain
+   SET( KLOCWORK_BIN_PATH "\$ENV{KLOCWORK_BIN_PATH}" )
+   IF( NOT KLOCWORK_BIN_PATH )
+   SET( KLOCWORK_BIN_PATH "/opt/install/klocwork/bin" )
+   ENDIF()
+   
+   IF( NOT WORKSPACE )
+   SET(WORKSPACE "\$ENV{WORKSPACE}")
+   ENDIF()
+   
+   FIND_PROGRAM(
+   KWWRAP_PATH
+   kwwrap
+   PATHS "\${KLOCWORK_BIN_PATH}"
+   )
+   
+   SET(KLOCWORK_LOGFILE "\${WORKSPACE}/klocwork-buildtrace.log")
+   
+   SET(CMAKE_C_COMPILER   "arm-none-eabi-gcc")
+   SET(CMAKE_CXX_COMPILER "arm-none-eabi-g++")
+   SET(CMAKE_SYSTEM_NAME "Generic")
+   
+   # compiler check is failing...
+   set(CMAKE_C_COMPILER_WORKS 1)
+   set(CMAKE_CXX_COMPILER_WORKS 1)
+
+   # programs are from host; libs and headers only from target
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+ 
+   SET(GCC_KW_WRAPPER_PATH "\${WORKSPACE}/gcc-kw-wrapper.sh")
+   SET(GXX_KW_WRAPPER_PATH "\${WORKSPACE}/gxx-kw-wrapper.sh")
+   FILE(WRITE "\${GCC_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_C_COMPILER} \"\$@\"")
+   FILE(WRITE "\${GXX_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_CXX_COMPILER} \"\$@\"")
+   execute_process(COMMAND chmod 754 "\${GCC_KW_WRAPPER_PATH}")
+   execute_process(COMMAND chmod 754 "\${GXX_KW_WRAPPER_PATH}")
+   
+   SET(CMAKE_C_COMPILER "\${GCC_KW_WRAPPER_PATH}")
+   SET(CMAKE_CXX_COMPILER "\${GXX_KW_WRAPPER_PATH}")
+   EOF
+   # If no klocwork, then create normal toolchain
+
+   cat >linux_bare_armv7.toolchain <<EOF
+   # Generic system
+   set(CMAKE_SYSTEM_NAME "Generic")
+
+   # set compiler
+   set(CMAKE_C_COMPILER "arm-none-eabi-gcc")
+   set(CMAKE_CXX_COMPILER "arm-none-eabi-g++")
+
+   # compiler check is failing...
+   set(CMAKE_C_COMPILER_WORKS 1)
+   set(CMAKE_CXX_COMPILER_WORKS 1)
+
+   # programs are from host; libs and headers only from target
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+   EOF
+
+provideVars:
+   # architecture
+   ARCH: arm
+   AUTOCONF_HOST:   "arm-none-eabi"
+   AUTOCONF_TARGET: "arm-none-eabi"
+   CROSS_COMPILE: "arm-none-eabi-"
+   TARGET_TYPE: "embedded"
+
+   # compiler settings
+   CMAKE_TOOLCHAIN_FILE: $(if-then-else,$(eq,${CONFIG_KLOCWORK:-0},1),"../linux_bare_armv7-klocwork.toolchain","../linux_bare_armv7.toolchain")
+   CFLAGS: ""
+   CXXFLAGS: ""
+   LDFLAGS: ""
+   LIBDIR: lib
+   SYSROOT: ""
+
+   # tools
+   AR:     "arm-none-eabi-ar"
+   AS:     "arm-none-eabi-as"
+   CC:     "arm-none-eabi-gcc"
+   CPP:    "arm-none-eabi-cpp"
+   CXX:    "arm-none-eabi-g++"
+   GDB:    "arm-none-eabi-gdb"
+   LD:     "arm-none-eabi-ld"
+   NM:     "arm-none-eabi-nm"
+   OBJCPY: "arm-none-eabi-objcopy"
+   OBJDMP: "arm-none-eabi-objdump"
+   RANLIB: "arm-none-eabi-ranlib"
+   STRIP:  "arm-none-eabi-strip"
+
+provideTools:
+   toolchain:
+      path: "bin"

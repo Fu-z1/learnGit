@@ -1,0 +1,87 @@
+inherit: [autotools, patch, packing-module]
+
+environment:
+   PKG_VERSION: "3.1.0"
+
+metaEnvironment:
+   PKG_LICENSE: "wxWindows License (LGPL but with an exeption clause)"
+   PKG_VERSION: "3.1.0"
+   PKG_NAME: "wxwidgets"
+   PKG_PATCH_VERSION: "1.0.0"
+   PKG_RESPONSIBLE: "MMI-HMI"
+
+# depends:
+depends:
+  - name: toolchain::pkg-config-host
+    use: [tools]
+    forward: true
+
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-wxwidgets/wxWidgets-${PKG_VERSION}.tar.gz
+   digestSHA1: "00ec86069441f5c207a68206367944e008d13691"
+
+# apply patches
+checkoutDeterministic: true
+checkoutScript: |
+   patchApplySeries -p0 $<<ext-wxwidgets/*.patch>>
+   # until we can enable the shim stuff below
+   cp $<<ext-wxwidgets/ext.wxwidgets-config.cmake>> ext.wxwidgets-config.cmake
+
+
+buildScript: |
+   # archaic "minimal" x11 wxwidgets
+   # autotoolsBuild $1/wxWidgets-${PKG_VERSION} --enable-universal --with-x11 --without-gtk --enable-compat28 --enable-monolithic --without-libpng --without-libtiff --without-expat --disable-gif --disable-pcx --disable-tga --disable-iff --disable-pnm --enable-xpm --disable-svg
+   autotoolsBuild $1/wxWidgets-${PKG_VERSION} --enable-compat28 --enable-xpm
+   # until we can enable the shim stuff below. It assumes --prefix=/usr, if its changed (directory deepth), the cmake file needs to be edited
+   cp $1/ext.wxwidgets-config.cmake .
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageVars: [LIBDIR]
+      packageScript: |
+         PREFIX="usr"
+         NAME="ext.wxwidgets"
+
+         autotoolsPackageDev
+         # until we can enable the shim stuff below
+         mkdir -p $PREFIX/lib/cmake/${NAME}/
+         cp $1/ext.wxwidgets-config.cmake $PREFIX/lib/cmake/${NAME}/${NAME}-config.cmake
+
+         # until the shim-wrapper is fixed, and don't generate empty set_target_properties
+         # we copy a prebuild ext.wxwidgets-config.cmake to it, which also don't contain absolute paths
+         # ( FindwxWidgets.cmake from cmake uses wx-config, which we give "relative Path" from ${_IMPORT_PREFIX} )
+         # i don't want to "copy" the wx-config code from the FindwxWidgets.cmake module to the bob recipe
+         #
+         # tsd-buildenv-create-shim.sh -p $PREFIX $NAME
+         # cat >> $PREFIX/lib/cmake/$NAME/$NAME-config.cmake << EOF
+         #
+         # SET(wxWidgets_CONFIG_OPTIONS --prefix=\${_IMPORT_PREFIX} --libdir=\${_IMPORT_PREFIX}/${LIBDIR})
+         # find_package(wxWidgets)
+         # if(NOT wxWidgets_FOUND)
+         #    message(ERROR "wxWidgets not found. Something is weird\n")
+         # else()
+         #    message(STATUS " wxWidgets ${wxWidgets_VERSION_STRING} found.\n")
+         # endif()
+         #
+         # set_target_properties($NAME PROPERTIES
+         #    INTERFACE_COMPILE_DEFINITIONS "\${wxWidgets_DEFINITIONS}"
+         #    INTERFACE_INCLUDE_DIRECTORIES "\${wxWidgets_INCLUDE_DIRS}"
+         #    INTERFACE_LINK_LIBRARIES "\${wxWidgets_LIBRARIES}"
+         # )
+         #
+         # EOF
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-wxwidgets" \
+            -p "emmc.hmi" \
+            -o "hmi:ext-wxwidgets " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

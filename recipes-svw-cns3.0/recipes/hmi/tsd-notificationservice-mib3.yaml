@@ -1,0 +1,62 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+  - basic-services::ext-vw-rsi-notificationservice-dev
+  - basic-services::tsd-notificationservice-adapter-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - system::tsd-common-dev
+  - system::ext-poco-dev
+  - system::tsd-common-daemon-dev
+
+
+  - use: []
+    depends:
+      - basic-services::ext-vw-rsi-notificationservice-target
+      - basic-services::tsd-notificationservice-adapter-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - system::tsd-common-target
+      - system::ext-poco-target
+      - system::tsd-common-daemon-target
+
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.notificationservice.mib3.git
+    dir: tsd.notificationservice.mib3
+    tag: mqb_sop1_eu-2.6.0
+    branch: master_mqb_sop1_eu
+
+
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "notificationservice-mib3" \
+            -p "emmc.hmi" \
+            -o "hmi:tsd-notificationservice-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

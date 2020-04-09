@@ -1,0 +1,28 @@
+inherit: [packing-module]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.config.manufacturing.mib3.git
+   tag: mqb_sop1_eu-1.13.0
+   branch: master_mqb_sop1_eu
+
+packageScript: |
+   cp -a $1/* .
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "config-manufacturing-mib3" \
+      -p "emmc.system" \
+      -o "system:tsd-config-manufacturing-mib3 " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+multiPackage:
+   # build-time configuration files of other packages, e.g. busybox
+   buildcfg:
+      buildScript: |
+         rsync -a --delete $1/buildcfg/ .
+
+# files that are put into the root file system
+   target:
+      buildScript: |
+         rsync -a --delete $1/target/ .
+

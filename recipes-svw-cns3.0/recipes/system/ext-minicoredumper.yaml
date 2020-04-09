@@ -1,0 +1,96 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(LGPL-2.1 AND BSD)"
+   PKG_NAME: "minicoredumper"
+   PKG_RESPONSIBLE: "System-System"
+
+privateEnvironment:
+   SW_DEV_ACCESS: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+
+depends:
+  - libs::ext-elfutils-libelf-dev
+  - libs::ext-elfutils-libdw-dev
+  - audio::audiorouter::ext-json-c-dev
+  - use: []
+    depends:
+      - libs::ext-elfutils-libelf-target
+      - libs::ext-elfutils-libdw-target
+      - audio::audiorouter::ext-json-c-target
+      - system::ext-pigz
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.minicoredumper.git
+   tag: pcc1.23.0
+   branch: pcc-develop
+
+buildVars: [SW_DEV_ACCESS]
+buildScript: |
+   rsync -a --delete \
+      --exclude .git \
+      --exclude examples \
+      --exclude dists \
+      --exclude website \
+      ${1}/ .
+
+   # build all
+   autotoolsBuild . \
+      MCD_DUMP_PATH=/var/crash
+
+   # remove init.d related stuff
+   pushd dist
+   rm -rf etc/default
+   rm -rf etc/init.d
+   rm -rf var/run
+   popd
+
+   # prepare libminicoredumper dest
+   mkdir -p dist-libminicoredumper/usr/sbin
+
+   # split libminicoredumper components
+   pushd dist/usr
+   for dir in bin include lib
+   do
+     mv $dir ../../dist-libminicoredumper/usr
+   done
+   mv sbin/minicoredumper_* ../../dist-libminicoredumper/usr/sbin
+   popd
+
+   # do not write fatcore in production SW, use purge_core_quota
+   if [[ ${SW_DEV_ACCESS,,*} == false ]] ; then
+      sed -i -e '/dump_fat_core/s/true/false/' dist/etc/minicoredumper/generic.recept.json
+      sed -i 's/purge_cores/purge_cores_quota/' dist/usr/libexec/coredump_post
+   fi
+
+multiPackage:
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-minicoredumper" \
+            -p "emmc.system" \
+            -m 'crash,crash,0770,/var/crash$'        \
+            -m 'crash,crash,0770,/var/crash/.*'      \
+            -m 'root,crash,2755,/usr/sbin/minicoredumper' \
+            -o "system:ext-minicoredumper " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target", "system::ext-pigz"]
+
+   lib:
+      depends:
+        - use: []
+          depends:
+            # "live-dumping" uses the minicoredumper too
+            - system::ext-minicoredumper-target
+
+      multiPackage:
+         dev:
+            packageScript: installPackageDev ${1}/dist-libminicoredumper
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: installPackageTarget ${1}/dist-libminicoredumper
+            provideDeps: ["*-target"]

@@ -1,0 +1,58 @@
+inherit: [cloud, rootfs, packing-module,navi_compflags_werror_sanitize]
+#inherit: [cloud, rootfs, packing-module,navi_compflags_sanitize]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_ENABLE_RPATH: "true"
+   COPYSYMBOLS: "1"
+   VARIANTS: "301001"
+
+depends:
+  - libs::ext-protobuf-target
+  - libs::ext-aws-sdk-cpp-target
+  - navigation::cloud-services::trafficdecoder-target
+  - libs::ext-sqlite-nds-target
+  - navigation::tsd-nav-crypto-target
+  - navigation::tsd-nav-middleware-interface-target
+  - navigation::tsd-nav-middleware-nds-2_5_2-target
+  - system::ext-boost-target
+  - system::tsd-common-target
+  - navigation::tsd-nav-cloud-common-cpp-dev
+
+
+buildVars: [COPYSYMBOLS]
+
+buildScript: |
+   rm -rf *
+
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[navi]
+
+   for dep in ${tocopy[@]} ; do
+      cp -au ${dep}/* "${PWD}/"
+   done
+
+   if [[ $COPYSYMBOLS == 0 ]];
+      then
+         # move symbols
+         mkdir -p symbols
+         move_symbols "${PWD}" symbols
+         tar -zcf symbols.tgz -C symbols .
+         rm -rf symbols
+   fi
+
+packageScript: |
+   rsync -a --delete $1/ .
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "trafficdecoder-service" \
+      -p "emmc.navigation.cloud-services" \
+      -o "navigation.cloud-services:trafficdecoder-service " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

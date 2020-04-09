@@ -1,0 +1,65 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Kartendarstellung"
+
+depends:
+  - navigation::tsd-nav-cdn-mib3-dev
+  - navigation::tsd-nav-input-mib3-api-dev
+  - navigation::tsd-nav-mapdataservice-mib3-api-dev
+  - navigation::tsd-nav-mapdisplay-bridge-dev
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-memory-mib3-api-dev
+    #- navigation::tsd-nav-pathfinder-mib3-api-dev
+  - navigation::tsd-nav-positioning-mib3-api-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-sdk-roadnumberbuilder-dev
+  - navigation::tsd-nav-sdk-mapdisplay-dev
+  - navigation::tsd-nav-traffic-mib3-api-dev
+    #- navigation::tsd-nav-utils-api-dev
+  - navigation::tsd-nav-sdk-imageservices-dev
+  - libs::tsd-rasterimage-dev
+  - system::tsd-common-dev
+  - name: system::bsp::ext-weston-dev
+    if: "$(eq,${CONFIG_BOARD:-},zr3)"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mapdisplay.mib3.git
+   dir: tsd.nav.mapdisplay.mib3
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildScript: |
+   build(){
+      buildenvBuildAll
+   }
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+      dev:
+        buildScript: build $@
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  swittests:
+      buildVars: [TSD_BUILDENV_IS_SWITTEST]
+      buildScript: |
+         buildenvTestAll -DTSD_NAV_MAPDISPLAY_MIB3_SWITS_ENABLED=${TSD_BUILDENV_IS_SWITTEST}
+      packageScript: |
+         buildenvPackageTests
+
+  unittests:
+      depends:
+         - navigation::tsd-nav-utils-dev
+      buildScript: |
+         buildenvTestAll -DMAPDISPLAY_UNITTESTS=1
+      packageScript: |
+         buildenvPackageTests
+
+  doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

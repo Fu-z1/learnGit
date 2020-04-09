@@ -1,0 +1,50 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-swupdate-viewcontroller-dev
+  - hmi::tsd-dsi-cpp-dev
+  - system::bsp::ext-weston-dev
+  - system::tsd-common-dev
+  - system::tsd-minihmi-dev
+  - system::tsd-swupdate-client-dev
+  - use: []
+    depends:
+      - system::bsp::ext-kmod-mmngr-target
+      - system::bsp::ext-vspm-target
+      - system::tsd-swupdate-viewcontroller-target
+      - hmi::tsd-dsi-cpp-target
+      - system::bsp::ext-weston-target
+      - system::tsd-common-target
+      - system::tsd-minihmi-target
+      - system::tsd-swupdate-client-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.systemhmi.git
+   dir: tsd.swupdate.systemhmi
+   #tag: 3.10.0
+   branch: feature/cns_oru
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+
+   target:
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-systemhmi" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-systemhmi " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

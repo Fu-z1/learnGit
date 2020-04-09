@@ -1,0 +1,67 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+environment:
+   TSD_NAV_TRIPVIEW_BUILD_APPS: "${TSD_NAV_TRIPVIEW_BUILD_APPS:-0}"
+
+depends:
+  - navigation::tsd-nav-input-mib3-api-dev
+  - navigation::tsd-nav-input-mib3-dev
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-pathfinder-mib3-api-dev
+  - navigation::tsd-nav-prednav-api-dev
+  - navigation::tsd-nav-psd-v15-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-sdk-pathfinder-api-dev
+  - navigation::tsd-nav-sdk-prednav-api-dev
+  - navigation::tsd-nav-utils-dev
+  - navigation::tsd-nav-rsi-viwi-dev
+  - navigation::tsd-nav-traffic-mib3-api-dev
+  - navigation::tsd-nav-traffic-dev
+  - navigation::tsd-nav-sdk-traffic-api-dev
+  - system::tsd-common-dev
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.tripview.git
+    dir: tsd.nav.tripview
+    tag: mqb_sop1_eu-150.0.1      #navi-src (src of the navigation)
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.cppunit.git
+    dir: ext.cppunit
+    branch: master_mqb_sop1_eu
+    if: "$(ne,${TSD_NAV_TRIPVIEW_BUILD_APPS:-0},0)"
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.google.mock.git
+    dir: ext.google.mock
+    branch: master_mqb_sop1_eu
+    if: "$(ne,${TSD_NAV_TRIPVIEW_BUILD_APPS:-0},0)"
+
+buildVars: [TSD_NAV_TRIPVIEW_BUILD_APPS]
+buildScript: |
+   build(){
+      buildenvBuildAll \
+         -DTSD_BUILDENV_TSD_NAV_TRIPVIEW_BUILD_APPS_TARGETS=${TSD_NAV_TRIPVIEW_BUILD_APPS:-0} \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=${TSD_NAV_TRIPVIEW_BUILD_APPS:-0} \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=${TSD_NAV_TRIPVIEW_BUILD_APPS:-0}
+   }
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_werror_sanitize]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: build $@
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

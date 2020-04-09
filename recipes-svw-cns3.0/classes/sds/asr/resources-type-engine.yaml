@@ -1,0 +1,46 @@
+inherit: [packing-module,
+   "sds::asr::resources-origin-pcc",
+   "sds::asr::resources-origin-vocon",
+   "sds::asr::lang-sets"]
+
+buildVars: [LANGS]
+buildScript: |
+
+   # engine resources are language dependent
+   # param1: the combined language code e.g. "de_DE:ged"
+   copyEngineRes()
+   {
+      code=$1          # e.g. "de_DE:ged"
+      c1=${code:0:5}
+      c2=${code:6:3}
+
+      rm -fr ${c1}/engine
+
+      echo "Copy engine resources for ${code}"
+
+      copyEngineResFromVocon ${c1} ${c2}
+      copyEngineResFromPCC ${c1}
+
+      ${PCC_CONFIG_GEN_TOOL}/scripts/generate_engine_config.sh ${PCC_CONFIG_GEN_TOOL}/templates \
+         ${PCC_CONFIG_GEN_TOOL_CFGS}/${c1}/config_templates ${c1} ${code} ${c1}/engine/config.json
+   }
+
+   rm -rf *
+   eval _LANGS=(${LANGS})
+   for lang in ${_LANGS[*]}; do copyEngineRes ${lang};  done
+
+packageVars: [VARIANT_LIST, NO_PACKAGE, PCC_RES_VARIANT]
+packageScript: |
+   if [[ ${NO_PACKAGE:-False} == False ]]; then
+      mkdir -p tmp/var/speech/asr/lang/
+      cp -r $1/* tmp/var/speech/asr/lang/
+      buildSwupModule -n "sds-asr-resources-engine" -p "emmc.sds.asr" -v ${PCC_RES_VARIANT} -o 'sds::asr::resources' -f tmp \
+          -m 'asr,asr,0770,/var/speech/asr$'      \
+          -m 'asr,asr,0770,/var/speech/asr/.*' -- \
+          --variantList $VARIANT_LIST \
+          -U "Partition=rootfs_ro"
+      rm -rf tmp
+   else
+      mkdir -p var/speech/asr/lang/
+      cp -r $1/* var/speech/asr/lang/
+   fi

@@ -1,0 +1,49 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - tip::ext-icu-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - tip::ext-icu-target
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS:-} -w -fvisibility=hidden -DSQLITE_API=\\\"__attribute__((visibility(\\\\\\\"default\\\\\\\")))\\\""
+   CFLAGS:   "${CFLAGS:-} -w -fvisibility=hidden   -DSQLITE_API=\\\"__attribute__((visibility(\\\\\\\"default\\\\\\\")))\\\""
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.sqlite.nds.git
+   dir: ext.sqlite.nds
+   tag: '3.22.0-2-4'
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+         pushd usr/${LIBDIR}
+         ln -svf libext.sqlite.nds.so libnds_sqlite3.so
+         ln -svf libext.sqlite.nds.so libnds_sqlite3_crypto.so
+         popd
+      provideDeps: ['*-dev']
+
+   target:
+      packageVars: [LIBDIR]
+      packageScript: |
+         buildenvPackageTarget
+         pushd usr/${LIBDIR}
+         ln -svf libext.sqlite.nds.so libnds_sqlite3.so
+         ln -svf libext.sqlite.nds.so libnds_sqlite3_crypto.so
+         popd
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-sqlite-nds" \
+            -p "emmc.libs" \
+            -o "libs:ext-sqlite-nds " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

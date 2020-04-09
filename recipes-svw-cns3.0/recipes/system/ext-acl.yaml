@@ -1,0 +1,48 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later AND LGPL-2.1-or-later)"
+   PKG_VERSION: "2.2.52"
+   PKG_NAME: "acl"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-attr-dev
+  - use: []
+    depends:
+      - system::ext-attr-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-acl/acl-${PKG_VERSION}.src.tar.gz
+   digestSHA1: 537dddc0ee7b6aa67960a3de2d36f1e2ff2059d9
+
+buildVars: [PKG_VERSION, LIBDIR]
+buildScript: |
+   rsync -a --delete $1/acl-${PKG_VERSION}/ .
+   autotoolsConfigureOnly .
+   mkdir -p ${PWD}/dist
+   makeParallel
+   make install-dev install-lib DESTDIR=${PWD}/dist
+
+   # remove useless files, fix permissions
+   rm -f dist/usr/$LIBDIR/libacl.a
+   rm -rf dist/usr/libexec
+   chmod +x dist/usr/$LIBDIR/libacl.so.1.1.0
+
+multiPackage:
+   dev:
+      packageScript: autotoolsPackageDev
+      provideDeps: ["*-dev"]
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-acl" \
+            -p "emmc.system" \
+            -o "system:ext-acl " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+

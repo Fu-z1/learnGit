@@ -1,0 +1,36 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::ext-libtcpdump-dev
+  - use: []
+    depends:
+      - system::ext-libtcpdump-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.vw.carssw.tcptrace.git
+    dir: ext.tcptrace
+    tag: 1.0.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.vw.carssw.inih.lib.git
+    dir: ext.libinih
+    tag: 1.0.0
+    branch: master_mqb_sop1_eu
+
+
+buildScript: |
+   buildenvBuildAll
+   mkdir -p dist/var/lib/ext.tcptrace
+   rsync -a --delete $1/ext.tcptrace/etc/tcptrace.ini dist/var/lib/ext.tcptrace/tcptrace.ini
+
+provideDeps: ['*-target']
+packageScript: |
+   buildenvPackageTarget install
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-tcptrace" \
+      -p "emmc.system" \
+      -o "system:ext-tcptrace" -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

@@ -1,0 +1,32 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "1.2.1"
+   PKG_NAME: "libunwind"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libunwind/libunwind-${PKG_VERSION}.tar.gz
+   digestSHA1: "4ce18ee9c168ed6de85126534d855ddcb696bb17"
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   rsync -a --delete $1/libunwind-${PKG_VERSION}/ .
+   autotoolsBuild .
+
+multiPackage:
+   dev:
+      packageScript: autotoolsPackageDev
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-unwind" \
+            -p "emmc.libs" \
+            -o "libs:ext-unwind " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

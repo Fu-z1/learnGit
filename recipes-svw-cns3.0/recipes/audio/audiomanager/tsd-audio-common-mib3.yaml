@@ -1,0 +1,56 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - system::tsd-common-dev
+   # runtime dependecies
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.common.mib3.git
+    dir: tsd.audio.common.mib3
+#    tag: 1.0.2
+    branch: release/cns_mqb
+  - if: "${CONFIG_AUDIO_TEST:-False}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.common.test.mib3.git
+    remote-gerrit: http://esxi-amb1-slave-gerrit.mib3.technisat-digital:8080/tsd.audio.common.test.mib3
+    dir: tsd.audio.common.test.mib3
+    branch: master
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - '*-dev'
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "audio-common-mib3" \
+            -p "emmc.audio.audiomgr" \
+            -o "audio.audiomanager:tsd-audio-common-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - '*-target'
+
+   unittests:
+      buildScript: |
+         buildenvTestTargets tsd.audio.common.mib3.test
+      packageScript: |
+         buildenvPackageTests

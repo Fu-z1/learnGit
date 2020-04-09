@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "API"
+
+depends:
+  - system::tsd-common-dev
+  - tip::ext-icu-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - tip::ext-icu-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.i18n.git
+   dir: tsd.i18n
+   tag: mqb_sop1_eu-1.4.1
+
+
+
+multiPackage:
+   dev:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - tip::ext-icu-dev
+   target:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "i18n" \
+            -p "emmc.hmi" \
+            -o "hmi:tsd-i18n " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

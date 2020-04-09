@@ -1,0 +1,64 @@
+inherit: [autotools, packing-module]
+
+depends:
+  - libs::ext-bzip2-dev
+  - libs::ext-openssl-dev
+  - system::ext-xz-dev
+  - use: []
+    depends:
+      - libs::ext-bzip2-target
+      - libs::ext-openssl-target
+      - system::ext-xz-target
+
+environment:
+   PKG_VERSION: "3.3.2"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.libarchive.git
+   dir: libarchive_${PKG_VERSION}
+   tag: v${PKG_VERSION}
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   rsync -a --delete $1/libarchive_${PKG_VERSION}/ ${PWD}
+
+   autogenOrConfigure ./build/autogen.sh ${PWD}
+   autotoolsBuild ${PWD} \
+      --with-bz2lib \
+      --with-expat \
+      --with-lzo2 --without-lzma \
+      --with-openssl \
+      --without-iconv \
+      --without-lz4 \
+      --without-lzmadec \
+      --without-nettle \
+      --without-xml2 \
+      --with-zlib
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l archive -I include \
+         -d ext.bzip2 -d ext.openssl -d ext.xz ext.libarchive
+      provideDeps:
+        - libs::ext-bzip2-dev
+        - libs::ext-openssl-dev
+        - system::ext-xz-dev
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         shopt -s extglob
+         rm -rf usr/!(lib|lib64)
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libarchive" \
+            -p "emmc.system" \
+            -o "system:ext-libarchive " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

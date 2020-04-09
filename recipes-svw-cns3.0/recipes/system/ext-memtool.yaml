@@ -1,0 +1,30 @@
+inherit: [install, make, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0"
+   PKG_VERSION: "2016.10.0"
+   PKG_NAME: "memtool"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.memtool.git
+   tag: v${PKG_VERSION}
+   branch: master_mqb_sop1_eu
+
+buildVars: [CROSS_COMPILE, CC]
+buildTools: [toolchain]
+buildScript: |
+   ${CC} -o memtool $1/memtool.c
+
+packageScript: |
+   mkdir -p usr/bin
+   cp $1/memtool usr/bin
+   installStripAll ${PWD}
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-memtool" \
+      -p "emmc.system" \
+      -o "system:ext-memtool " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

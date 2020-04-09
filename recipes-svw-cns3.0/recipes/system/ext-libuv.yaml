@@ -1,0 +1,36 @@
+inherit: [autotools, packing-module]
+
+environment:
+   PKG_VERSION: "1.9.1"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libuv/v${PKG_VERSION}.zip
+   digestSHA1: "7c535396f4233459bed4cf0654da898397b59832"
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   rsync -a --delete $1/libuv-${PKG_VERSION}/ ${PWD}
+   rm -rf configure
+   rm -rf config.log
+   # FIXME: fix in autotools class
+   autotoolsBuild ${PWD}
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l uv -I include ext.libuv
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libuv" \
+            -p "emmc.system" \
+            -o "system:ext-libuv " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

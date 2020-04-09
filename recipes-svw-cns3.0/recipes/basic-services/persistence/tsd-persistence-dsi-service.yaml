@@ -1,0 +1,64 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - hmi::tsd-dsi-cpp-dev
+  - name: basic-services::persistence::tsd-persistence-client-mib3-dev
+    use: [deps, result, environment]
+    forward: true
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - hmi::tsd-dsi-cpp-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.persistence.dsi.service.git
+   dir: tsd.persistence.dsi.service
+   tag: mqb_sop1_eu-2.5.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p var/lib/gem
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "persistence_dsi-service" \
+            -p "emmc.basic-svcs" \
+            -m 'gem,gem,0700,/var/lib/gem$'   \
+            -m 'gem,gem,0700,/var/lib/gem/.*' \
+            -o "basic-services.persistence:tsd-persistence-dsi-service " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM]
+      buildScript: buildenvTestAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-1}
+         -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-1}
+      packageScript: buildenvPackageTests
+

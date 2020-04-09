@@ -1,0 +1,79 @@
+inherit: [install, packing-module]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/ext.cinemo.git
+   dir: ext.cinemo
+   tag: 1.197.18.91098
+
+depends:
+  - libs::ext-openssl-dev
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+  - if: "$(eq,${TARGET_TYPE},embedded)"
+    depends:
+      - system::bsp::ext-omx-dev
+      - use: []
+        depends:
+          - system::bsp::ext-omx-target
+
+buildTools: [buildenv]
+buildVars: [AUTOCONF_HOST, LIBDIR]
+buildScript: |
+   # Extract cinemo version from the project line within the CMakeLists.txt file (numbers in form of major.minor.patch.build)
+   # and store it in CINEMO_VERSION_* variables
+   IFS='.' \
+   read -r CINEMO_VERSION_MAJOR CINEMO_VERSION_MINOR CINEMO_VERSION_PATCH CINEMO_VERSION_BUILD \
+        < <(sed -nr 's|^PROJECT\(\$\{MODULE_NAME\} VERSION ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\)$|\1|p' < $1/ext.cinemo/CMakeLists.txt)
+
+   case $AUTOCONF_HOST in
+      x86_64*-linux*)
+         PLATFORM=linux/x86_64
+         ;;
+      aarch64*-linux*)
+         PLATFORM=linux/arm64
+         ;;
+      *)
+         echo "Tell me about your platform..." >&2
+         exit 1
+         ;;
+   esac
+
+   mkdir -p usr/$LIBDIR
+   cp -a $1/ext.cinemo/$PLATFORM/lib/* usr/$LIBDIR/
+   cp -a $1/ext.cinemo/$PLATFORM/include usr/
+
+   LFLAGS="" # Optional linker flags
+   if [ "${PLATFORM}" == "linux/x86_64" ]; then
+      # Ignore version informations on the host to resolve undefined reference errors
+      LFLAGS="-f -Wl,--unresolved-symbols=ignore-in-shared-libs"
+   fi
+
+   tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include \
+      -l NmeSDK \
+      -d ext.openssl ${LFLAGS} \
+      -D EXT_CINEMO_VERSION_MAJOR=$CINEMO_VERSION_MAJOR -D EXT_CINEMO_VERSION_MINOR=$CINEMO_VERSION_MINOR \
+      -D EXT_CINEMO_VERSION_PATCH=$CINEMO_VERSION_PATCH -D EXT_CINEMO_VERSION_BUILD=$CINEMO_VERSION_BUILD \
+      ext.cinemo
+
+multiPackage:
+   dev:
+      packageScript: |
+         installPackageDev $1
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         installPackageTarget $1
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-cinemo" \
+            -p "emmc.media.libraries" \
+            -o "media.libraries:ext-cinemo " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

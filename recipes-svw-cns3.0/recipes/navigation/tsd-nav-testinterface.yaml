@@ -1,0 +1,37 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - navigation::tsd-nav-homeview-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-testinterface-api-dev
+  - navigation::tsd-nav-tripview-dev
+  - navigation::tsd-nav-utils-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.testinterface.git
+   dir: tsd.nav.testinterface
+   tag: mqb_sop1_eu-150.0.1       #navi-api (internal only interface)
+
+buildScript: |
+   build(){
+      buildenvBuildAll
+   }
+
+multiPackage:
+   dev:
+      buildScript: build $@
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

@@ -1,0 +1,18 @@
+inherit: [buildenv]
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.cppunit.git
+    dir: ext.cppunit
+    tag: 1.2.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.google.mock.git
+    dir: ext.google.mock
+    tag: 1.1.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev

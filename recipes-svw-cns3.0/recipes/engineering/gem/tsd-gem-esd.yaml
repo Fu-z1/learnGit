@@ -1,0 +1,37 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+environment:
+   TSD_GEM_ESD_PATH: "/etc/gem/esd/"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-gem/tsd.gem.esd.git
+   dir: tsd.gem.esd
+   #tag: mqb_sop1_eu-10.1.0
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1520_dev
+
+privateEnvironment:
+   CONFIG_SECURE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1),0,1)"
+
+   CONFIG_SW_ESD_FILE_MQB_PACKAGE: $(if-then-else,$(flagIsSet,${VARIANTS},SW_ESD_FILE_PACKAGE,MQB),0,1)
+
+
+multiPackage:
+   target:
+      buildVars: [CONFIG_SECURE, TSD_GEM_ESD_PATH, CONFIG_SW_ESD_FILE_MQB_PACKAGE]
+      buildScript: |
+         buildenvBuildAll -DCONFIG_SECURE=${CONFIG_SECURE} -DTSD_GEM_ESD_PATH=${TSD_GEM_ESD_PATH} -DCONFIG_SW_ESD_FILE_MQB_PACKAGE=${CONFIG_SW_ESD_FILE_MQB_PACKAGE}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "gem-esd" \
+            -p "emmc.engineering.gem" \
+            -o "engineering.gem:tsd-gem-esd " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

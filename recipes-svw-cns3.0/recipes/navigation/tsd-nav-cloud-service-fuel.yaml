@@ -1,0 +1,33 @@
+inherit: [buildenv, navi_compflags_protobuf]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Service Cloud"
+
+depends:
+   - libs::ext-protobuf-dev
+   - system::tsd-common-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.service.fuel.git
+   dir: tsd.nav.cloud.service.fuel
+   tag: v1.0.0
+
+environment:
+    SANDBOX: "$(is-sandbox-enabled)"
+
+buildVarsWeak: [SANDBOX]
+buildTools: [protoc]
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      privateEnvironment:
+         #CXXFLAGS: "${CXXFLAGS:-} -Werror ${NAVI_ALLOWED_WARNINGS:-} ${JENKINS_HOME:+${NAVI_SUPPRESSED_WARNINGS:-}} ${CXXFLAGS_ADDRESS_SANITIZE:-}"
+
+         CXXFLAGS: "${CXXFLAGS:-} ${JENKINS_HOME:+${NAVI_SUPPRESSED_WARNINGS:-}} ${CXXFLAGS_ADDRESS_SANITIZE:-}"
+         LDFLAGS: "${LDFLAGS:-} ${LDFLAGS_ADDRESS_SANITIZE:-}"
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']

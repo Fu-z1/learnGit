@@ -1,0 +1,39 @@
+inherit: [autotools, patch, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-3.0-or-later"
+   PKG_VERSION: "8.26"
+   PKG_NAME: "coreutils"
+   PKG_PATCH_VERSION: "1.0.0"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-coreutils/coreutils-${PKG_VERSION}.tar.xz
+   digestSHA1: "d6268b2495c52d7a0ecc6156e36e0eca16e601ea"
+
+checkoutVars: [PKG_VERSION]
+checkoutDeterministic: true
+checkoutScript: |
+   pushd coreutils-${PKG_VERSION}
+   patchApplySeries -p1 $<<ext-coreutils/*.patch>>
+   popd
+
+privateEnvironment:
+   MAKE_JOBS: "1"
+
+buildScript: |
+   rm -rf dist
+   autotoolsConfigureOnly $1/coreutils-${PKG_VERSION} --enable-no-install-program=expr,factor,uptime,kill --prefix=/
+   makeParallel
+   make DESTDIR=${PWD}/dist INSTALL=install install
+
+packageScript: |
+   autotoolsPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-coreutils" \
+      -p "emmc.system" \
+      -o "system:ext-coreutils " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

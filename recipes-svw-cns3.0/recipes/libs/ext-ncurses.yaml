@@ -1,0 +1,41 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(MIT-advertising)"
+   PKG_VERSION: "6.0"
+   PKG_NAME: "ncurses"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-ncurses/ncurses-${PKG_VERSION}.tar.gz
+   digestSHA1: "acd606135a5124905da770803c05f1f20dd3b21c"
+
+buildTools: [toolchain, host-toolchain]
+buildVars: [PKG_VERSION]
+buildScript: |
+   # work around build failure with recent gcc
+   # see https://dev.openwrt.org/ticket/19749
+   export CPPFLAGS="-P"
+   autotoolsBuild $1/ncurses-${PKG_VERSION} \
+           --with-shared           \
+           --with-termlib          \
+           --with-ticlib           \
+           --without-debug         \
+           --without-normal        \
+           --enable-pc-files
+
+multiPackage:
+   dev:
+      packageScript: autotoolsPackageDev
+   target:
+      packageScript: |
+         autotoolsPackageTarget --include-shared
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-ncurses" \
+           -p "emmc.libs" \
+           -o "libs:ext-ncurses" \
+           -f $d -- \
+           -U "Partition=rootfs_ro"
+           rm -rf $d

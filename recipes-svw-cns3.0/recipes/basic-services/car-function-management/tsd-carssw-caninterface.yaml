@@ -1,0 +1,61 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - basic-services::car-function-management::ext-vw-carssw-dev
+  - basic-services::car-function-management::tsd-carssw-api-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - vehicle-connectivity::canstack::tsd-canstack-mib3-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - basic-services::car-function-management::ext-vw-carssw-target
+      - basic-services::car-function-management::tsd-carssw-api-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - vehicle-connectivity::canstack::tsd-canstack-mib3-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.caninterface.git
+    dir: tsd.carssw.caninterface
+    tag: mqb_sop1_eu-2.31.0
+    branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "carssw-caninterface" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:tsd-carssw-caninterface " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

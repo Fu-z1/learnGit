@@ -1,0 +1,98 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - audio::microphoneprocessing::ext-ec-dev
+  - audio::microphoneprocessing::tsd-audio-microphoneprocessing-mib3-api-dev
+  - audio::microphoneprocessing::tsd-audio-microphoneprocessing-tuning-mib3-dev
+  - audio::microphoneprocessing::tsd-audio-pulsemodule-microphoneprocessing-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - audio::microphoneprocessing::ext-ec-target
+      - audio::audiorouter::tsd-audio-pulsemodule-communication-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.ec.mib3.git
+   dir: tsd.audio.ec.mib3
+#   tag: 1.6.0
+   branch: release/cns_mqb
+
+privateEnvironment:
+   A2B_AVAILABLE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_SPEAKER_LOCALIZATION,1),1,0)"
+
+buildVars: [A2B_AVAILABLE]
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DTSD_AUDIO_EC_MIB3_INSTALL_TO_LADSPA_PATH=off -DA2B_AVAILABLE=${A2B_AVAILABLE}
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   ld-target:
+      buildScript: |
+        buildenvBuildAll -DTSD_AUDIO_EC_MIB3_INSTALL_TO_LADSPA_PATH=off \
+        -DTSD_BUILDENV_ENABLE_APP_TARGETS=0 \
+        -DA2B_AVAILABLE=${A2B_AVAILABLE}
+      packageScript: |
+        buildenvPackageTarget
+        d=$(mktemp -d)
+        rsync -a --delete --exclude ".debug" ./ $d
+        buildSwupModule -n "ec-mib3-ld" \
+           -p "emmc.audio.micprg" \
+           -o "audio.microphoneprocessing:tsd-audio-ec-mib3-ld " -f $d -- \
+           -U "Partition=rootfs_ro"
+        rm -rf $d
+      provideDeps: ['*-target']
+
+   dlopen-target:
+      buildScript: |
+         buildenvBuildAll \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=0 \
+         -DA2B_AVAILABLE=${A2B_AVAILABLE}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         rm $d/usr/lib/libtsd.audio.ec.mib3.validation.so
+         buildSwupModule -n "ec-mib3-dlopen" \
+            -p "emmc.audio.micprg" \
+            -o "audio.microphoneprocessing:tsd-audio-ec-mib3-dlopen " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   validation-dev:
+      buildScript: |
+         buildenvBuildModules \
+         tsd.audio.ec.mib3.validation -DA2B_AVAILABLE=${A2B_AVAILABLE}
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   validation-target:
+      buildScript: |
+         buildenvBuildModules \
+         tsd.audio.ec.mib3.validation -DA2B_AVAILABLE=${A2B_AVAILABLE}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         rm $d/usr/lib/libtsd.audio.ec.mib3.validation.so
+         buildSwupModule -n "ec-mib3-validation" \
+            -p "emmc.audio.micprg" \
+            -o "audio.microphoneprocessing:tsd-audio-ec-mib3-validation " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

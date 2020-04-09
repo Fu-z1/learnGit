@@ -1,0 +1,79 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - hmi::ext-pango-dev
+  - hmi::ext-zulu-dev
+  - hmi::ext-vw-dsi
+  - hmi::tsd-dsi-java
+  - media::pictureserver::tsd-media-picserver-dev
+  - system::tsd-common-dev
+  - system::tsd-system-displaymanager-dev
+  - system::ext-lttng-ust-dev
+  - libs::ext-liburcu-dev
+  - use: []
+    depends:
+      - hmi::ext-pango-target
+      - hmi::ext-zulu-target
+      - media::pictureserver::tsd-media-picserver-target
+      - system::tsd-common-target
+      - system::tsd-system-displaymanager-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.dsi.native.git
+   dir: tsd.dsi.native
+   branch: rebase/mqb_sop1_eu_1480-rc4
+
+privateEnvironment:
+   SW_TRACING_ACTIVE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_TRACING_ACTIVE,1),1,0)"
+
+buildVars: [LIBDIR, JVM, VARIANT_NAME, SW_TRACING_ACTIVE]
+buildScript: |
+   buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/tsd -DJVM=ext.zulu -DSW_TRACING_ACTIVE=$SW_TRACING_ACTIVE
+
+   mkdir -p dist/etc/fonts
+   cp $1/tsd.dsi.native/etc/fonts/${VARIANT_NAME}/fonts.conf dist/etc/fonts
+
+   # XXX: Hack Hack Hack, the current code expect the filename libtsd.dsi.so and not libtsd.dsi.native.so
+   cd dist/tsd/lib
+   mv libtsd.dsi.native.so libtsd.dsi.so
+
+multiPackage:
+   vw:
+      privateEnvironment:
+         VARIANT_NAME: "VW"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=vw)"
+
+      multiPackage: &multiPkg
+         dev:
+            packageScript: |
+               buildenvPackageDev
+
+         pkg:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "dsi-native" \
+                  -p "emmc.hmi" \
+                  -o "hmi:tsd-dsi-native " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ['*-target']
+
+         doc:
+            buildTools: [doxygen, dot]
+            buildScript: buildenvBuildDocAll
+            packageScript: buildenvPackageDoc
+
+   skoda:
+      privateEnvironment:
+         VARIANT_NAME: "Skoda"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=sk)"
+
+      multiPackage: *multiPkg
+

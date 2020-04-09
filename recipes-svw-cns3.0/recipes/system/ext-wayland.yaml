@@ -1,0 +1,70 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "1.14.0"
+   PKG_NAME: "wayland"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutDeterministic: true
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-wayland/wayland-${PKG_VERSION}.tar.xz
+   digestSHA1: 53a443be3bafe73209bbc49ef2cb134ed16e0141
+buildVars: [PKG_VERSION]
+
+multiPackage:
+   scanner:
+      depends:
+        - libs::ext-libxml2-dev
+        - libs::ext-libffi-dev
+        - system::ext-expat-dev
+
+      buildVars: [PKG_VERSION]
+      buildScript: |
+         autotoolsBuild $1/wayland-${PKG_VERSION} \
+            --without-host-scanner \
+            --disable-documentation \
+            --disable-libraries
+
+      packageScript: |
+         autotoolsPackageTarget
+
+      provideTools:
+         wayland-scanner:
+            path: "usr/bin"
+
+   ? ""
+   :  depends:
+        - libs::ext-libxml2-dev
+        - libs::ext-libffi-dev
+        - system::ext-expat-dev
+
+      buildVars: [PKG_VERSION, SYSROOT]
+      buildTools: [wayland-scanner]
+      buildScript: |
+         autotoolsBuild $1/wayland-${PKG_VERSION} \
+            --with-host-scanner
+
+      multiPackage:
+         dev:
+            packageTools: [buildenv]
+            packageScript: |
+               autotoolsPackageDev
+               tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include \
+                  -l wayland-client ext.wayland.client
+               tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include \
+                  -l wayland-server ext.wayland.server
+                 #provideDeps: [ "*-dev" ]
+         target:
+            packageScript: |
+               autotoolsPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-wayland" \
+                  -p "emmc.system" \
+                  -o "system:ext-wayland " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+                 #provideDeps: [ "*-target" ]
+

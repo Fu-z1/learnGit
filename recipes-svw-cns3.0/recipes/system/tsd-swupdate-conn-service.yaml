@@ -1,0 +1,44 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-swupdate-conn-api-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-swupdate-conn-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.conn.service.git
+#   url: git@${DEFAULT_PCC_GIT_SERVER}:thomas.schwarz/tsd.swupdate.conn.service.git
+   dir: tsd.swupdate.conn.service
+   tag: 1.0.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-conn-service" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-conn-service " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

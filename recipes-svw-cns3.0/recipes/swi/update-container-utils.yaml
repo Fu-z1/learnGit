@@ -1,0 +1,17 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "Architecture-Software-Integration"
+
+checkoutSCM:
+   - scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/mib3.update-container-utils.git
+     tag: 1.0.2
+
+buildScript: |
+   rsync -a --delete --exclude='.git' $1/ .
+
+packageScript: |
+   rsync -a --delete --exclude='.git' $1/ .
+
+provideTools:
+   resolve-wildcards:
+      path: resolve-wildcards

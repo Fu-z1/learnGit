@@ -1,0 +1,9 @@
+archive:
+   -
+      backend: http
+      url: http://artefact-repo.mib3.technisat-digital/
+      flags: [download]
+   -
+      backend: http
+      url: http://artefact-repo-unstable.mib3.technisat-digital/
+      flags: [download]

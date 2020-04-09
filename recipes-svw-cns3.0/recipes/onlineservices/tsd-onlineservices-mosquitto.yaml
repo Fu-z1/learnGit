@@ -1,0 +1,52 @@
+inherit: [buildenv , packing-module]
+
+environment:
+      TARGET_OS: "linux"
+
+depends:
+    - libs::ext-openssl-dev
+#    - toolchain::aarch64-linux-gnu
+packageVars: [AR, CC, CXX, CFLAGS, CXXFLAGS, LDFLAGS, LIBDIR]
+#buildTools: [toolchain]
+
+checkoutSCM:
+   -
+      scm: url
+      url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}tools/mosquitto-1.4.14.tar.gz
+      digestSHA1: "7776c4433e80f74b56eb03e1ddd7e720d44b4947"
+ 
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll 
+         BUILD_WORKSPACE=$BOB_CWD
+         cd $BUILD_WORKSPACE/mosquitto-1.4.14/  
+         make WITH_SRV=no WITH_UUID=no
+
+      packageTools: [buildenv]
+      packageScript: |
+         buildenvPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include -L lib -l mosquittopp -l mosquitto ext.mqtt
+#      provideDeps: [ "*-dev" ]
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+         BUILD_WORKSPACE=$BOB_CWD
+         cd $BUILD_WORKSPACE/mosquitto-1.4.14/
+         make WITH_SRV=no WITH_UUID=no
+
+      packageTools: [buildenv]
+      packageScript: |
+         buildenvPackageTarget 
+
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" --exclude "sbin" --exclude "etc" --exclude "mosquitto_passwd" ./ $d
+         buildSwupModule -n "mosquitto" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:mosquitto " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+#      provideDeps: [ "*-target" ]
+

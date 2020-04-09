@@ -1,0 +1,27 @@
+inherit: [packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "Volkswagen AG"
+   PKG_VERSION: "1.0.0"
+   PKG_NAME: "vw-extlibs"
+   PKG_PATCH_VERSION: "1.0.0"
+   PKG_RESPONSIBLE: "MMI-HMI"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.vw.extlibs.git
+   tag: mqb_sop1_eu-1.0.0
+
+buildScript: |
+   mkdir -p tsd/hmi/tsd_jars
+   cp -au $1/extlibs.jar tsd/hmi/tsd_jars/
+
+packageScript: |
+   rsync -a --delete $1/tsd ${PWD}
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-vw-extlibs" \
+      -p "emmc.hmi" \
+      -o "hmi:ext-vw-extlibs " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

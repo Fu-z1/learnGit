@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - onlineservices::tsd-onlineservices-backendcomcore-dev
+ - basic-services::persistence::tsd-persistence-client-mib3-dev
+
+   # target shared library dependencies
+ - use: []
+   depends:
+    - onlineservices::tsd-onlineservices-backendcomcore-target
+    - basic-services::persistence::tsd-persistence-client-mib3-target
+
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.eso.clientsideswitching.git
+   dir: tsd.onlineservices.eso.clientsideswitching
+   tag: mqb_sop1_eu-1.0.9
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "eso-clientsideswitching" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-eso-clientsideswitching " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.onlineservices.eso.clientsideswitching.app.TestApp
+      packageScript: buildenvPackageTarget
+
+

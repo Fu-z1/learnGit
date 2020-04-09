@@ -1,0 +1,51 @@
+packageScript: |
+   # $1: binary file
+   # $2: objcopy tool name
+   stripBinary()
+   {
+      local type id dir="${1%/*}/.debug" file="${1##*/}"
+
+      type="$(file -b "$1")"
+      if  [[ "$type" != ELF*not\ stripped ]] ; then
+         return
+      fi
+
+      echo "Stripping ${1}..."
+
+      mkdir -p "$dir"
+      cp "$1" "${dir}/${file}"
+      "$2" --strip-unneeded "$1"
+      "$2" --add-gnu-debuglink="${dir}/${file}" "$1"
+   }
+
+   # $1: directory to process
+   # $2: objcopy tool name
+   stripAll()
+   {
+      find "$1" -type f -not -path '*/.debug/*' | while read f ; do stripBinary "$f" "$2"; done
+   }
+
+   # $1: kernel module
+   # $2: strip tool name
+   stripKernelModules()
+   {
+      local type dir=${1%/*}/.debug file=${1##*/}
+
+      type="$(file -b "$1")"
+      if  [[ "$type" != ELF*not\ stripped ]] ; then
+         return
+      fi
+
+      echo "Stripping ${1}..."
+      mkdir -p "$dir"
+      cp "$1" "${dir}/${file}"
+      "$2" --strip-debug "$1"
+   }
+
+   # $1: directory to process
+   # $2: strip tool name
+   stripAllKernelModules()
+   {
+      find "${1}" -type f -not -path '*/.debug/*' -iname "*.ko" \
+         | while read f ; do stripKernelModules "${f}" "${2}"; done
+   }

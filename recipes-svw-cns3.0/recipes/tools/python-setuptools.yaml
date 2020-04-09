@@ -1,0 +1,15 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tools/python.setuptools.git
+    dir: python.setuptools
+    tag: 1.0.0
+
+buildScript: |
+   sh "${1}/python.setuptools/install.sh" "${PWD}"
+
+packageScript: |
+   cd "${1}"
+   cp -pr . "${BOB_CWD}"

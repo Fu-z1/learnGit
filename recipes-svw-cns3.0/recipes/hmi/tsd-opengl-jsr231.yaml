@@ -1,0 +1,84 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - hmi::ext-zulu-dev
+  - system::tsd-system-displaymanager-dev
+  - hmi::tsd-dsi-cpp-dev
+  - use: []
+    depends:
+      - hmi::ext-zulu-target
+      - system::tsd-system-displaymanager-target
+      - hmi::tsd-dsi-cpp-target
+
+
+buildVars: [LIBDIR, JVM]
+buildScript: |
+   buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/tsd -DJVM=ext.zulu
+
+   #mkdir -p dist/tsd/hmi/tsd_jars/
+   #cp $1/tsd.opengl.jsr231/java/lib/tsd.opengl.jsr231.jar dist/tsd/hmi/tsd_jars/
+   cd dist/tsd/lib
+   ln -sf libtsd.opengl.jsr231.so libtsd.opengl.jsr231.native.so
+
+multiPackage:
+   lowres:
+      checkoutSCM:
+         scm: git
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengl.jsr231.low.git
+         dir: tsd.opengl.jsr231
+         tag: 1.0.6
+
+      privateEnvironment:
+         VARIANT_NAME: "lowres"
+         VARIANT_LIST: "$(getMatchingVariantStrings,HW_DISPLAY_VARIANT=800480)"
+
+      multiPackage: &multiPkg
+         dev:
+            packageScript: |
+               buildenvPackageDev
+            provideDeps:
+              - hmi::ext-zulu-dev
+              - system::tsd-system-displaymanager-dev
+              - hmi::tsd-dsi-cpp-dev
+
+         pkg:
+            packageVars: [VARIANT_NAME, VARIANT_LIST]
+            packageScript: |
+               rm -rf tmp && mkdir -p tmp && pushd tmp
+               buildenvPackageTarget
+               popd
+               buildSwupModule -n "opengl-jsr231" -p "emmc.hmi" -v "${VARIANT_NAME}" -o 'hmi::tsd-opengl-jsr231' -f tmp -- \
+                      --variantList $VARIANT_LIST \
+                      -U "Partition=rootfs_ro"
+               rm -rf tmp
+
+            provideDeps: ['*-target']
+   highres:
+      checkoutSCM:
+         scm: git
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengl.jsr231.high.git
+         dir: tsd.opengl.jsr231
+         tag: 1.0.4
+
+      privateEnvironment:
+         VARIANT_NAME: "highres"
+         VARIANT_LIST: "$(getMatchingVariantStrings,HW_DISPLAY_VARIANT=1280640)"
+
+      multiPackage: *multiPkg
+
+   37wres:
+      checkoutSCM:
+         scm: git
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengl.jsr231.37w.git
+         dir: tsd.opengl.jsr231
+         tag: 1.0.0
+
+      privateEnvironment:
+         VARIANT_NAME: "37wres"
+         VARIANT_LIST: "$(getMatchingVariantStrings,HW_DISPLAY_VARIANT=1560700)"
+
+      multiPackage: *multiPkg

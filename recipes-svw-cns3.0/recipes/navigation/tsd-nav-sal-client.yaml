@@ -1,0 +1,31 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+  - system::tsd-common-dev
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - navigation::tsd-nav-sal-api-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - navigation::tsd-nav-sal-api-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sal.client.git
+    dir: tsd.nav.sal.client
+    branch: master_mqb_sop1_eu      #navi-tool (not a part of the release)
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   target: # Executable
+      packageScript: |
+         buildenvPackageTarget
+      provideDeps: ['*-target']

@@ -1,0 +1,48 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-swupdate-viewcontroller-dev
+  - system::tsd-swupdate-client-dev
+  - communication::tsd-communication-runtime-dev
+  - system::tsd-swupdate-rsihmiserver-api-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+  - hmi::tsd-dsi-cpp-dev
+  - use: []
+    depends:
+      - system::tsd-swupdate-viewcontroller-target
+      - system::tsd-swupdate-client-target
+      - communication::tsd-communication-runtime-target
+      - system::tsd-swupdate-rsihmiserver-api-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+      - hmi::tsd-dsi-cpp-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.rsihmiclient.git
+   dir: tsd.swupdate.rsihmiclient
+   tag: 3.2.0
+   branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-rsihmiclient" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-rsihmiclient " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

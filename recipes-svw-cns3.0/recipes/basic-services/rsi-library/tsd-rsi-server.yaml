@@ -1,0 +1,84 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - libs::ext-openssl-dev
+  - libs::ext-openssl-vkms-engine-dev
+  - basic-services::rsi-library::tsd-rsi-client-dev
+  - basic-services::rsi-library::tsd-rsi-common-dev
+  - system::ext-h2o-dev
+  - system::ext-libuv-dev
+  - system::ext-wslay-dev
+  - system::tsd-common-dev
+  - system::tsd-common-guid-dev
+  - system::tsd-dataformats-dev
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+      - libs::ext-openssl-vkms-engine-target
+      - basic-services::rsi-library::tsd-rsi-client-target
+      - basic-services::rsi-library::tsd-rsi-common-target
+      - system::ext-h2o-target
+      - system::ext-libuv-target
+      - system::ext-wslay-target
+      - system::tsd-common-target
+      - system::tsd-dataformats-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.rsi.server.git
+   dir: tsd.rsi.server
+   #tag: mqb_sop1_eu-6.4.0
+   tag: mqb_sop1_cn-6.4.1
+   branch: master_mqb_sop1_eu
+
+privateEnvironment:
+   SW_DEV_ACCESS: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1),1,0)"
+
+multiPackage:
+   ? ""
+   :  buildVars: [SW_DEV_ACCESS, TSD_RSI_BUILD_APPS]
+      buildScript: |
+         buildenvBuildAll -DSW_DEV_ACCESS=${SW_DEV_ACCESS} -DTSD_RSI_SERVER_LINK_SHARED=1 \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=${TSD_RSI_BUILD_APPS:-0} -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=${TSD_RSI_BUILD_APPS:-0}
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ['*-dev']
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "rsi-server" \
+                  -p "emmc.basic-services.rsi-library" \
+                  -o "basic-services.rsi-library:tsd-rsi-server " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ['*-target']
+
+   apps:
+      buildVars: [SW_DEV_ACCESS, LIBDIR]
+      buildScript: |
+         buildenvBuildModules \
+            -DSW_DEV_ACCESS=${SW_DEV_ACCESS} \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.rsi.server.app.rsiTestService \
+            tsd.rsi.server.app.dispatcherTestService
+
+         mkdir -p dist/usr/bin
+         cat <<-EOF > dist/usr/bin/env.sh
+         export OPENSSL_ENGINES="${BOB_DEP_PATHS[libs::ext-openssl-vkms-engine-dev]}/usr/${LIBDIR}/engines-1.1"
+         EOF
+
+      packageScript: buildenvPackageTarget
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

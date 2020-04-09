@@ -1,0 +1,68 @@
+inherit: [packing-image]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+   PKG_ARTEFACT_TYPE: "Data"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-system/tsd.swupdate.public.keys.git
+   #tag: mqb_sop1_eu-1.2.0
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1480_dev
+
+privateEnvironment:
+   BRAND: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_HMI_BRAND,sk),skoda,vw)"
+
+buildVars: [KEY_TYPE, KEY, BRAND]
+buildScript: |
+   if [ ${KEY} == "fec" ]; then
+      rsync -a --delete $1/${KEY_TYPE}/${KEY}/${BRAND}/* .
+   else
+      rsync -a --delete $1/${KEY_TYPE}/${KEY}/* .
+   fi
+   tar cvzf publicKey.tgz modulus.txt exponent.txt
+
+packageScript: |
+   buildSwupImage --packageName ${KEY} \
+      --file $1/publicKey.tgz \
+      --hw_index "0" \
+      -U "Installer=keyExchange" \
+      -U "Destination=${KEY}" \
+      -U "Optional=True"
+
+
+multiPackage:
+   developer:
+      privateEnvironment:
+         KEY_TYPE: "developer-keys"
+      multiPackage:
+         data:
+            privateEnvironment:
+               KEY: "data"
+         fec:
+            privateEnvironment:
+               KEY: "fec"
+         metainfo:
+            privateEnvironment:
+               KEY: "metainfo"
+         root:
+            privateEnvironment:
+               KEY: "root"
+
+   customer:
+      privateEnvironment:
+         KEY_TYPE: "customer-keys"
+      multiPackage:
+         data:
+            privateEnvironment:
+               KEY: "data"
+         fec:
+            privateEnvironment:
+               KEY: "fec"
+         metainfo:
+            privateEnvironment:
+               KEY: "metainfo"
+         root:
+            privateEnvironment:
+               KEY: "root"

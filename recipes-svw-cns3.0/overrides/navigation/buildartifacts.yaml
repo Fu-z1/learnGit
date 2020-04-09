@@ -1,0 +1,17 @@
+archive:
+   -
+      backend: http
+      url: http://mib3-nav-jenkins-01.nav.technisat-digital:8082/zr3
+      flags: [download]
+   -
+      backend: http
+      url: http://artefact-repo.mib3.technisat-digital/
+      flags: [download]
+   -
+      backend: http
+      url: http://artefact-repo-unstable.mib3.technisat-digital/
+      flags: [download]
+   -
+      backend: http
+      url: http://pohle3.carradio.technisat-digital
+      flags: [download]

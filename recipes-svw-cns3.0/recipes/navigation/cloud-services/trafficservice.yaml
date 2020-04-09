@@ -1,0 +1,37 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+depends:
+  - navigation::tsd-nav-cloud-mw-api-dev
+  - navigation::tsd-nav-cloud-mw-dev
+  - navigation::tsd-nav-cloud-publicservices-api-dev
+  - navigation::tsd-nav-traffic-cloudservice-dev
+  - navigation::tsd-nav-traffic-cloudservice-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.service.traffic.git
+   dir: tsd.nav.cloud.service.traffic
+   branch: snapshot
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "trafficservice" \
+            -p "emmc.navigation.cloud-services" \
+            -o "navigation.cloud-services:trafficservice " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-dev']

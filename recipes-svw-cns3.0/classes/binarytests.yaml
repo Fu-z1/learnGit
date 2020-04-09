@@ -1,0 +1,51 @@
+inherit: [buildenv]
+
+privateEnvironment:
+   TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+   TSD_BUILDENV_INSTALLABLE_TEST_TARGETS: "1"
+
+depends:
+   - swi::pcc-swi-btf-common-dev
+
+   - system::ext-cppunit-google-mock-dev
+   - system::ext-jansson-dev
+
+buildScript: |
+   binarytestsBuild()
+   {
+      buildenvBuildModules \
+         -DTARGET_OS=linux \
+         -DTSD_BUILDENV_ENABLE_TEST_TARGETS=1 \
+         -DTSD_BUILDENV_INSTALLABLE_TEST_TARGETS=1 \
+         -DTSD_COMMON_LINK_SHARED=1 \
+         -DPCC_ENABLE_BINARY_TESTS=1 \
+         \
+         $*
+   }
+
+packageScript: |
+   binarytestsPackage() {
+      buildenvPackageDev $*
+   }
+   createStartArguments() {
+      # <zr3-build-path> <host-linux-build-path> <app-name> <needed-lib>*
+      # (if one build-path don't exist use -)
+      buildPathOfTestapp="$1"
+      shift
+      buildPathOfTestappHost="$1"
+      shift
+      testAppName="$1"
+      shift
+      usedLibs="$*"
+
+      {
+         echo "buildPathOfTestappZr3='$buildPathOfTestapp'"
+         echo "buildPathOfTestappHostLinux='$buildPathOfTestappHost'"
+         echo "testAppName='$testAppName'"
+         echo "usedLibs='$usedLibs'"
+      } > startArguments.txt
+   }
+
+provideDeps:
+   - "swi::pcc-swi-btf-common-dev"
+   - "system::ext-jansson-dev"

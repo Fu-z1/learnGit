@@ -1,0 +1,70 @@
+inherit: [buildenv, packing-module]
+
+privateEnvironment:
+   SW_DEVELOP: "$(flagIsSet,${VARIANTS-211001},SW_DEV_ACCESS,1)"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::ext-swapsf-dev
+  - system::tsd-csm-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - hmi::tsd-dsi-cpp-dev
+ # read modulus and exponent
+  - system::tsd-swupdate-ta-dev
+ # Common-API
+  - system::tsd-activation-intern-api-dev
+  - system::tsd-theftdetection-api-dev
+  - system::tsd-swapsf-api-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - system::ext-swapsf-target
+      - system::tsd-csm-target
+      - system::tsd-authentic-fs-swapsf
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - hmi::tsd-dsi-cpp-target
+    # read modulus and exponent
+      - system::tsd-swupdate-ta-target
+    # Common-API
+      - system::tsd-activation-intern-api-target
+      - system::tsd-theftdetection-api-target
+      - system::tsd-swapsf-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.swapsf.git
+   dir: tsd.swapsf
+   tag: mqb_sop1_eu-2.9.1
+   branch: master_mqb_sop1_eu
+
+buildVars: [SW_DEVELOP]
+buildScript: |
+   if [[ $SW_DEVELOP == "True" ]]; then
+      buildenvBuildAll -DENABLE_ALL_FEATURES=1
+   else
+      buildenvBuildAll
+   fi
+
+   mkdir -p dist/etc/tsd.swapsf
+   rsync -a --delete $1/tsd.swapsf/depl/commonapi.ini dist/etc/tsd.swapsf/commonapi.ini
+
+packageScript: |
+   buildenvPackageTarget install
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "swapsf" \
+      -p "emmc.system" \
+      -o "system:tsd-swapsf " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps:
+  - "*-target"
+  - "*-swapsf"

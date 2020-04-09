@@ -1,0 +1,64 @@
+inherit: [make, bl2]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-or-later"
+   PKG_VERSION: "2015.04"
+   PKG_NAME: "u-boot"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutVars: [UBOOT_BRANCH]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/u-boot-renesas.git
+   #tag: 3.3.1.9
+   branch: main/svw_cns3.0_1413_dev
+
+multiPackage:
+   env:
+      buildVars: [CROSS_COMPILE, ARCH, SYSROOT, UBOOT_BOARD]
+      buildTools: [host-toolchain, toolchain, mkimage]
+      buildScript: |
+         if [ ! -e include/config.h ] ; then
+            make -C $1 O=$PWD sandbox_defconfig KCFLAGS="-fgnu90-inline" ARCH=arm
+         fi
+         make -C $1 O=$PWD env
+      packageScript: |
+         mkdir -p usr/bin/
+         mkdir etc
+         cp $1/tools/env/fw_printenv usr/bin
+         pushd usr/bin
+         ln -s fw_printenv fw_setenv
+         popd
+         echo "/dev/mmcblk0boot1    0x7e0000    0x20000" > etc/fw_env.config
+
+   tools:
+      buildTools: [host-toolchain]
+      buildScript: |
+         if [ ! -e include/config.h ] ; then
+            make -C $1 O=$PWD sandbox_defconfig NO_SDL=1
+         fi
+         make -j8 -C $1 O=$PWD tools NO_SDL=1
+
+      packageScript: |
+         mkdir -p bin
+         cp -au $1/tools/mkimage bin/
+
+      provideTools:
+         mkimage:
+            path: "bin"
+
+   target:
+      buildVars: [CROSS_COMPILE, ARCH, SYSROOT, UBOOT_BOARD]
+      buildTools: [host-toolchain, toolchain, mkimage]
+      buildScript: |
+         if [ ! -e include/config.h ] ; then
+            make -C $1 O=$PWD "${UBOOT_BOARD}_defconfig" KCFLAGS="-fgnu90-inline"
+         fi
+         make -j8 -C $1 O=$PWD all
+
+      packageScript: |
+         mkdir -p .debug
+         cp -au $1/u-boot .debug
+
+         cp $1/u-boot.bin .
+         bl2_compress u-boot.bin

@@ -1,0 +1,37 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - media::mountingservice::tsd-media-mount-status-api-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - media::mountingservice::tsd-media-mount-status-api-target
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.tools.debug.git
+   dir: tsd.tools.debug
+   tag: mqb_sop1_eu-2.3.0
+   branch: master_mqb_sop1_eu
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -Wall -Wextra -Werror -Wno-error=deprecated-declarations"
+buildScript: |
+   buildenvBuildAll
+   mkdir -p dist/etc/tsd.tools.debug
+   rsync -a --delete $1/tsd.tools.debug/depl/commonapi.ini dist/etc/tsd.tools.debug/commonapi.ini
+packageScript: |
+   buildenvPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "tools-debug" \
+      -p "emmc.system" \
+      -o "system:tsd-tools-debug " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+provideDeps: ['*-target']

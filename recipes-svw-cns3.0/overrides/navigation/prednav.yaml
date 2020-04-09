@@ -1,0 +1,25 @@
+scmOverrides:
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.prednav.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.prednav.api.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.prednav.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.prednav.api.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu

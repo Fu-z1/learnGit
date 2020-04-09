@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module]
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.clock.mib3.git
+    dir: tsd.clock.mib3
+    tag: 2.6.0
+    branch: master_mqb_sop1_eu
+depends:
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+multiPackage:
+   ? ""
+   :  privateEnvironment:
+         CFLAGS: "${CFLAGS} -Wall -Wextra -Werror"
+      buildScript: buildenvBuildAll
+
+      multiPackage:
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "clock-mib3" \
+                  -p "emmc.system" \
+                  -o "system:tsd-clock-mib3 " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ['*-target']
+
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ['*-dev']
+
+   app:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.clock.mib3.app.socket
+      packageScript: buildenvPackageTarget
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildScript: |
+         buildenvTestTargets tsd.clock.mib3.test
+      packageScript: |
+         buildenvPackageTests

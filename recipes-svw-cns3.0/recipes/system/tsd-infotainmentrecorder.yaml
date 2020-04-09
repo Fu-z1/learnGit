@@ -1,0 +1,83 @@
+inherit: [buildenv, packing-module, werror]
+
+depends:
+  - hmi::tsd-dsi-cpp-dev
+  - libs::ext-zlib-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-infotainmentrecorder-api-dev
+  - system::tsd-infotainmentrecorder-testinterface-api-dev
+  - name: navigation::tsd-nav-itr-api-dev
+    if: "$(eq,${SW_ITR_INAVITR_SUPPORT:-1},1)"
+  - media::mountingservice::tsd-media-mount-status-api-dev
+  - connectivity::usb::tsd-usb-api-dev
+  - system::system-lifecycle::tsd-pwc-proxy-api-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - name: phone::bt-organizer::tsd-organizer-mib3-api-dev
+    if: "$(eq,${SW_ITR_INAVITR_SUPPORT:-1},1)"
+  - name: engineering::testmanager::tsd-testmanager-commandprocessing-common-dev
+    if: "$(eq,${SW_ITR_INAVITR_SUPPORT:-1},1)"
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - use: []
+    depends:
+      - libs::ext-zlib-target
+      - system::tsd-common-target
+      - system::tsd-infotainmentrecorder-api-target
+      - system::tsd-infotainmentrecorder-testinterface-api-target
+      - name: navigation::tsd-nav-itr-api-target
+        if: "$(eq,${SW_ITR_INAVITR_SUPPORT:-1},1)"
+      - media::mountingservice::tsd-media-mount-status-api-target
+      - connectivity::usb::tsd-usb-api-target
+      - system::system-lifecycle::tsd-pwc-proxy-api-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - name: phone::bt-organizer::tsd-organizer-mib3-api-target
+        if: "$(eq,${SW_ITR_INAVITR_SUPPORT:-1},1)"
+      - name: engineering::testmanager::tsd-testmanager-commandprocessing-common-target
+        if: "$(eq,${SW_ITR_INAVITR_SUPPORT:-1},1)"
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.infotainmentrecorder.git
+   dir: tsd.infotainmentrecorder
+   #tag: mqb_sop1_eu-5.1.1
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1480_dev
+
+multiPackage:
+   target:
+      buildVars: [SW_ITR_INAVITR_SUPPORT]
+      buildScript: |
+         buildenvBuildAll -DFEATURE_SW_ITR_INAVITR_SUPPORT=${SW_ITR_INAVITR_SUPPORT:-1}
+         mkdir -p dist/etc/itr
+         rsync -a --delete $1/tsd.infotainmentrecorder/depl/commonapi.ini dist/etc/itr/commonapi.ini
+      packageScript: |
+         buildenvPackageTarget install
+         mkdir -p var/lib/itr
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "infotainmentrecorder" \
+            -p "emmc.system" \
+            -m 'itr,itr,0770,/var/lib/itr$'        \
+            -m 'itr,itr,0770,/var/lib/itr/.*'      \
+            -o "system:tsd-infotainmentrecorder " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"
+
+   unittests:
+      buildScript: buildenvTestAll -DFEATURE_SW_ITR_INAVITR_SUPPORT=${SW_ITR_INAVITR_SUPPORT:-1}
+      packageScript: buildenvPackageTests
+
+
+   doc:
+      buildVars: [SW_ITR_INAVITR_SUPPORT]
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll -DFEATURE_SW_ITR_INAVITR_SUPPORT=${SW_ITR_INAVITR_SUPPORT:-1}
+      packageScript: buildenvPackageDoc

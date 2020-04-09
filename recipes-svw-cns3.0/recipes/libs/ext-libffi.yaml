@@ -1,0 +1,38 @@
+inherit: [autotools, patch, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "3.2.1"
+   PKG_NAME: "libffi"
+   PKG_PATCH_VERSION: "0001"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libffi/libffi-${PKG_VERSION}.tar.gz
+   digestSHA1: "280c265b789e041c02e5c97815793dfc283fb1e6"
+
+checkoutVars: [PKG_VERSION]
+checkoutDeterministic: true
+checkoutScript: |
+   cd libffi-${PKG_VERSION}
+   patchApplySeries $<<ext-libffi/*.patch>>
+
+buildScript: |
+   autotoolsBuild $1/libffi-${PKG_VERSION}
+
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageDev
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libffi" \
+            -p "emmc.libs" \
+            -o "libs:ext-libffi " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,167 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-Vorintegration"
+
+depends:
+   - if: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,MQB)"
+     use: []
+     depends:
+        - if: "$(flagIsSet,${VARIANTS},SW_HMI_BRAND,vw)"
+          depends:
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,cn)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-vw-chn-low-pkg
+                       - hmi::pcc-anim-container-vw-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-vw-chn-high-pkg
+                       - hmi::pcc-anim-container-vw-high-pkg
+
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,eu)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-vw-eu-low-pkg
+                       - hmi::pcc-anim-container-vw-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-vw-eu-high-pkg
+                       - hmi::pcc-anim-container-vw-high-pkg
+
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,tw)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-vw-twn-low-pkg
+                       - hmi::pcc-anim-container-vw-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-vw-twn-high-pkg
+                       - hmi::pcc-anim-container-vw-high-pkg
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,jp)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-vw-jp-low-pkg
+                       - hmi::pcc-anim-container-vw-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-vw-jp-high-pkg
+                       - hmi::pcc-anim-container-vw-high-pkg
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,kr)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-vw-kor-low-pkg
+                       - hmi::pcc-anim-container-vw-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-vw-kor-high-pkg
+                       - hmi::pcc-anim-container-vw-high-pkg
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,rdw)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-vw-rdw-low-pkg
+                       - hmi::pcc-anim-container-vw-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-vw-rdw-high-pkg
+                       - hmi::pcc-anim-container-vw-high-pkg
+
+        - if: "$(flagIsSet,${VARIANTS},SW_HMI_BRAND,sk)"
+          depends:
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,cn)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-chn-low-pkg
+                       - hmi::pcc-anim-container-skoda-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-chn-high-pkg
+                       - hmi::pcc-anim-container-skoda-high-pkg
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,eu)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-eu-low-pkg
+                       - hmi::pcc-anim-container-skoda-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-eu-high-pkg
+                       - hmi::pcc-anim-container-skoda-high-pkg
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,kr)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-kor-low-pkg
+                       - hmi::pcc-anim-container-skoda-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-kor-high-pkg
+                       - hmi::pcc-anim-container-skoda-high-pkg
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,tw)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-twn-low-pkg
+                       - hmi::pcc-anim-container-skoda-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-twn-high-pkg
+                       - hmi::pcc-anim-container-skoda-high-pkg
+             - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,rdw)"
+               depends:
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-rdw-low-pkg
+                       - hmi::pcc-anim-container-skoda-low-pkg
+                  - if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+                    depends:
+                       - hmi::pcc-hmi-skoda-rdw-high-pkg
+                       - hmi::pcc-anim-container-skoda-high-pkg
+
+   - if: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W)"
+     use: []
+     depends:
+        - if: "$(and, $(flagIsSet,${VARIANTS},SW_HMI_BRAND,vw), $(flagIsSet,${VARIANTS},SW_HMI_REGION,eu))"
+          depends:
+              - hmi::pcc-hmi-37w-vw-eu-high-pkg
+              - hmi::pcc-anim-container-37w-vw-high-pkg
+        - if: "$(and, $(flagIsSet,${VARIANTS},SW_HMI_BRAND,vw), $(flagIsSet,${VARIANTS},SW_HMI_REGION,jp))"
+          depends:
+              - hmi::pcc-hmi-37w-vw-jp-high-pkg
+              - hmi::pcc-anim-container-37w-vw-high-pkg
+        - if: "$(and, $(flagIsSet,${VARIANTS},SW_HMI_BRAND,vw), $(flagIsSet,${VARIANTS},SW_HMI_REGION,kr))"
+          depends:
+              - hmi::pcc-hmi-37w-vw-kor-high-pkg
+              - hmi::pcc-anim-container-37w-vw-high-pkg
+        - if: "$(and, $(flagIsSet,${VARIANTS},SW_HMI_BRAND,vw), $(flagIsSet,${VARIANTS},SW_HMI_REGION,rdw))"
+          depends:
+              - hmi::pcc-hmi-37w-vw-rdw-high-pkg
+              - hmi::pcc-anim-container-37w-vw-high-pkg
+        - if: "$(and, $(flagIsSet,${VARIANTS},SW_HMI_BRAND,sk), $(flagIsSet,${VARIANTS},SW_HMI_REGION,eu))"
+          depends:
+              - hmi::pcc-hmi-37w-sk-eu-high-pkg
+              - hmi::pcc-anim-container-37w-skoda-high-pkg
+        - if: "$(and, $(flagIsSet,${VARIANTS},SW_HMI_BRAND,sk), $(flagIsSet,${VARIANTS},SW_HMI_REGION,rdw))"
+          depends:
+              - hmi::pcc-hmi-37w-sk-rdw-high-pkg
+              - hmi::pcc-anim-container-37w-skoda-high-pkg
+   -
+     name: hmi::tsd-opengles-lowres-pkg
+     if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+     use: []
+   -
+     name: hmi::tsd-opengles-highres-pkg
+     if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+     use: []
+   -
+     name: hmi::tsd-opengles-37wres-pkg
+     if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1560700)"
+     use: []
+
+
+provideDeps: ['*']

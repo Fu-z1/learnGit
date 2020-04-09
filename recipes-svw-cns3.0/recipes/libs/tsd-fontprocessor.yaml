@@ -1,0 +1,51 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - hmi::ext-freetype-dev
+  - libs::tsd-rasterimage-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - hmi::ext-freetype-target
+      - system::tsd-common-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.fontprocessor.git
+   dir: tsd.fontprocessor
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+   dev:
+      depends:
+         - name: system::ext-cppunit-google-mock-dev
+           if: "$(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+      inherit: [navi_compflags_werror_sanitize]
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      inherit: [navi_compflags_werror_sanitize]
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "fontprocessor" \
+            -p "emmc.navigation" \
+            -o "navigation:tsd-fontprocessor " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      depends:
+        - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+          buildenvPackageTests

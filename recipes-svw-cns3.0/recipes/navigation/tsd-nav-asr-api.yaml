@@ -1,0 +1,57 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - use: []
+    depends:
+     - communication::ext-commonapi-runtime-target
+     - communication::tsd-communication-binding-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.asr.api.git
+   dir: tsd.nav.asr.api
+   tag: mqb_sop1_eu-v14.0.2  #navi-interface (interface to externel contractors)
+   # see link for change prozess: https://wiki-automotive.server.technisat-digital/display/MIB3SERIE/Schnittstellen+Navigation
+
+checkoutDeterministic: true
+checkoutScript: CapiGenProcessFIDLFiles tsd.nav.asr.api
+
+buildScript: |
+   build() {
+   buildenvBuildAll
+   }
+
+packageVars: [LIBDIR]
+multiPackage:
+   # No warning-as-error for generated code
+   dev:
+      buildScript: |
+         build
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   # No warning-as-error for generated code
+   target: # Shared-lib (FIDL)
+      buildScript: |
+         build
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "nav-asr-api" \
+            -p "emmc.navigation" \
+            -o "navigation:tsd-nav-asr-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

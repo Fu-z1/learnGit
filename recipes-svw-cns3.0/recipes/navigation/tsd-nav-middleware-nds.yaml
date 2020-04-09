@@ -1,0 +1,150 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+depends:
+  - navigation::tsd-nav-crypto-api-dev
+  - navigation::tsd-nav-crypto-pluginloader-dev
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-updatemanager-api-dev
+  - libs::ext-sqlite-nds-dev
+  - navigation::tsd-rds-runtime-dev
+  - system::tsd-cppsqlite-nds-dev
+  - system::ext-boost-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - navigation::tsd-nav-middleware-interface-target
+      - libs::ext-sqlite-nds-target
+      - system::tsd-cppsqlite-nds-target
+      - system::ext-boost-target
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.middleware.nds.git
+    dir: tsd.nav.middleware.nds
+    tag: mqb_sop1_eu-150.0.1      #navi-src (src of the navigation)
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.middleware.interface.git
+    dir: tsd.nav.middleware.interface
+    tag: mqb_sop1_eu-150.0.1      #navi-src (src of the navigation)
+    if: "$(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+
+buildVars: [TARGET_TYPE, NDS_CODEC_VERSION, TSD_UPDATE_MANAGER_SWIT_TEST]
+buildScript: |
+   build() {
+      case "${TARGET_TYPE}" in
+         host)
+            buildenvBuildAll \
+               -DNDS_CODEC_NAME=tsd.nav.codec.nds.cpp.${NDS_CODEC_VERSION} \
+               -DNDS_VERSION_MODULE_NAME_SUFFIX=.${NDS_CODEC_VERSION} \
+               -DTSD_NAV_MIDDLEWARE_INTERFACE_ENABLE_MAINTENANCE_FUNCTIONALITY=1 \
+               -DTSD_UPDATE_MANAGER_SWIT_TEST=${TSD_UPDATE_MANAGER_SWIT_TEST:-0}
+            ;;
+         embedded)
+            buildenvBuildAll \
+               -DNDS_CODEC_NAME=tsd.nav.codec.nds.cpp.${NDS_CODEC_VERSION} \
+               -DNDS_VERSION_MODULE_NAME_SUFFIX=.${NDS_CODEC_VERSION} \
+               -DTSD_UPDATE_MANAGER_SWIT_TEST=${TSD_UPDATE_MANAGER_SWIT_TEST:-0}
+            ;;
+      esac
+   }
+
+
+multiPackage:
+   "2_5_3":
+      depends:
+        - name: navigation::tsd-nav-codec-nds-cpp-2_5_3-dev
+      privateEnvironment:
+         NDS_CODEC_VERSION: "2.5.3"
+      multiPackage:
+          ? ""
+          :
+             inherit: [navi_compflags_werror_sanitize]
+             #inherit: [navi_compflags_sanitize]
+             multiPackage:
+               dev:
+                  buildScript: build
+                  packageScript: |
+                     buildenvPackageDev install
+                  provideDeps: ['*-dev']
+
+               target: # Shared-lib
+                  buildScript: build
+                  packageVars: [LIBDIR]
+                  packageScript: |
+                     buildenvPackageTarget
+                     d=$(mktemp -d)
+                     rsync -a --delete --exclude ".debug" ./ $d
+                     buildSwupModule -n "nav-codec-nds-${NDS_CODEC_VERSION}" \
+                         -p "emmc.navigation" \
+                         -o "navigation" -f $d -- \
+                         -U "Partition=rootfs_ro"
+                     rm -rf $d
+                  provideDeps: ['*-target']
+
+
+          unittests:
+            environment:
+               TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+               TSD_NAV_MIDDLEWARE_INTERFACE_MAPMANAGER_BASEDIR: "/mnt/map_archive"
+               RUN_CODE_COVERAGE: "false"
+            buildScript: |
+               buildenvTestTargets tsd.nav.middleware.nds.test \
+                 -DNDS_CODEC_NAME=tsd.nav.codec.nds.cpp.${NDS_CODEC_VERSION} \
+                 -DNDS_VERSION_MODULE_NAME_SUFFIX=.${NDS_CODEC_VERSION} \
+                 -DTSD_NAV_MIDDLEWARE_INTERFACE_ENABLE_MAINTENANCE_FUNCTIONALITY=1 \
+                 -DTSD_NAV_MIDDLEWARE_INTERFACE_MAPMANAGER_BASEDIR=/mnt/map_archive
+            packageScript: |
+               buildenvPackageTests
+
+   "2_5_2":
+      depends:
+        - name: navigation::tsd-nav-codec-nds-cpp-2_5_2-dev
+      privateEnvironment:
+         NDS_CODEC_VERSION: "2.5.2"
+      multiPackage:
+          ? ""
+          :
+             inherit: [navi_compflags_werror_sanitize]
+             #inherit: [navi_compflags_sanitize]
+             multiPackage:
+               dev:
+                  buildScript: build
+                  packageScript: |
+                     buildenvPackageDev install
+                  provideDeps: ['*-dev']
+
+               target: # Shared-lib
+                  buildScript: build
+                  packageVars: [LIBDIR]
+                  packageScript: |
+                     buildenvPackageTarget
+                     d=$(mktemp -d)
+                     rsync -a --delete --exclude ".debug" ./ $d
+                     buildSwupModule -n "nav-codec-nds-${NDS_CODEC_VERSION}" \
+                         -p "emmc.navigation" \
+                         -o "navigation" -f $d -- \
+                         -U "Partition=rootfs_ro"
+                     rm -rf $d
+                  provideDeps: ['*-target']
+
+          unittests:
+            environment:
+               TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+               TSD_NAV_MIDDLEWARE_INTERFACE_MAPMANAGER_BASEDIR: "/mnt/map_archive"
+               RUN_CODE_COVERAGE: "false"
+            buildScript: |
+               buildenvTestTargets tsd.nav.middleware.nds.test \
+                 -DNDS_CODEC_NAME=tsd.nav.codec.nds.cpp.${NDS_CODEC_VERSION} \
+                 -DNDS_VERSION_MODULE_NAME_SUFFIX=.${NDS_CODEC_VERSION} \
+                 -DTSD_NAV_MIDDLEWARE_INTERFACE_ENABLE_MAINTENANCE_FUNCTIONALITY=1 \
+                 -DTSD_NAV_MIDDLEWARE_INTERFACE_MAPMANAGER_BASEDIR=/mnt/map_archive
+            packageScript: |
+               buildenvPackageTests
+
+          doc:
+            buildScript: buildenvBuildDocAll
+            packageScript: buildenvPackageDoc

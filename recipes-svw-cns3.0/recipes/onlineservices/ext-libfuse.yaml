@@ -1,0 +1,34 @@
+inherit: [autotools, buildenv, make, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/ext.libfuse.git
+   tag: fuse-3.0.0
+
+buildScript: |
+   rsync -a --delete $1/ .
+   sh makeconf.sh
+   autotoolsBuild .
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l fuse3 -I include ext.libfuse
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libfuse" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:ext-libfuse " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+
+depends:
+  - media::libraries::ext-cinemo-dev
+  - media::libraries::tsd-media-mib3-stream-api-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - media::libraries::ext-cinemo-target
+      - media::libraries::tsd-media-mib3-stream-api-target
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.cinemo.transport.mib3.git
+    dir: tsd.cinemo.transport.mib3
+    tag: mqb_sop1_eu-1.139.0-RC5
+
+buildVars: [AUTOCONF_HOST]
+
+buildScript: |
+   buildenvBuildModules \
+      -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+      -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+      tsd.cinemo.transport.mib3 \
+      tsd.cinemo.transport.mib3.app.example
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "cinemo-transport-mib3" \
+            -p "emmc.media.libraries" \
+            -o "media.libraries:tsd-cinemo-transport-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

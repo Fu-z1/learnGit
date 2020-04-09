@@ -1,0 +1,50 @@
+inherit: [install, packing-module]
+
+depends:
+  - system::bsp::ext-mmngr-mmngr-dev
+  - system::bsp::ext-kmod-vspmif-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.renesas.vspmif.lib.git
+   branch: yocto-3.15.0
+
+buildTools: [toolchain]
+buildVars: [CC, LIBDIR]
+buildScript: |
+   export VSPM_LEGACY_IF="1"
+   rsync -a --delete $1/vspm_if-module/files/vspm_if/ .
+
+   mkdir -p deps
+   for i in "${@:2}" ; do
+      cp -a $i/usr/include/* deps
+   done
+
+   pushd if
+   make INCSHARED="$BOB_CWD/deps"
+   popd
+
+   cp "${BOB_DEP_PATHS[system::bsp::ext-kmod-vspmif-dev]}"/usr/include/* include/
+
+packageScript: |
+   mkdir -p usr/$LIBDIR
+   cp -a $1/if/libvspm.* usr/$LIBDIR/
+
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         mkdir -p usr/include
+         cp $1/include/* usr/include/
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include -l vspm ext.renesas.vspm
+
+   target:
+      packageScript: |
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-vspm" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-vspm " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

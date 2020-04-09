@@ -1,0 +1,71 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - basic-services::car-function-management::ext-vw-carssw-dev
+  - basic-services::car-function-management::tsd-carssw-api-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - hmi::tsd-dsi-cpp-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - system::tsd-clock-mib3-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - basic-services::car-function-management::ext-vw-carssw-target
+      - basic-services::car-function-management::tsd-carssw-api-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - hmi::tsd-dsi-cpp-target
+      - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - system::tsd-clock-mib3-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.carfunctionsadapter.git
+    dir: tsd.carssw.carfunctionsadapter
+    #branch: feature/temp_for_building_without_new_issw
+    branch: main/svw_cns3.0_1480_dev
+    #branch: hotfix/CNSDEFECT-8124_on1480
+    #tag: mqb_sop1_eu-5.7.0
+    #branch: master_mqb_sop1_eu
+
+
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+      buildScript: buildenvBuildAll
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "carssw-carfunctionsadapter" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:tsd-carssw-carfunctionsadapter " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+      buildScript: buildenvBuildAll
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

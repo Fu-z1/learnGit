@@ -1,0 +1,28 @@
+inherit: [buildenv]
+
+depends:
+  - libs::ext-openssl-dev
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.hsm.tool.git
+    dir: tsd.hsm.tool
+    tag: mqb_sop1_eu-1.0.0
+    branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildModules \
+        -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+        -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+        tsd.hsm.tool.app.hsmtool \
+        tsd.hsm.tool.app.keytool
+        rsync -a --delete $1/tsd.hsm.tool/start_*.sh dist/usr/bin
+        rsync -a --delete $1/tsd.hsm.tool/server_*.pem dist/usr/bin
+
+packageScript: |
+   buildenvPackageTarget install
+
+provideDeps: ["*-target"]

@@ -1,0 +1,158 @@
+inherit: [root]
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+   TSD_BUILDENV_ENABLE_TEST_RUN_TARGETS: "1"
+   TSD_BUILDENV_ENABLE_RPATH: "1"
+   VARIANTS: "301001,301003"  # needs be defined, otherwise unable to build swupdate unittests
+
+depends:
+   - audio::amplifiercontroller::tsd-audio-ampcontrol-unittests
+   - audio::amplifiercontroller::tsd-audio-ampcontrol-api-unittests
+   - audio::amplifiercontroller::tsd-audio-ampcontrol-mib3-unittests
+   - audio::audiomanager::tsd-audio-audiomgr-audiocontrol-unittests
+   - audio::audiomanager::tsd-audio-audiomgr-mib3-unittests
+   - audio::audiomanager::tsd-audio-common-unittests
+   - audio::audiomanager::tsd-audio-common-mib3-unittests
+   - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-unittests
+   # - name: audio::audiorouter::ext-pulseaudio-unittests
+   #   if: "${CONFIG_PULSEAUDIO_TESTS:-1}"
+   - audio::audiorouter::tsd-audio-audiorouter-client-api-unittests
+   - audio::audiorouter::tsd-audio-audiorouter-service-api-unittests
+   - audio::microphoneprocessing::tsd-audio-microphoneprocessing-mib3-api-unittests
+   - audio::microphoneprocessing::tsd-audio-microphoneprocessing-tuning-mib3-unittests
+   - audio::soundprocessing::tsd-audio-soundproc-blocklibrary-unittests
+   - audio::soundprocessing::tsd-audio-soundproc-mib3-unittests
+   - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-unittests
+   - communication::tsd-communication-unittests
+   - communication::tsd-commonapi-testframework
+   - hmi::tsd-ime-unittests
+   - hmi::tsd-gesture-service-unittests
+   - hmi::tsd-i18n-unittests
+   - hmi::tsd-i18n-mib3-unittests
+   - hmi::tsd-hmi-language-client-mib3-unittests
+   - hmi::tsd-hmi-language-service-mib3-unittests
+   - media::libraries::tsd-media-common-unittests
+   - media::libraries::tsd-media-mib3-stream-api-unittests
+   - media::mediaapplication::tsd-media-engine-cinemo-unittests
+   - media::mediaapplication::tsd-media-engine-unittests
+   - media::mediaapplication::tsd-media-mib3-unittests
+   - media::mediaapplication::tsd-media-mib3-picturelink-unittests
+   - media::mountingservice::tsd-media-io-unittests
+   - media::mountingservice::tsd-media-mount-status-service-mib3-unittests
+   - media::pictureserver::tsd-media-picserver-mib3-unittests
+   - media::pictureserver::tsd-media-picserver-unittests
+   - media::waveplayer::tsd-media-waveplayer-mib3-unittests
+#   - navigation::tsd-nav-cloud-mw-unittests
+   - onlineservices::tsd-onlineservices-remoteupdate-unittests
+   - onlineservices::tsd-onlineservices-diagnosis-unittests
+   - onlineservices::tsd-onlineservices-framework-unittests
+   - onlineservices::tsd-onlineservices-downloadmanager-unittests
+   - onlineservices::tsd-onlineservices-backendcomcore-unittests
+   #- onlineservices::tsd-onlineservices-webapp-storage-unittests
+   #- onlineservices::tsd-onlineservices-webapp-manager-unittests
+   #- onlineservices::tsd-onlineservices-webapp-management-unittests
+   #- onlineservices::tsd-onlineservices-webapp-controller-unittests
+   #- onlineservices::tsd-onlineservices-webapp-common-unittests
+   #- onlineservices::tsd-onlineservices-web-engine-unittests
+   #- onlineservices::tsd-onlineservices-webengine-media-unittests
+   #- onlineservices::tsd-onlineservices-webengine-api-unittests
+   #- onlineservices::tsd-onlineservices-webserver-unittests
+   - onlineservices::tsd-onlineservices-common-unittests
+   - phone::bt-middleware::tsd-blueware-api-unittests
+   - phone::bt-middleware::tsd-blueware-bluego-unittests
+   - phone::bt-middleware::tsd-blueware-mib3-bluego-unittests
+   - phone::bt-handsfree::tsd-bt-handsfree-unittests
+   - phone::bt-handsfree::tsd-bt-handsfree-mib3-unittests
+   - phone::bt-devicemanagement::tsd-bt-management-unittests
+   - phone::bt-devicemanagement::tsd-bt-management-mib3-unittests
+   - phone::bt-mediacontroller::tsd-bt-media-unittests
+   - phone::bt-mediacontroller::tsd-bt-media-mib3-unittests
+   - phone::bt-messaging::tsd-bt-messaging-unittests
+   - phone::bt-messaging::tsd-bt-messaging-mib3-unittests
+   - phone::bt-organizer::tsd-organizer-unittests
+   - phone::bt-organizer::tsd-organizer-mib3-unittests
+   - phone::tsd-phone-common-unittests
+   - phone::tsd-phone-common-mib3-unittests
+   - phone::phonemanager::tsd-phonemanager-unittests
+   - phone::tsd-parser-phonenumber-unittests
+   - phone::tsd-parser-vobject-api-unittests
+   - phone::tsd-parser-vobject-unittests
+   - radio::tsd-radio-unittests
+   - radio::tsd-radio-middleware-unittests
+   - radio::tsd-stationdb-app-unittests
+   - radio::tsd-common-networksvr-unittests
+   - radio::tsd-common-timer-unittests
+   - radio::tsd-radio-eventqueue-unittests
+   - sds::tsd-sds-utils-unittests
+   - system::tsd-common-unittests
+   - system::tsd-common-guid-unittests
+   - system::tsd-drivers-unittests
+   - basic-services::persistence::tsd-persistence-client-mib3-unittests
+   - basic-services::persistence::tsd-persistence-core-unittests
+   - basic-services::persistence::tsd-persistence-dsi-service-unittests
+   - basic-services::persistence::tsd-persistence-eeprom-unittests
+   - basic-services::persistence::tsd-persistence-service-mib3-unittests
+   - basic-services::platform-monitor::tsd-platformmonitor-unittests
+   - basic-services::rsi-library::tsd-rsi-client-unittests
+   - basic-services::rsi-library::tsd-rsi-common-unittests
+   - basic-services::rsi-library::tsd-rsi-server-unittests
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-client-unittests
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-server-unittests
+   - basic-services::systeminfo::tsd-systeminformation-common-unittests
+#   - engineering::gem::tsd-gem-service-unittests
+   - system::tsd-logging-mib3-unittests
+   - system::tsd-logging-r7-unittests
+   - system::tsd-infotainmentrecorder-unittests
+   - system::tsd-swupdate-conn-unittests
+   - system::tsd-swupdate-testinterface-unittests
+   - system::tsd-swupdate-diagnosis-unittests
+   - system::tsd-swupdate-common-unittests
+   - system::tsd-swupdate-client-pwc-unittests
+   - system::tsd-swupdate-client-flash-unittests
+   - system::tsd-swupdate-client-eth-unittests
+   - system::tsd-swupdate-client-can-unittests
+   - system::tsd-swupdate-client-copy-unittests
+   - system::tsd-swupdate-rsihmiserver-unittests
+   - system::tsd-dataformats-unittests
+   - system::tsd-threadmessages-unittests
+   - examples::unittest::examples-unittest-bar-unittests
+   - examples::comMgrAPI::examples-commgr-api-unittests
+#   - navigation::unittests
+   - system::tsd-swupdate-client-pkg-unittests
+   - system::tsd-minihmi-unittests
+
+   #Unittest Carcom
+   - vehicle-connectivity::canstack::tsd-canstack-mib3-unittests
+   - vehicle-connectivity::network-management::tsd-nm-vw-mib-unittests
+   - communication::tsd-communication-runtime-unittests
+   - carcom::tsd-carcom-datapool-unittests
+   - vehicle-connectivity::automotive-ethernet::tsd-aeth-base-unittests
+   - vehicle-connectivity::automotive-ethernet::tsd-aeth-core-unittests
+   - engineering::diagnostic-management::tsd-uds-unittests
+   - system::system-lifecycle::tsd-systemstate-guard-mib3-unittests
+   - basic-services::rsi-service-registry::tsd-rsi-serviceregistry-unittests
+   - basic-services::rsi-service-registry::tsd-rsi-serviceregistryadapter-unittests
+   - basic-services::car-function-management::tsd-carssw-carfunctionsadapter-unittests
+   - basic-services::persistence::tsd-persistence-cache-unittests
+   #Unittest Connect
+   - connectivity::usb::tsd-usb-unittests
+   - connectivity::usb::tsd-usb-common-unittests
+   - connectivity::usb::tsd-usb-osal-linux-unittests
+   - connectivity::networking::tsd-networking-mib3-unittests
+   - connectivity::nfc::tsd-nfc-unittests
+   - sal::unittests
+
+   #Unittest System
+   - system::tsd-clock-mib3-unittests
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   cp -a $1/* .

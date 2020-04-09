@@ -1,0 +1,50 @@
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.renesas.imagecreate.git
+    dir: ext.renesas.imagecreate
+    tag: 1.0.0
+    branch: rcar_gen3
+  - scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/ext.renesas.signing.utils.git
+    dir: ext.renesas.signing.utils
+    branch: master
+  - scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/ext.renesas.signingtool.debug.git
+    dir: ext.renesas.signingtool.debug
+    branch: master
+  - scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/jpcc.signing.client.git
+    dir: jpcc.signing.client
+    branch: master
+
+# for those of us who don't have openssl 1.0 on their host..
+depends:
+  - libs::ext-openssl-1-0-target
+
+buildTools: [toolchain]
+buildVars: [LIBDIR]
+buildScript: |
+   rsync -a --delete $1/ .
+   pushd ext.renesas.imagecreate
+   ./build_bin_create.sh .
+   popd
+
+   mkdir -p lib
+   cp -r ${BOB_DEP_PATHS[libs::ext-openssl-1-0-target]}/usr/${LIBDIR}/* lib
+
+packageScript: |
+   mkdir -p bin lib
+   cp $1/ext.renesas.imagecreate/bin/bin_create bin
+   cp $1/ext.renesas.signing.utils/* . -r
+   cp $1/lib . -r
+   cp $1/ext.renesas.signingtool.debug/sample_standalone/utils/* . -r
+   cp $1/ext.renesas.signingtool.debug/secure_debug_signing_tool/lib/* lib -r
+   cp $1/jpcc.signing.client/* bin -r
+
+provideTools:
+   signingtool:
+      path: ""
+      libs: ["lib"]
+
+   imagecreate:
+      path: "bin"

@@ -1,0 +1,98 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - name: basic-services::persistence::tsd-persistence-core-dev
+    use: [deps, result, environment]
+    forward: true
+  - name: system::tsd-common-daemon-dev
+    if: "$(eq,${TSD_PERSISTENCE_EMMC:-0},1)"
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - basic-services::persistence::tsd-persistence-api-dev
+  - basic-services::persistence::tsd-persistence-testinterface-api-dev
+  - basic-services::persistence::tsd-persistence-cache-dev
+  - name: basic-services::persistence::tsd-persistence-emmc-dev
+    if: "$(eq,${TSD_PERSISTENCE_EMMC:-0},1)"
+  - name: basic-services::persistence::tsd-persistence-eeprom-dev
+    if: "$(eq,${TSD_PERSISTENCE_EEPROM:-0},1)"
+  - name: engineering::diagnostic-management::tsd-uds-api-mib3-dev
+    if: "$(eq,${TSD_PERSISTENCE_EEPROM:-0},1)"
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - name: system::system-lifecycle::tsd-systemstate-guard-api-mib3-dev
+    if: "$(eq,${TSD_PERSISTENCE_EEPROM:-0},1)"
+
+   # runtime deps
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::persistence::tsd-persistence-core-target
+      - name: system::tsd-common-daemon-target
+        if: "$(eq,${TSD_PERSISTENCE_EMMC:-0},1)"
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - basic-services::persistence::tsd-persistence-api-target
+      - basic-services::persistence::tsd-persistence-testinterface-api-target
+      - basic-services::persistence::tsd-persistence-cache-target
+      - name: basic-services::persistence::tsd-persistence-emmc-target
+        if: "$(eq,${TSD_PERSISTENCE_EMMC:-0},1)"
+      - name: basic-services::persistence::tsd-persistence-eeprom-target
+        if: "$(eq,${TSD_PERSISTENCE_EEPROM:-0},1)"
+      - name: engineering::diagnostic-management::tsd-uds-api-mib3-target
+        if: "$(eq,${TSD_PERSISTENCE_EEPROM:-0},1)"
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - name: system::system-lifecycle::tsd-systemstate-guard-api-mib3-target
+        if: "$(eq,${TSD_PERSISTENCE_EEPROM:-0},1)"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.persistence.service.mib3.git
+   dir: tsd.persistence.service.mib3
+   #tag: mqb_sop1_eu-4.6.0
+   branch: main/svw_cns3.0_1480_dev
+
+multiPackage:
+   ? ""
+   :  buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM]
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0}
+         mkdir -p dist/etc/tsd.persistence.service.mib3
+         rsync -a --delete $1/tsd.persistence.service.mib3/depl/commonapi.ini dist/etc/tsd.persistence.service.mib3/commonapi.ini
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev
+            provideDeps: ['*-dev']
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               mkdir -p var/lib/persistence
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "persistence_service-mib3" \
+                  -p "emmc.basic-svcs" \
+                  -m 'persistence,persistence,0770,/var/lib/persistence$'    \
+                  -m 'persistence,persistence,0770,/var/lib/persistence/.*'  \
+                  -o "basic-services.persistence:tsd-persistence-service-mib3 " -f $d   \
+                  -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ['*-target']
+
+   doc:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM]
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0}
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM]
+      buildScript: |
+         buildenvTestAll -DTSD_PERSISTENCE_EMMC=1 -DTSD_PERSISTENCE_EEPROM=1
+      packageScript: |
+         buildenvPackageTests

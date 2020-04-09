@@ -1,0 +1,81 @@
+inherit: [make, strip, packing-module]
+
+depends:
+  - name: system::bsp::ext-linux-headers
+    use: [result, environment]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.adsp.git
+   #tag: mqb_sop1_eu-1.9.0
+   #branch: master_mqb_sop1_eu
+   branch: feature/audio/fifo
+
+multiPackage:
+   "":
+      buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP]
+      buildTools: [toolchain]
+      buildScript: |
+         rsync -a --delete $1/driver .
+         makeParallel -C driver KDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build
+         makeParallel -C driver KDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build INSTALL_MOD_PATH=${PWD} modules_install
+
+      multiPackage:
+         headers:
+            packageVars: [STRIP, KERNEL_VERSION]
+            packageScript: |
+               DIR="include"
+               mkdir -p "${DIR}"
+               rsync -a --include="*/*.h" --include="*/" --exclude="*" $1/driver/include/ ${DIR}
+
+         "":
+            packageVars: [STRIP, KERNEL_VERSION]
+            packageScript: |
+               DIR="lib"
+               mkdir -p "${DIR}"
+               rsync -a --include="*/*.ko" --include="*/" --exclude="*" $1/lib/ ${DIR}
+               stripAllKernelModules "${DIR}" "${STRIP}"
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-kmod-adsp" \
+                  -p "emmc.system" \
+                  -o "system:ext-kmod-adsp " -f $d -- \
+                  -U Depmod=${KERNEL_VERSION} \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+
+   probes:
+      depends:
+         - system::ext-kmod-adsp-headers
+         - system::ext-kmod-lttng-headers
+         - system::ext-kmod-lttng-modules
+
+      buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP]
+      buildTools: [toolchain]
+      buildScript: |
+         rsync -a --delete $1/probes .
+         makeParallel V=1 -C probes \
+            KDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build \
+            LTTNG_HEADERS_DIR="${BOB_DEP_PATHS["system::ext-kmod-lttng-headers"]}" \
+            XTENSA_SOUND_INCLUDE_DIR="${BOB_DEP_PATHS["system::ext-kmod-adsp-headers"]}"
+         makeParallel -C probes \
+            KDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build \
+            LTTNG_HEADERS_DIR="${BOB_DEP_PATHS["system::ext-kmod-lttng-headers"]}" \
+            XTENSA_SOUND_INCLUDE_DIR="${BOB_DEP_PATHS["system::ext-kmod-adsp-headers"]}" \
+            INSTALL_MOD_PATH=${PWD} modules_install
+
+      packageVars: [STRIP, KERNEL_VERSION]
+      packageScript: |
+         DIR="lib"
+         mkdir -p "${DIR}"
+         rsync -a --include="*/*.ko" --include="*/" --exclude="*" $1/lib/ ${DIR}
+         stripAllKernelModules "${DIR}" "${STRIP}"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-kmod-adsp-probes" \
+            -p "emmc.system" \
+            -o "system:ext-kmod-adsp-probes " -f $d -- \
+            -U Depmod=${KERNEL_VERSION} \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

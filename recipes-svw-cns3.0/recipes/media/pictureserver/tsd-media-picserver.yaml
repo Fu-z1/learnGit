@@ -1,0 +1,60 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - libs::ext-libpng-dev
+  - libs::ext-zlib-dev
+  - libs::ext-libgif-dev
+  - libs::ext-libjpeg-dev
+  - system::ext-boost-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - libs::ext-libpng-target
+      - libs::ext-zlib-target
+      - libs::ext-libgif-target
+      - libs::ext-libjpeg-target
+      - system::ext-boost-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.picserver.git
+   dir: tsd.media.picserver
+   tag: mqb_sop1_eu-2.0.14
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DCMAKE_CXX_FLAGS="-I${BOB_DEP_PATHS[libs::ext-zlib-dev]}/usr/include ${CXXFLAGS}"
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll -DCMAKE_CXX_FLAGS="-I${BOB_DEP_PATHS[libs::ext-zlib-dev]}/usr/include ${CXXFLAGS}"
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "media-picserver" \
+            -p "emmc.media.pictureserver" \
+            -o "media.pictureserver:tsd-media-picserver " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll -DCMAKE_CXX_FLAGS="-I${BOB_DEP_PATHS[libs::ext-zlib-dev]}/usr/include ${CXXFLAGS}"
+      packageScript: buildenvPackageDoc

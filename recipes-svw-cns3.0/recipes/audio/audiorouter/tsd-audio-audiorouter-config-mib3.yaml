@@ -1,0 +1,111 @@
+inherit: [packing-module]
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiorouter.config.mib3.git
+#   tag: 2.1.12
+   branch: release/cns_mqb
+
+buildScript:
+   rsync -a --delete $1/ ${PWD}/
+
+
+packageVars: [TARGET_TYPE, CONFIG_BOARD, TARGET_OS]
+packageTools: [buildenv]
+multiPackage:
+   dev:
+      packageScript:
+         rsync -a --delete $1/ ${PWD}/
+   target:
+      packageScript: |
+         rsync -a --delete $1/$CONFIG_BOARD/$TARGET_OS/target/all/ ${PWD}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "config-mib3-all" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:config.all " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   ecall-target:
+      packageScript: |
+         rsync -a --delete $1/$CONFIG_BOARD/$TARGET_OS/target/ecall/ ${PWD}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "config-mib3-ecall" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:config.ecall " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   ecall-cns-target:
+      packageScript: |
+         rsync -a --delete $1/$CONFIG_BOARD/$TARGET_OS/target/ecall-cns/ ${PWD}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "config-mib3-ecall-cns" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:config.ecall-cns " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   asr-webapps-loopback-target:
+      packageScript: |
+         rsync -a --delete $1/$CONFIG_BOARD/$TARGET_OS/target/asr-webapps-loopback/ ${PWD}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "conf-mib3-asr-webapps-loopback" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:config.asr-webapps-loopback " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   debug-target:
+      packageScript: |
+         rsync -a --delete $1/$CONFIG_BOARD/$TARGET_OS/target/debug/ ${PWD}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "config-mib3-debug" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:config.debug " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   cns-target:
+      packageScript: |
+         rsync -a --delete $1/$CONFIG_BOARD/$TARGET_OS/target/cns/ ${PWD}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "config-mib3-cns" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:config.cns " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   analogmic-cns-target:
+      packageScript: |
+         rsync -a -L --delete $1/$CONFIG_BOARD/$TARGET_OS/target/mic-analog-cns/ ${PWD}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "cfg-mib3-analogmic-cns" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:config.cns.mic-analog " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   analogmic-target:
+      packageScript: |
+         rsync -a --delete $1/$CONFIG_BOARD/$TARGET_OS/target/mic-analog/ ${PWD}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "conf-mib3-analogmic" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:config.mic-analog " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   a2bmic-target:
+      packageScript: |
+         rsync -a --delete $1/$CONFIG_BOARD/$TARGET_OS/target/mic-a2b/ ${PWD}/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "conf-mib3-a2bmic" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:config.mic-a2b " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

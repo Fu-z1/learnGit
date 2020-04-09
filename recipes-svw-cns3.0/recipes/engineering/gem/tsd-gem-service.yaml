@@ -1,0 +1,109 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - basic-services::persistence::tsd-persistence-dsi-service-dev
+  - system::tsd-infotainmentrecorder-testinterface-api-dev
+  - engineering::gem::tsd-gem-generic-api-dev
+  - system::tsd-common-daemon-dev
+  - media::mountingservice::tsd-media-mount-status-api-dev
+  - navigation::tsd-nav-testinterface-api-dev
+  - connectivity::networking::tsd-networking-wlan-api-dev
+  - media::mediaapplication::tsd-media-mib3-gem-api-dev
+  - connectivity::usb::tsd-usb-api-dev
+  - sal::tsd-sal-api-dev
+  - phone::bt-middleware::tsd-blueware-mib3-bluego-api-dev
+  - phone::bt-organizer::tsd-organizer-mib3-api-dev
+  - phone::bt-devicemanagement::tsd-bt-management-mib3-api-dev
+  - phone::bt-handsfree::tsd-bt-handsfree-mib3-api-dev
+  - phone::bt-messaging::tsd-bt-messaging-mib3-api-dev
+  - communication::tsd-communication-dev
+  - connectivity::networking::tsd-networking-api-dev
+  - system::system-lifecycle::tsd-systemstate-guard-api-mib3-dev
+  - system::tsd-logging-mib3-testinterface-api-dev
+  - sds::asr::tsd-sds-asr-api-dev
+  - sds::tts::tsd-sds-tts-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - engineering::testmanager::tsd-testmanager-commandprocessing-common-dev
+  - onlineservices::tsd-onlineservices-vkms-update-api-dev
+  - sds::speech.service::jpcc-sds-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::persistence::tsd-persistence-dsi-service-target
+      - system::tsd-infotainmentrecorder-testinterface-api-target
+      - engineering::gem::tsd-gem-generic-api-target
+      - system::tsd-common-daemon-target
+      - media::mountingservice::tsd-media-mount-status-api-target
+      - navigation::tsd-nav-testinterface-api-target
+      - connectivity::networking::tsd-networking-wlan-api-target
+      - media::mediaapplication::tsd-media-mib3-gem-api-target
+      - sal::tsd-sal-api-target
+      - phone::bt-middleware::tsd-blueware-mib3-bluego-api-target
+      - phone::bt-organizer::tsd-organizer-mib3-api-target
+      - phone::bt-devicemanagement::tsd-bt-management-mib3-api-target
+      - phone::bt-handsfree::tsd-bt-handsfree-mib3-api-target
+      - phone::bt-messaging::tsd-bt-messaging-mib3-api-target
+      - communication::tsd-communication-target
+      - connectivity::networking::tsd-networking-api-target
+      - system::system-lifecycle::tsd-systemstate-guard-api-mib3-target
+      - system::tsd-logging-mib3-testinterface-api-target
+      - sds::asr::tsd-sds-asr-api-target
+      - sds::tts::tsd-sds-tts-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - engineering::testmanager::tsd-testmanager-commandprocessing-common-target
+      - onlineservices::tsd-onlineservices-vkms-update-api-target
+      - sds::speech.service::jpcc-sds-target
+
+checkoutSCM:
+   scm: git
+   #url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-gem/tsd.gem.service.git
+   url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-gem/tsd.gem.service.git
+   dir: tsd.gem.service
+   #tag: mqb_sop1_eu-4.4.0
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1520_dev
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+         rsync -a --delete $1/tsd.gem.service/depl/commonapi.ini dist/usr/bin/commonapi.ini
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+         mkdir -p dist/etc/gem
+         rsync -a --delete $1/tsd.gem.service/depl/commonapi.ini dist/etc/gem/commonapi.ini
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "gem-service" \
+            -p "emmc.engineering.gem" \
+            -o "engineering.gem:tsd-gem-service " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+        # rsync -a --delete \\\$1/tsd.gem.service/depl/commonapi.ini dist/usr/bin/commonapi.ini
+      packageScript: |
+         buildenvPackageTests
+      provideDeps: ['*-dev']

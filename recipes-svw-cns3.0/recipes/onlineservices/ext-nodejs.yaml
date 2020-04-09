@@ -1,0 +1,88 @@
+inherit: [install, make, packing-module, patch]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+environment:
+   PKG_VERSION: "v6_11_1_patched_openssl_1_1_0_e"
+
+depends:
+  - libs::ext-openssl-dev
+  - libs::ext-zlib-dev
+  - system::ext-libuv-dev
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+      - libs::ext-zlib-target
+      - system::ext-libuv-target
+
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-nodejs/nodejs_${PKG_VERSION}.tar.gz
+   digestSHA256: '0b10c0465863844a39236abed6b519b9c921806a386fa82c7829b8f3509a282b'
+
+checkoutDeterministic: True
+checkoutScript: |
+   patchApplySeries -p1 $<<ext-nodejs/*.patch>>
+
+buildVars: [CROSS_COMPILE, SYSROOT, CC, CXX, LD, CPP, TARGET_OS, LIBDIR, AUTOCONF_HOST]
+buildTools: [toolchain, pkg-config]
+buildScript: |
+   rsync -a --delete $1/* ${PWD}
+
+   for i in "${@:2}" ; do
+       if [[ -d "$i/usr/${LIBDIR}/pkgconfig" ]] ; then
+           PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/${LIBDIR}/pkgconfig"
+       fi
+       if [[ -d "$i/usr/share/pkgconfig" ]] ; then
+           PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/share/pkgconfig"
+       fi
+   done
+   [ -z "${PKG_CONFIG_PATH:+true}" ] || export PKG_CONFIG_PATH
+
+   OPTIONS=(
+      --dest-os=${TARGET_OS}
+      --prefix=/usr
+      --shared-libuv
+      --shared-libuv-includes=${BOB_DEP_PATHS["system::ext-libuv-dev"]}/usr/include
+      --shared-libuv-libpath=${BOB_DEP_PATHS["system::ext-libuv-dev"]}/usr/${LIBDIR}
+      --shared-openssl
+      --shared-openssl-libpath=${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/${LIBDIR}
+      --shared-openssl-includes=${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/include
+      --shared-zlib
+      --shared-zlib-includes=${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/include
+      --shared-zlib-libpath=${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/${LIBDIR}
+      --without-dtrace
+      --without-npm
+      --without-snapshot
+      --with-intl=none
+   )
+
+   case ${AUTOCONF_HOST} in
+      aarch64-*)
+         OPTIONS+=(
+            --dest-cpu=arm64
+            --with-arm-fpu=neon
+         )
+         ;;
+   esac
+
+   ./configure "${OPTIONS[@]}"
+   make config.gypi
+   makeParallel -C out BUILDTYPE=Release
+   mkdir -p dist/usr/bin
+   cp -au out/Release/node dist/usr/bin
+
+packageScript: |
+   installPackageTarget "$1/dist"
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-nodejs" \
+      -p "emmc.onlineservices" \
+      -o "onlineservices:ext-nodejs " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps: ['*-target']

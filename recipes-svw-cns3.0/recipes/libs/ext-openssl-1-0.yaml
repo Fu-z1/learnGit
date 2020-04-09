@@ -1,0 +1,82 @@
+inherit: [install, make, patch, packing-module]
+
+environment:
+   PKG_VERSION: "1.0.2h"
+
+depends:
+  - libs::ext-zlib-dev
+  - use: []
+    depends:
+      - libs::ext-zlib-target
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-openssl/openssl-${PKG_VERSION}.tar.gz
+   digestSHA1: "577585f5f5d299c44dd3c993d3c0ac7a219e4949"
+
+checkoutDeterministic: true
+checkoutScript: |
+   pushd openssl-${PKG_VERSION}
+   patchApplySeries -p1 $<<ext-openssl/*.patch>>
+   popd
+
+buildVars: [PKG_VERSION, LIBDIR, CC, AR, RANLIB, AUTOCONF_HOST]
+buildTools: [toolchain]
+buildScript: |
+   mkdir -p build install
+   MAKE_JOBS=1
+   pushd build
+   rsync -a --delete $1/openssl-${PKG_VERSION}/ .
+   case "${AUTOCONF_HOST}" in
+      aarch64*-linux*)
+         OPENSSL_TARGET="linux-aarch64"
+         ;;
+      i[34567]86*-linux*)
+         OPENSSL_TARGET="386 linux-elf -m32"
+         ;;
+      x86_64*-linux*)
+         OPENSSL_TARGET="linux-x86_64"
+         ;;
+      *)
+         echo "Unknown architecture: ${AUTOCONF_HOST}" >&2
+         exit 1
+         ;;
+   esac
+   ./Configure \
+      --prefix=/usr \
+      --openssldir=/etc/ssl \
+      --libdir=${LIBDIR} \
+      shared \
+      zlib-dynamic \
+      ${OPENSSL_TARGET}
+   #make depend
+   makeParallel ZLIB_INCLUDE="-I${BOB_DEP_PATHS[libs::ext-zlib-dev]}/usr/include"
+   make INSTALL_PREFIX=${PWD}/../install install_sw
+   rm -v ${PWD}/../install/usr/${LIBDIR}/libssl.a
+   rm -v ${PWD}/../install/usr/${LIBDIR}/libcrypto.a
+   popd
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         installPackageDev $1/install/
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l ssl -l crypto -I include -d ext.zlib ext.openssl
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         rsync -r --links --delete --exclude '*.pc' --exclude libcrypto.so --exclude libssl.so --exclude pkgconfig $1/install/* .
+         shopt -s extglob
+         rm -rf usr/!(lib|lib64)
+         chmod -R u+w .
+         installStripAll usr
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-openssl-1-0" \
+            -p "emmc.libs" \
+            -o "libs:ext-openssl-1-0 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

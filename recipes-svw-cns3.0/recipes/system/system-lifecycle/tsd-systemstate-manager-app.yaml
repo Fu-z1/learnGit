@@ -1,0 +1,66 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - system::system-lifecycle::tsd-systemstate-manager-core-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - system::system-lifecycle::tsd-systemstate-manager-adapt-dev
+  - system::system-lifecycle::tsd-pwc-proxy-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - basic-services::systeminfo::tsd-systeminformation-features-dev
+  - system::system-lifecycle::tsd-systemstate-guard-api-mib3-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::system-lifecycle::tsd-systemstate-manager-core-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - system::system-lifecycle::tsd-systemstate-manager-adapt-target
+      - system::system-lifecycle::tsd-pwc-proxy-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+      - system::system-lifecycle::tsd-systemstate-guard-api-mib3-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.manager.app.git
+    dir: tsd.systemstate.manager.app
+    #tag: mqb_sop1_eu-4.2.0
+    #branch: master_mqb_sop1_eu
+    branch: rebase/mqb_sop1_eu-1480-rc4
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "systemstate-manager-app" \
+            -p "emmc.system.system-lifecycle" \
+            -o "system.system-lifecycle:tsd-systemstate-manager-app " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   swittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

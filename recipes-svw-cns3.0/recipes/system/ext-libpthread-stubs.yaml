@@ -1,0 +1,36 @@
+inherit: [autotools, patch, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "0.3"
+   PKG_NAME: "libpthread-stubs"
+   PKG_PATCH_VERSION: "0001"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libpthread/libpthread-stubs-${PKG_VERSION}.tar.bz2
+   digestSHA256: 35b6d54e3cc6f3ba28061da81af64b9a92b7b757319098172488a660e3d87299
+
+checkoutDeterministic: true
+checkoutVars: [PKG_VERSION]
+checkoutScript: |
+   cd libpthread-stubs-${PKG_VERSION}
+   patchApplySeries $<<ext-libpthread-stubs/*.patch>>
+
+buildScript: |
+   autotoolsBuild $1/libpthread-stubs-${PKG_VERSION}/
+
+multiPackage:
+   dev:
+      packageScript: autotoolsPackageDev
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libpthread-stubs" \
+            -p "emmc.system" \
+            -o "system:ext-libpthread-stubs " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

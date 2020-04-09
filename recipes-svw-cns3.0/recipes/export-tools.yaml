@@ -1,0 +1,32 @@
+packageScript: |
+   rsync -a --delete $1/ .
+
+multiPackage:
+   linux:
+      depends:
+         - tools::mib3-pwc-filter-dev
+
+      buildScript: |
+         rm -rf *
+         for i in "${!BOB_DEP_PATHS[@]}" ; do
+            mkdir -p tools/linux
+            cp -a ${BOB_DEP_PATHS[$i]}/* tools/linux
+         done
+
+   win32:
+      depends:
+         -
+            name: toolchain::i686-w64-mingw32
+            use: [tools, environment]
+            forward: True
+         - tools::mib3-pwc-filter-dev
+
+      environment:
+         TARGET_OS: "win32"
+
+      buildScript: |
+         rm -rf *
+         for i in "${!BOB_DEP_PATHS[@]}" ; do
+            mkdir -p tools/win32
+            cp -a ${BOB_DEP_PATHS[$i]}/* tools/win32
+         done

@@ -1,0 +1,56 @@
+inherit: [install, packing-module]
+
+depends:
+   - system::bsp::ext-renesas-h3-bsp
+
+#checkoutSCM:
+#   scm: url
+#   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/yocto/Yocto_3_9_0_1_gfx_libs_debug_symbols.tar.gz
+#   digestSHA1: 9393ef3cce641ee6c766a5de6de8816657d223fd
+
+buildScript: |
+   tar xf ${BOB_DEP_PATHS['system::bsp::ext-renesas-h3-bsp']}/r8a77951_linux_gsx_binaries_gles.tar.bz2 --strip-components=1
+   # use separate libs delivery with debug symbols
+   #cp -af $1/rogue/usr/lib/*.so usr/lib/
+
+   # create soname links
+   pushd usr/lib
+   for i in *.so ; do
+      soname="$(readelf -d "$i" | sed -n '/SONAME/s/.*\[\(.*\)\]/\1/p')"
+      if [[ -n "$soname" ]] && [[ "$i" != "$soname" ]] ; then
+         ln -sf "$i" "$soname"
+      fi
+   done
+   popd
+
+   # enable usefull GPU dumps
+   echo "EnableLogGroupMAIN=1" >> etc/powervr.ini
+   echo "EnableLogGroupMTS=1" >> etc/powervr.ini
+   echo "EnableLogGroupCSW=1" >> etc/powervr.ini
+   echo "EnableLogGroupBIF=1" >> etc/powervr.ini
+   echo "EnableLogGroupHWR=1" >> etc/powervr.ini
+
+
+   # we don't have init or udev. remove unused files
+   rm etc/init.d/rc.pvr
+   rm etc/udev/rules.d/72-pvr-seat.rules
+buildVars: [CONFIG_TARGET,CONFIG_HYPERVISOR]
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         installPackageDev $1
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include -l EGL -l GLESv2 ext.m3.bsp.opengl
+
+   target:
+      packageScript: |
+         installPackageTarget $1
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-opengl" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-opengl" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

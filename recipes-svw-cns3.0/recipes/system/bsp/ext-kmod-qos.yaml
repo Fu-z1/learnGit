@@ -1,0 +1,42 @@
+inherit: [strip, packing-module]
+
+depends:
+  - name: system::bsp::ext-linux-headers
+    use: [result, environment]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/renesas-rcar-qos-drv.git
+   tag: 2.04.0
+   branch: rcar-gen3
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/qos-module/files/qos/drv .
+   pushd drv
+   make KERNELSRC=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build all
+   popd
+
+packageScript: |
+   DIR="lib/modules/${KERNEL_VERSION}/extra"
+   mkdir -p "${DIR}"
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-kmod-qos" \
+      -p "emmc.system.bsp" \
+      -o "system.bsp:ext-kmod-qos " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+multiPackage:
+   dev:
+      packageScript: |
+         mkdir -p usr/include
+         cp $1/drv/*.h usr/include
+
+   target:
+      packageVars: [STRIP]
+      packageScript: |
+         cp -rf $1/drv/*.ko ${DIR}
+         stripAllKernelModules "${DIR}" "${STRIP}"

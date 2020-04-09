@@ -1,0 +1,34 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "1.1.5"
+   PKG_NAME: "mtdev"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-mtdev/mtdev-${PKG_VERSION}.tar.bz2
+   digestSHA256: 6677d5708a7948840de734d8b4675d5980d4561171c5a8e89e54adf7a13eba7f
+   extract: false
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   rm -rf *
+   tar xf $1/mtdev-${PKG_VERSION}.tar.bz2 --strip-components=1
+   autoreconf -f -i
+   autotoolsBuild .
+
+multiPackage:
+   dev:
+      packageScript: autotoolsPackageDev
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-mtdev" \
+            -p "emmc.system" \
+            -o "system:ext-mtdev " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

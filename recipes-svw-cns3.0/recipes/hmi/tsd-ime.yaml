@@ -1,0 +1,67 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - hmi::tsd-dsi-cpp-dev
+  - system::tsd-common-daemon-dev
+  - phone::bt-organizer::tsd-organizer-mib3-api-dev
+  - use: []
+    depends:
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - communication::tsd-communication-target
+      - hmi::tsd-dsi-cpp-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.ime.git
+   dir: tsd.ime
+   branch: main/svw_cns3.0_dev
+
+multiPackage:
+   dev:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      depends:
+        - hmi::ext-ime-dev
+
+   target:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p var/lib/tsd.ime
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ime" \
+            -p "emmc.hmi" \
+            -m 'ime,ime,0770,/var/lib/tsd.ime$'   \
+            -m 'ime,ime,0770,/var/lib/tsd.ime/.*' \
+            -o "hmi:tsd-ime " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      depends:
+        - hmi::ext-ime-target
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+      depends:
+        - hmi::ext-ime-dev
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,138 @@
+inherit: [packing-utils]
+
+buildVars: [MANIFEST_VERSION, CHECKSUM, SIGNATURE]
+buildTools: [mib3-packing]
+buildScript: |
+   __getUpdateContainerDir() {
+      UPDATECONTAINERDIR=""
+      FOUND=-1
+
+      for i in "$@"; do
+         if [[ ${FOUND} == 0 ]]; then
+            UPDATECONTAINERDIR=${i}
+            break
+         fi
+         if [[ ${i} == "--updateContainerDir" ]]; then
+            FOUND=0
+         fi
+      done
+      echo "$UPDATECONTAINERDIR"
+   }
+
+   __getDeveloperKey() {
+      DEVELOPERKEY=""
+      FOUND=-1
+
+      for i in "$@"; do
+         if [[ ${FOUND} == 0 ]]; then
+            DEVELOPERKEY=${i}
+            break
+         fi
+         if [[ ${i} == "--devKey" ]]; then
+            FOUND=0
+         fi
+      done
+      echo "$DEVELOPERKEY"
+   }
+
+   __removeDeveloperKeyFromList() {
+      NEWLIST=""
+      COUNT=0
+
+      # remove dev key parameter and dev key value
+      for i in "$@"; do
+         if [ ${i} == "--sandboxEnabled" ] || [ ${i} == "--devKey" ] || [ $((${COUNT}%2)) -eq 1 ]; then
+            COUNT=$((COUNT+1))
+         else
+            NEWLIST=${NEWLIST}${i}" "
+            COUNT=0
+         fi
+      done
+      echo "${NEWLIST}"
+   }
+
+   __removeMetaResourceFromList() {
+      NEWLIST=""
+      COUNT=0
+
+      # remove dev key parameter and dev key value
+      for i in "$@"; do
+         if [ ${i} == "--addMetaResource" ] || [ $((${COUNT}%2)) -eq 1 ]; then
+            COUNT=$((COUNT+1))
+         else
+            NEWLIST=${NEWLIST}${i}" "
+            COUNT=0
+         fi
+      done
+      echo "${NEWLIST}"
+   }
+
+   __getSandboxEnabled() {
+      SANDBOXENABLED="false"
+      FOUND=-1
+
+      for i in "$@"; do
+         if [[ ${FOUND} == 0 ]]; then
+            SANDBOXENABLED="${i}"
+            break
+         fi
+         if [[ "${i}" == "--sandboxEnabled" ]]; then
+            FOUND=0
+         fi
+      done
+      echo "${SANDBOXENABLED}"
+   }
+
+   __getMetaResourceList() {
+      METARESOURCELIST=""
+      COUNT=0
+      FOUND=-1
+
+      for i in "$@"; do
+         if [[ ${FOUND} == 0 ]]; then
+            METARESOURCELIST=${METARESOURCELIST}${i}" "
+            COUNT=$((COUNT+1))
+            FOUND=-1
+         fi
+         if [[ "${i}" == "--addMetaResource" ]]; then
+            FOUND=0
+         fi
+      done
+      echo "${METARESOURCELIST}"
+   }
+
+   buildSwupRelease() {
+      UPDATECONTAINERDIR=$(__getUpdateContainerDir "$@")
+      DEVELOPERKEY=$(__getDeveloperKey "$@")
+      SANDBOXENABLED=$(__getSandboxEnabled "$@")
+      METARESOURCELIST=$(__getMetaResourceList "$@")
+      NEWPARAMS=$(__removeDeveloperKeyFromList "$@")
+      NEWPARAMS=$(__removeMetaResourceFromList ${NEWPARAMS})
+
+      mib3-packing release --manifestVersion ${MANIFEST_VERSION} $NEWPARAMS
+
+      if [[ "${UPDATECONTAINERDIR}" ]]; then
+         ###########################
+         # add checksums to release
+         ###########################
+         if [[ ${CHECKSUM} == "true" ]]; then
+            mib3-packing checksum --manifestVersion ${MANIFEST_VERSION} --type "release" -o ${UPDATECONTAINERDIR}
+
+            # add checksums of meta resource directories - e.g. Multi-Lingual directories
+            for item in ${METARESOURCELIST[*]}; do
+               mib3-packing checksum --manifestVersion ${MANIFEST_VERSION} --type "resource" -o ${UPDATECONTAINERDIR} -f ${item}
+            done
+         fi
+         ####################################
+         # add checksum signature to release
+         ####################################
+         if [[ "${SIGNATURE}" == "true" ]] && [[ "${SANDBOXENABLED}" == "false" ]]; then
+            mib3-packing signature --updateContainerDir ${UPDATECONTAINERDIR} --privateKey ${DEVELOPERKEY}
+         else
+            echo "INFO: Signature is not generated. Signature flag is not true."
+         fi
+      else
+         echo "ERROR: Failed to get parameter. Parameter 'updateContainerDir' is not in the parameter list."
+         exit 1
+      fi
+   }

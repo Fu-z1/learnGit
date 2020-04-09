@@ -1,0 +1,69 @@
+inherit: [install, packing-module]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/ext.spotify.git
+   dir: ext.spotify
+   tag: 3.8.171
+
+buildTools: [buildenv]
+buildVars: [AUTOCONF_HOST, LIBDIR]
+
+buildScript: |
+   # Extract spotify version from the project line within the CMakeLists.txt file (numbers in form of major.minor.patch)
+   # and store it in SPOTIFY_VERSION_* variables
+   IFS='.' \
+   read -r SPOTIFY_VERSION_MAJOR SPOTIFY_VERSION_MINOR SPOTIFY_VERSION_PATCH \
+        < <(sed -nr 's|^PROJECT\(\$\{MODULE_NAME\} VERSION ([0-9]+\.[0-9]+\.[0-9]+)\)$|\1|p' < $1/ext.spotify/CMakeLists.txt)
+
+   LFLAGS="" # Optional linker flags
+   case $AUTOCONF_HOST in
+      x86_64*-linux*)
+         # Currently we have no lib for x86_64, so we do not need to copy them.
+         # Steps below are  necessary to fullfill recipe dependencies
+         mkdir -p usr/$LIBDIR
+         cp -a $1/ext.spotify/include usr/
+
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include \
+             -D EXT_SPOTIFY_VERSION_MAJOR=0 -D EXT_SPOTIFY_VERSION_MINOR=0 \
+             -D EXT_SPOTIFY_VERSION_PATCH=0 \
+             ext.spotify
+         # Ignore version information on the host to resolve undefined reference errors
+         LFLAGS="-f -Wl"
+         ;;
+      aarch64*-linux*)
+         mkdir -p usr/$LIBDIR
+         cp -a $1/ext.spotify/lib/* usr/$LIBDIR/
+         cp -a $1/ext.spotify/include usr/
+
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include \
+             -l spotify_embedded_shared \
+             -D EXT_SPOTIFY_VERSION_MAJOR=$SPOTIFY_VERSION_MAJOR -D EXT_SPOTIFY_VERSION_MINOR=$SPOTIFY_VERSION_MINOR \
+             -D EXT_SPOTIFY_VERSION_PATCH=$SPOTIFY_VERSION_PATCH \
+             ext.spotify
+         ;;
+      *)
+         echo "Tell me about your platform..." >&2
+         exit 1
+         ;;
+   esac
+
+
+multiPackage:
+   dev:
+      packageScript: |
+         installPackageDev $1
+
+   target:
+      packageScript: |
+         installPackageTarget $1
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-spotify" \
+            -p "emmc.media.libraries" \
+            -o "media.libraries:ext-spotify " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

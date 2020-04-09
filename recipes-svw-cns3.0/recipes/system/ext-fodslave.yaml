@@ -1,0 +1,40 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/ext.fodslave.git
+   dir: ext.fodslave
+   tag: 1.0.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildVars: []
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-fodslave" \
+            -p "emmc.system" \
+            -o "system:ext-fodslave " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"

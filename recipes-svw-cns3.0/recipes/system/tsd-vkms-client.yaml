@@ -1,0 +1,26 @@
+inherit: [buildenv, werror]
+
+depends:
+ # We are using Boost header-only library code right now. So there is no need
+ # for pulling target dependencies.
+  - system::ext-boost-dev
+  - system::tsd-common-dev
+  - system::tsd-vkms-api-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-vkms-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.vkms.client.git
+   dir: tsd.vkms.client
+   tag: mqb_sop1_eu-2.1.1
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install

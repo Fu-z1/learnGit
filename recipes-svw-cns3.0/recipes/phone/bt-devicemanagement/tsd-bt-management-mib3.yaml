@@ -1,0 +1,66 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - system::tsd-common-dev
+ - system::tsd-threadmessages-dev
+ - phone::bt-devicemanagement::tsd-bt-management-dev
+ - phone::bt-devicemanagement::tsd-bt-management-mib3-api-dev
+ - phone::tsd-phone-common-dev
+ - hmi::tsd-dsi-cpp-dev
+ - system::system-lifecycle::tsd-systemstate-manager-api-dev
+ - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+ - basic-services::persistence::tsd-persistence-client-mib3-dev
+ - vehicle-connectivity::canstack::tsd-canstack-api-dev
+ - basic-services::systeminfo::tsd-systeminformation-features-dev
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - system::tsd-threadmessages-target
+    - phone::bt-devicemanagement::tsd-bt-management-target
+    - phone::bt-devicemanagement::tsd-bt-management-mib3-api-target
+    - phone::tsd-phone-common-target
+    - hmi::tsd-dsi-cpp-target
+    - system::system-lifecycle::tsd-systemstate-manager-api-target
+    - engineering::diagnostic-management::tsd-uds-api-mib3-target
+    - basic-services::persistence::tsd-persistence-client-mib3-target
+    - vehicle-connectivity::canstack::tsd-canstack-api-target
+    - basic-services::systeminfo::tsd-systeminformation-features-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.management.mib3.git
+   dir: tsd.bt.management.mib3
+   branch: main/svw_cns3.0_1310_dev
+#   tag: mqb_sop1_eu-1.52.1
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "bt-management-mib3" \
+            -p "emmc.phone.bt-devicemanagement" \
+            -o "phone.bt-devicemanagement:tsd-bt-management-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

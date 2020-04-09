@@ -1,0 +1,72 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - carcom::tsd-peripheral-controller-api-dev
+  - system::tsd-drivers-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - system::system-lifecycle::tsd-pwc-proxy-api-dev
+  - system::system-lifecycle::tsd-systemstate-guard-api-mib3-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - basic-services::systeminfo::tsd-systeminformation-features-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - basic-services::systeminfo::tsd-systeminformation-hardware-dev
+  - system::tsd-logging-r7-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - carcom::tsd-peripheral-controller-api-target
+      - system::tsd-drivers-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - system::system-lifecycle::tsd-systemstate-guard-api-mib3-target
+      - system::system-lifecycle::tsd-pwc-proxy-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - basic-services::systeminfo::tsd-systeminformation-hardware-target
+      - system::tsd-logging-r7-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.peripheral.controller.git
+    dir: tsd.peripheral.controller
+    #tag: mqb_sop1_eu-5.7.0
+    #branch: master_mqb_sop1_eu
+    #branch: rebase/mqb_sop1_eu-1480-rc4
+    branch: main/svw_cns3.0_1520_dev
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "peripheral-controller" \
+            -p "emmc.carcom" \
+            -o "carcom:tsd-peripheral-controller " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

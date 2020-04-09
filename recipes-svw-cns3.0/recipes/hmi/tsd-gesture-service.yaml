@@ -1,0 +1,76 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+  - system::tsd-common-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - basic-services::rsi-library::tsd-rsi-client-dev
+  - system::tsd-common-daemon-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::rsi-library::tsd-rsi-server-target
+      - basic-services::rsi-library::tsd-rsi-client-target
+      - system::tsd-common-daemon-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.hmi.gesture.service.git
+   dir: tsd.hmi.gesture.service
+   branch: master
+
+multiPackage:
+   dev:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      buildScript: |
+         buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/usr
+
+         mkdir -p dist/usr/share/tsd.gesture.service/
+         cp $1/tsd.hmi.gesture.service/config/timer.property dist/usr/share/tsd.gesture.service/
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - system::tsd-common-dev
+        - basic-services::rsi-library::tsd-rsi-server-dev
+        - basic-services::rsi-library::tsd-rsi-client-dev
+        - system::tsd-common-daemon-dev
+
+   target:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      buildScript: |
+         buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/usr
+
+         mkdir -p dist/usr/share/tsd.gesture.service/
+         cp $1/tsd.hmi.gesture.service/config/timer.property dist/usr/share/tsd.gesture.service/
+      packageScript: |
+         buildenvPackageTarget --include-shared
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "gesture-service" \
+            -p "emmc.hmi" \
+            -o "hmi:tsd-gesture-service " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll -DUNIT_TESTS=1
+      packageScript: buildenvPackageTests
+
+   swittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll -DINTEGRATION_TESTS=1
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

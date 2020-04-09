@@ -1,0 +1,36 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+   PKG_LICENSE: "LGPL-2.1"
+
+environment:
+   PKG_VERSION: "0.12.0"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libcheck/check-${PKG_VERSION}.tar.gz
+   digestSHA1: "f6d95392b8c6b9efdab559e6dba239b30a389b56"
+
+buildScript: |
+   rsync -a --delete $1/ ${PWD}
+   autotoolsBuild $PWD/check-${PKG_VERSION}
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l check -I include ext.check
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-check" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:ext-check " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,46 @@
+inherit: [autotools, patch, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+   PKG_LICENSE: "LGPL-2.1+GPL-2"
+
+environment:
+   PKG_VERSION: "1.1.1"
+
+depends:
+  - audio::audiorouter::ext-alsa-lib-dev
+  - audio::audiorouter::ext-pulseaudio-dev
+  - system::tsd-common-dev
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-alsa-plugins/alsa-plugins-${PKG_VERSION}.tar.bz2
+   digestSHA1: "280eb0d9810e463059747d01760a5ac3f44d7057"
+checkoutDeterministic: true
+checkoutScript: |
+   pushd alsa-plugins-${PKG_VERSION}
+   patchApplySeries $<<ext-alsa-plugins/*.patch>>
+   popd
+
+buildVars: [LDFLAGS, CFLAGS]
+buildScript: |
+   export LDFLAGS="${LDFLAGS} -ltsd.common"
+   export CFLAGS="${CFLAGS} -I ${BOB_DEP_PATHS[system::tsd-common-dev]}/usr/include"
+   autotoolsBuild $1/alsa-plugins-${PKG_VERSION} --disable-jack --disable-samplerate
+
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageDev
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-alsa-plugins" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:ext-alsa-plugins " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

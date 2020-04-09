@@ -1,0 +1,34 @@
+inherit: [buildenv]
+
+#metaEnvironment:
+   #MODULE_VERSION:  "2.1.0"
+   #PACKAGE_VERSION: "2.1.0"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:speech/speech.external.git
+   dir: speech.external
+   branch: main/svw_cns3.0_dev
+
+buildVars: [TARGET_OS, ARCH, LIBDIR]
+packageVars: [LIBDIR]
+packageTools: [buildenv]
+
+buildScript: |
+
+      mkdir -p dist/usr/bin
+      mkdir -p dist/usr/lib
+      mkdir -p dist/etc/speech
+      
+      cp -rf $1/speech.external/bin/* dist/usr/bin
+      cp -rf $1/speech.external/lib/*  dist/usr/lib
+      cp -rf $1/speech.external/speech/* dist/etc/speech
+      
+multiPackage:
+      dev:
+         packageScript: |
+            cmakePackageDev
+      target:
+         packageScript: |
+            cmakePackageTarget
+ 

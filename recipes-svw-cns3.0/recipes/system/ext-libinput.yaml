@@ -1,0 +1,48 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "1.5.4"
+   PKG_NAME: "libinput"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-libevdev-dev
+  - system::ext-mtdev-dev
+  - system::ext-systemd-dev
+  - use: []
+    depends:
+      - system::ext-libevdev-target
+      - system::ext-mtdev-target
+      - system::ext-systemd-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libinput/libinput-${PKG_VERSION}.tar.xz
+   digestSHA1: "36800caa5c89b2e932f094ed18691591c4dbbbb0"
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/libinput-${PKG_VERSION} \
+      --disable-event-gui \
+      --disable-tests \
+      --disable-libwacom
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libinput" \
+            -p "emmc.system" \
+            -o "system:ext-libinput " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

@@ -1,0 +1,38 @@
+inherit: [make, packing-module]
+
+depends:
+  - system::ext-optee::client-dev
+  - system::ext-optee::os-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/optee_testsuite.git
+   tag: 2.6.0
+   # This is the revision of the xtest suite matching the currently used OP-TEE
+   # OS (a6b5b443c15389385437fdc8b3a8f84d350d507f from branch yocto-3.4.0 as of
+   # 2018-02-05).
+   branch: op-tee-2.6.0
+
+buildVars: [ARCH, CC, CROSS_COMPILE]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+
+   export TA_DEV_KIT_DIR=${BOB_DEP_PATHS["system::ext-optee::os-dev"]}
+   make -C ta O=./out
+   export OPTEE_CLIENT_EXPORT=${BOB_DEP_PATHS["system::ext-optee::client-dev"]}
+   make -C host/xtest O=./out
+
+packageScript: |
+   mkdir -p lib/optee_armtz
+   find $1/ta/ -name \*.ta -print0 | xargs -0 cp -t lib/optee_armtz
+
+   mkdir -p usr/bin
+   cp $1/host/xtest/out/xtest/xtest usr/bin/
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "test" \
+      -p "emmc.system.ext-optee" \
+      -o "system.ext-optee:test " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

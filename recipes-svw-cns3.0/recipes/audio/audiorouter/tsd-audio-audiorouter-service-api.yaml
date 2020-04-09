@@ -1,0 +1,67 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - audio::audiorouter::ext-pulseaudio-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - audio::audiorouter::ext-pulseaudio-target
+         # don't wants to install systemd using --destination
+         # a.k.a I don't like your transitive systemd dependency
+         #- system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiorouter.service.api.git
+   dir: tsd.audio.audiorouter.service.api
+#   tag: 1.5.7
+   branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      privateEnvironment:
+         HAS_A2B: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_SPEAKER_LOCALIZATION,1),1,0)"
+
+      buildVars: [HAS_A2B]
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            -DHAS_A2B=${HAS_A2B} \
+            tsd.audio.audiorouter.service.api \
+            tsd.audio.audiorouter.service.api.app \
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestTargets tsd.audio.audiorouter.service.api.test
+      packageScript: |
+         buildenvPackageTests
+
+   target:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.audio.audiorouter.service.api \
+            tsd.audio.audiorouter.service.api.app \
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "svc-api" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:tsd-audio-audiorouter-service-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,39 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+   
+depends:
+  - navigation::tsd-nav-sdk-common-api-dev
+  - system::ext-boost-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.common.mib3.api.git
+   dir: tsd.nav.common.mib3.api
+   tag: mqb_sop1_eu-150.0.1      #navi-api (internal only interface)
+
+buildScript: |
+   build(){
+      buildenvBuildAll
+   }
+
+multiPackage:
+   ? ""
+   :
+      inherit: [navi_compflags_werror_sanitize]
+      multiPackage:
+       dev:
+          buildVars: [TSD_NAV_COMMON_MIB3_API_TESTCONSTRUCTORS,TSD_BUILDENV_ENABLE_TEST_TARGETS,TSD_BUILDENV_IS_SWITTEST,TSD_BUILDENV_IS_SWITTESTWHITE]
+          privateEnvironment:
+             TSD_NAV_COMMON_MIB3_API_TESTCONSTRUCTORS: "$(if-then-else,$(or,$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-},1),$(eq,${TSD_BUILDENV_IS_SWITTEST:-},1),$(eq,${TSD_BUILDENV_IS_SWITTESTWHITE:-},1)),1,0)"
+          buildScript: buildenvBuildAll -DTSD_NAV_COMMON_MIB3_API_TESTCONSTRUCTORS=${TSD_NAV_COMMON_MIB3_API_TESTCONSTRUCTORS}
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

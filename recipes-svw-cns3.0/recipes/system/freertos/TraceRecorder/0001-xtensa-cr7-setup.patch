@@ -1,0 +1,59 @@
+diff -Nurp orig/include/trcHardwarePort.h patch/include/trcHardwarePort.h
+--- orig/include/trcHardwarePort.h	2017-04-21 09:06:22.000000000 +0200
++++ patch/include/trcHardwarePort.h	2018-09-21 15:59:02.020405999 +0200
+@@ -148,6 +148,28 @@
+ 	/* Set the meaning of IRQ priorities in ISR tracing - see above */
+ 	#define TRC_IRQ_PRIORITY_ORDER NOT_SET
+ 
++#elif (TRC_CFG_HARDWARE_PORT == TRC_HARDWARE_PORT_Xtensa)
++	/* Timestamping by cpu clock */
++	#define TRC_HWTC_TYPE TRC_FREE_RUNNING_32BIT_INCR
++	#define TRC_HWTC_COUNT ((uint32_t)xthal_get_ccount())
++	#define TRC_HWTC_PERIOD 0
++	#define TRC_HWTC_DIVISOR 1
++	#define TRC_HWTC_FREQ_HZ TRACE_CPU_CLOCK_HZ
++
++	/* Set the meaning of IRQ priorities in ISR tracing - see above */
++	#define TRC_IRQ_PRIORITY_ORDER 1
++
++#elif (TRC_CFG_HARDWARE_PORT == TRC_HARDWARE_PORT_ARM_Cortex_R)
++	/* Timestamping by OS tick only (typically 1 ms resolution) */
++	#define TRC_HWTC_TYPE TRC_OS_TIMER_INCR
++	#define TRC_HWTC_COUNT 0
++	#define TRC_HWTC_PERIOD 1
++	#define TRC_HWTC_DIVISOR 1
++	#define TRC_HWTC_FREQ_HZ TRACE_TICK_RATE_HZ
++
++	/* Set the meaning of IRQ priorities in ISR tracing - see above */
++	#define TRC_IRQ_PRIORITY_ORDER 1
++
+ #elif (TRC_CFG_HARDWARE_PORT == TRC_HARDWARE_PORT_ARM_Cortex_M)
+ 	
+ 	#ifndef __CORTEX_M
+diff -Nurp orig/include/trcKernelPort.h patch/include/trcKernelPort.h
+--- orig/include/trcKernelPort.h	2017-04-21 09:06:22.000000000 +0200
++++ patch/include/trcKernelPort.h	2018-09-21 15:59:29.290763999 +0200
+@@ -150,6 +150,12 @@ unsigned char prvTraceIsSchedulerSuspend
+ 	#define TRACE_EXIT_CRITICAL_SECTION() {portCLEAR_INTERRUPT_MASK_FROM_ISR(__irq_status);}
+ #endif
+ 
++#if ((TRC_CFG_HARDWARE_PORT == TRC_HARDWARE_PORT_Xtensa) || (TRC_CFG_HARDWARE_PORT == TRC_HARDWARE_PORT_ARM_Cortex_R))
++	#define TRACE_ALLOC_CRITICAL_SECTION() int __irq_status;
++	#define TRACE_ENTER_CRITICAL_SECTION() {__irq_status = portSET_INTERRUPT_MASK_FROM_ISR();}
++	#define TRACE_EXIT_CRITICAL_SECTION() {portCLEAR_INTERRUPT_MASK_FROM_ISR(__irq_status);}
++#endif
++
+ #if (TRC_CFG_HARDWARE_PORT == TRC_HARDWARE_PORT_Win32)
+     /* In the Win32 port, there are no real interrupts, so we can use the normal critical sections */
+ 	#define TRACE_ALLOC_CRITICAL_SECTION()
+diff -Nurp orig/include/trcPortDefines.h patch/include/trcPortDefines.h
+--- orig/include/trcPortDefines.h	2017-04-21 09:06:22.000000000 +0200
++++ patch/include/trcPortDefines.h	2018-09-21 15:59:59.671565999 +0200
+@@ -116,5 +116,7 @@
+ #define TRC_HARDWARE_PORT_NXP_LPC210X					14	/*	No			Any					*/
+ #define TRC_HARDWARE_PORT_ARM_CORTEX_A9					15	/*	Yes			Any					*/
+ #define TRC_HARDWARE_PORT_POWERPC_Z4                    16  /*  No          FreeRTOS            */
++#define TRC_HARDWARE_PORT_Xtensa					17
++#define TRC_HARDWARE_PORT_ARM_Cortex_R					18
+ 
+ #endif /*TRC_PORTDEFINES_H*/

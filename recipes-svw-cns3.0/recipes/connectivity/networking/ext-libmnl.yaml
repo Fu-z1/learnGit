@@ -1,0 +1,50 @@
+inherit: [install, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "LGPL-2.1-only"
+   PKG_VERSION: "1.0.4"
+   PKG_NAME: "libmnl"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#    PKG_VERSION: "libmnl-1.0.4"
+   PKG_NAME: "ext.libmnl"
+
+privateEnvironment:
+   CFLAGS: "${CFLAGS} -fPIC"
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext-libmnl.git
+   dir: ${PKG_NAME}
+   tag: libmnl-1.0.4
+
+buildVars: [PKG_NAME, AR, CC, LD]
+buildTools: [autotools]
+buildScript: |
+
+   # Preparing build process (cleanup, synching etc.)
+   rsync -a --delete $1/${PKG_NAME}/ ${BOB_CWD}
+
+   # Configuring and building the libmnl package
+   autotoolsBuild ${BOB_CWD} 
+
+packageVars: [LIBDIR]
+packageTools: [buildenv]
+multiPackage:
+   dev:
+      packageScript: |
+         installPackageDev "$1/dist"
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -l mnl -I include ext.libmnl
+
+   target:
+      packageScript: |
+         installPackageTarget "$1/dist"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libmnl" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-libmnl " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,279 @@
+inherit: [make, packing-module, strip, bl2, patch]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-or-later"
+   PKG_VERSION: "4.14.75"
+   PKG_NAME: "linux-kernel"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutVars: [KERNEL_BRANCH]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/linux-rcar-h3.git
+   #tag: 414.373.120.1 + yocto3.15
+   branch: main/svw_cns3.0_1480_dev
+
+multiPackage:
+   ? ""
+   :  depends:
+        - system::tsd-config-kernelconfig
+
+      environment:
+         KERNEL_VERSION: "4.14.75-ltsi-yocto-standard"
+
+      buildVars: [CROSS_COMPILE, ARCH, KERNEL_BOARD, STRIP, KERNEL_VERSION]
+      buildTools: [toolchain, host-toolchain]
+      buildScript: |
+         # prevent timestamps in configuration
+         # export KCONFIG_NOTIMESTAMP=1
+         # export KBUILD_BUILD_TIMESTAMP='Mon Dec 28 22:49:40 CET 2015'
+         KCONFIG="${KERNEL_BOARD}_defconfig"
+
+         LOCALVERSION="-yocto-standard"
+         VERSION="${KERNEL_VERSION}"
+
+         buildKernel()
+         {
+            mkdir -p $2
+            if [[ ( ! -e "$2/.config" ) || ( "${BOB_DEP_PATHS[system::tsd-config-kernelconfig]}/$KCONFIG" -nt "$2/.config" ) ]] ; then
+               cp "${BOB_DEP_PATHS[system::tsd-config-kernelconfig]}/$KCONFIG" "$2/.config"
+               make -C "$1" LOCALVERSION="${LOCALVERSION}" O=$PWD/$2 olddefconfig
+            else
+               make -C "$1" LOCALVERSION="${LOCALVERSION}" O=$PWD/$2 olddefconfig
+            fi
+            makeParallel -C "$1" LOCALVERSION="${LOCALVERSION}" O="$PWD/$2" "${@:3}"
+         }
+
+         build()
+         {
+            # make -C "$1" mrproper
+
+            mkdir -p modules
+            buildKernel "$1" target Image
+            buildKernel "$1" target modules
+            buildKernel "$1" target modules_install INSTALL_MOD_PATH="$PWD/modules"
+
+            # remove symlinks
+            rm -f modules/lib/modules/${VERSION}/{source,build}
+            rm -f target/{source,build}
+
+            # create directories
+            mkdir -p headers/lib/modules/${VERSION}/build
+            pushd headers/lib/modules/${VERSION}/build
+            for i in kernel include arch/${ARCH}/kernel .tmp_versions drivers/md include/linux net/mac80211 drivers/media/dvb-core mm \
+                  include/config/dvb drivers/media/dvb-frontends drivers/media/i2c drivers/media/usb/dvb-usb drivers/media/tuners fs/ext4 drivers/base/regmap; do
+               mkdir -p ${i}
+            done
+            popd
+
+            # copy includes from source
+            for i in acpi asm-generic clocksource crypto drm keys linux math-emu media net pcmcia scsi sound trace uapi video kvm xen; do
+               cp -a $1/include/${i} headers/lib/modules/${VERSION}/build/include
+            done
+
+            # copy arch includes from source
+            cp -a $1/arch/${ARCH}/include headers/lib/modules/${VERSION}/build/arch/${ARCH}/
+            if [[ $ARCH = arm64 ]] ; then
+               mkdir -p headers/lib/modules/${VERSION}/build/arch/arm
+               cp -a $1/arch/arm/include headers/lib/modules/${VERSION}/build/arch/arm
+            fi
+
+            # copy Kconfig files from source
+            for i in $(find $1 -type f -name "Kconfig*"); do
+               FILE=${i#${1}/}
+               if [[ "$FILE" =~ / ]]; then
+                  DIR=${FILE%/*}
+               else
+                  DIR=""
+               fi
+               mkdir -p headers/lib/modules/${VERSION}/build/${DIR}
+               cp ${i} headers/lib/modules/${VERSION}/build/${DIR}
+            done
+
+            # copy all other from source
+            cp $1/arch/${ARCH}/Makefile headers/lib/modules/${VERSION}/build/arch/${ARCH}
+            cp $1/drivers/md/*.h headers/lib/modules/${VERSION}/build/drivers/md
+            cp $1/drivers/media/dvb-core/*.h headers/lib/modules/${VERSION}/build/drivers/media/dvb-core
+            cp $1/drivers/media/dvb-frontends/lgdt330x.h headers/lib/modules/${VERSION}/build/drivers/media/dvb-frontends
+            cp $1/drivers/media/i2c/msp3400-driver.h headers/lib/modules/${VERSION}/build/drivers/media/i2c
+            cp $1/drivers/media/usb/dvb-usb/*.h headers/lib/modules/${VERSION}/build/drivers/media/usb/dvb-usb
+            cp $1/drivers/media/dvb-frontends/*.h headers/lib/modules/${VERSION}/build/drivers/media/dvb-frontends
+            cp $1/drivers/media/tuners/*.h headers/lib/modules/${VERSION}/build/drivers/media/tuners
+            cp $1/fs/ext4/*.h headers/lib/modules/${VERSION}/build/fs/ext4
+            cp $1/drivers/base/regmap/*.h headers/lib/modules/${VERSION}/build/drivers/base/regmap
+            cp $1/kernel/Makefile headers/lib/modules/${VERSION}/build/kernel
+            cp $1/Makefile headers/lib/modules/${VERSION}/build
+            cp $1/net/mac80211/*.h headers/lib/modules/${VERSION}/build/net/mac80211
+            cp -a $1/scripts headers/lib/modules/${VERSION}/build
+
+            # copy includes from build
+            cp -a target/include/config headers/lib/modules/${VERSION}/build/include
+            cp -a target/include/generated headers/lib/modules/${VERSION}/build/include
+
+            # copy arch includes from build
+            cp -a target/arch/${ARCH}/include/generated headers/lib/modules/${VERSION}/build/arch/${ARCH}/include
+
+            # copy all other from build
+            cp target/.config headers/lib/modules/${VERSION}/build/
+            cp target/arch/${ARCH}/kernel/asm-offsets.s headers/lib/modules/${VERSION}/build/arch/${ARCH}/kernel/
+            cp target/Module.symvers headers/lib/modules/${VERSION}/build
+            cp -a target/scripts headers/lib/modules/${VERSION}/build
+
+            # fix permissions
+            chmod og-w -R headers/lib/modules/${VERSION}/build/scripts
+            find headers/lib/modules/${VERSION}/build -type d -exec chmod 755 {} \;
+            # TODO: strip binaries in script
+         }
+
+      multiPackage:
+         ? ""
+         :  multiPackage:
+               # copy and compress kernel image
+               image:
+                  buildScript: |
+                     build $1
+                  packageVars: [KERNEL_DTB, OBJCPY, DEVICE_NAME]
+                  packageVarsWeak: [TFTP]
+                  packageTools: [mkimage]
+                  packageScript: |
+                     mkdir -p .debug
+                     cp $1/target/vmlinux .debug
+                     ${OBJCPY} -O binary $1/target/vmlinux vmlinux.bin
+
+                     bl2_pad vmlinux.bin
+                     bl2_compress vmlinux.bin
+
+                     # flashcontainer stuff
+                     mkdir -p _flashcontainer/flash
+                     cp vmlinux.bin _flashcontainer/flash
+                     pushd _flashcontainer/flash
+                     gzip --best vmlinux.bin
+                     mkimage -A arm64 -O linux -T kernel -a 0x48080000 -e 0x48080000 -d vmlinux.bin.gz "uImage-${KERNEL_DTB##*/}"
+                     rm vmlinux.bin.gz
+                     popd
+
+
+                     if [ x"$TFTP" = "xtrue" ] ; then
+                        TFTP_DIR="/tftp"
+                        cp $1/target/arch/arm64/boot/Image flash/Image-${KERNEL_DTB#*-}.bin
+                        gzip --best vmlinux.bin
+                        mkimage -A arm64 -O linux -T kernel -a 0x48080000 -e 0x48080000 -d vmlinux.bin.gz "flash/uImage-${KERNEL_DTB##*/}"
+                        rm vmlinux.bin.gz
+
+                        cp -f "flash/uImage-${KERNEL_DTB##*/}" "${TFTP_DIR}"
+                        cp -f $1/target/arch/arm64/boot/Image "${TFTP_DIR}/Image-${KERNEL_DTB#*-}.bin"
+                     fi
+
+                     # provide image to Hypervisor integration tool
+                     mkdir -p _hypervisor
+                     pushd _hypervisor
+                     cp $1/target/arch/arm64/boot/Image .
+                     popd
+
+                  multiPackage:
+                     swupdate:
+                        environment:
+                           CONFIG_TARGET: "swupdate"
+                        privateEnvironment:
+                           DEVICE_NAME: "swupdate"
+                           KERNEL_DTB: "${NORMAL_DTB}"
+                     normal:
+                        privateEnvironment:
+                           DEVICE_NAME: "normal"
+                           KERNEL_DTB: '$(if-then-else,$(eq,${CONFIG_HYPERVISOR:-1},1),${HYPERVISOR_DTB},${NORMAL_DTB})'
+
+               # copy relevant configurations for supplier
+               src:
+                  buildScript: |
+                     # copy sources
+                     mkdir -p src/${KERNEL_VERSION}
+                     rsync --include "core" --cvs-exclude -a --delete $1/ src/${KERNEL_VERSION}
+
+                  packageScript: |
+                     rsync -a --delete "$1/src/" .
+               # copy headers
+               headers:
+                  buildScript: |
+                     build $1
+                  packageVars: [KERNEL_VERSION]
+                  packageScript: |
+                     rsync -a --delete "$1/headers/" .
+                  provideVars:
+                     KERNEL_VERSION: "${KERNEL_VERSION}"
+
+               # copy modules
+               modules:
+                  buildScript: |
+                     build $1
+                  packageVars: [KERNEL_VERSION]
+                  packageScript: |
+                     rsync -a --delete "$1/modules/" .
+                     stripAllKernelModules lib "${STRIP}"
+
+                     d=$(mktemp -d)
+                     rsync -a --delete --exclude ".debug" ./ $d
+                     buildSwupModule -n "ext-linux-modules" \
+                              -p "emmc.system.bsp" \
+                              -o "system:bsp:ext-linux" -f $d -- \
+                              -U Depmod=${KERNEL_VERSION} \
+                              -U "Partition=rootfs_ro"
+                     rm -rf $d
+
+                  provideVars:
+                     KERNEL_VERSION: "${KERNEL_VERSION}"
+
+   perf:
+      inherit: [install]
+      depends:
+        - libs::ext-binutils-libbfd-dev
+        - libs::ext-binutils-libiberty-dev
+        - libs::ext-unwind-dev
+        - libs::ext-elfutils-libdw-dev
+        - libs::ext-elfutils-libelf-dev
+        - libs::ext-slang-dev
+        - libs::ext-zlib-dev
+        - use: []
+          depends:
+            - libs::ext-binutils-libbfd-target
+            - libs::ext-unwind-target
+            - libs::ext-elfutils-libdw-target
+            - libs::ext-elfutils-libelf-target
+            - libs::ext-slang-target
+            - libs::ext-zlib-target
+
+
+      buildVars: [CROSS_COMPILE, ARCH]
+      buildTools: [toolchain, host-toolchain]
+      buildScript: |
+         for i in "${@}" ; do
+            if [[ -d $i/usr/include ]] ; then
+               EXTRA_CFLAGS+=" -isystem $i/usr/include"
+            fi
+            if [[ -d $i/usr/lib ]] ; then
+               EXTRA_CFLAGS+=" -L$i/usr/lib"
+               EXTRA_CFLAGS+=" -Wl,-rpath-link=$i/usr/lib"
+            fi
+         done
+
+         mkdir -p build install
+         pushd build
+         make -C "$1"/tools/perf O=$PWD install \
+            DESTDIR=$BOB_CWD/install \
+            EXTRA_CFLAGS="${EXTRA_CFLAGS}"
+         popd
+
+      packageScript: |
+         installPackageTarget $1/install
+         # remove tests
+         rm -rf libexec/perf-core/tests
+
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-linux-perf" \
+                  -p "emmc.system.bsp" \
+                  -o "system:bsp:ext-linux" -f $d -- \
+                  -U "Partition=rootfs_ro"
+         rm -rf $d
+
+
+      provideDeps: ["*-target"]

@@ -1,0 +1,13 @@
+depends:
+   - swi::pcc-swi-btf-common-rsi-unittests
+   - swi::pcc-swi-btf-common-dsi-unittests
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   cp -a $1/* .

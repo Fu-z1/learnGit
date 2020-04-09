@@ -1,0 +1,81 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::ext-boost-dev
+  - system::ext-boost-system-dev
+  - system::tsd-dataformats-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-dev
+
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - system::tsd-common-target
+         #- system::tsd-common-daemon-target
+      - system::ext-boost-target
+         #- system::ext-boost-system-target
+      - system::tsd-dataformats-target
+      - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-target
+      - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.middleware.git
+    dir: tsd.ethernet.middleware
+    tag: mqb_sop1_eu-8.3.0
+    branch: master_mqb_sop1_eu
+
+buildVars: [APP_VARIANT]
+buildScript: |
+   build_sw()
+   {
+      buildenvBuildAll -DAPP_VARIANT=${APP_VARIANT}
+   }
+
+multiPackage:
+   dev:
+      environment:
+         APP_VARIANT: "ETHMFW_DEV"
+      buildScript: |
+         build_sw $1
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      environment:
+         APP_VARIANT: "ETHMFW_TARGET"
+      buildScript: |
+         build_sw $1
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ethernet-middleware" \
+            -p "emmc.vehicle-connectivity.autom-enet" \
+            -o "vehicle-connectivity.automotive-ethernet:tsd-ethernet-middleware " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   apps:
+      multiPackage:
+         ethmfw_main_app:
+            environment:
+               APP_VARIANT: "ETHMFW_APPS_MAIN_APP"
+            buildScript: |
+               buildenvBuildModules \
+                   -DAPP_VARIANT=${APP_VARIANT} \
+                   -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+                   -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+                   tsd.ethernet.middleware.app.ethmfw_main_app
+            packageScript: |
+               buildenvPackageTarget
+            provideDeps: ['*-dev']

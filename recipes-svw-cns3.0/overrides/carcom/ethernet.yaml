@@ -1,0 +1,19 @@
+scmOverrides:
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.aeth*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop_mqb_sop1_eu"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.middleware.git"
+   del: [commit, tag]
+   set:
+      branch: "develop_mqb_sop1_eu"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/ext.avbstack.cetitec.git"
+   del: [commit, tag]
+   set:
+      branch: "develop_mqb_sop1_eu"

@@ -1,0 +1,25 @@
+inherit: [root]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+   TSD_BUILDENV_ENABLE_TEST_RUN_TARGETS: "1"
+   TSD_BUILDENV_ENABLE_RPATH: "1"
+   VARIANTS: "101001"
+
+depends:
+   - navigation::tsd-nav-middleware-nds-2_5_2-unittests
+   - navigation::tsd-nav-middleware-interface-unittests
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   cp -a $1/* .

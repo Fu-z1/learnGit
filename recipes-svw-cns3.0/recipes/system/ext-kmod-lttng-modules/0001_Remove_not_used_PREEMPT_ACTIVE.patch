@@ -1,0 +1,40 @@
+diff --git a/instrumentation/events/lttng-module/sched.h b/instrumentation/events/lttng-module/sched.h
+index d2e03f9..d5ba644 100644
+--- a/instrumentation/events/lttng-module/sched.h
++++ b/instrumentation/events/lttng-module/sched.h
+@@ -28,7 +28,7 @@ static inline long __trace_sched_switch_state(struct task_struct *p)
+ 	/*
+ 	 * For all intents and purposes a preempted task is a running task.
+ 	 */
+-	if (preempt_count() & PREEMPT_ACTIVE)
++	if (preempt_count())
+ 		state = TASK_RUNNING | TASK_STATE_MAX;
+ #endif	/* CONFIG_PREEMPT */
+ 
+@@ -45,7 +45,7 @@ static inline long __trace_sched_switch_state(struct task_struct *p)
+ 	/*
+ 	 * For all intents and purposes a preempted task is a running task.
+ 	 */
+-	if (task_preempt_count(p) & PREEMPT_ACTIVE)
++	if (task_preempt_count(p))
+ 		state = TASK_RUNNING | TASK_STATE_MAX;
+ #endif
+ 
+@@ -62,7 +62,7 @@ static inline long __trace_sched_switch_state(struct task_struct *p)
+ 	/*
+ 	 * For all intents and purposes a preempted task is a running task.
+ 	 */
+-	if (task_thread_info(p)->preempt_count & PREEMPT_ACTIVE)
++	if (task_thread_info(p)->preempt_count)
+ 		state = TASK_RUNNING | TASK_STATE_MAX;
+ #endif
+ 
+@@ -79,7 +79,7 @@ static inline long __trace_sched_switch_state(struct task_struct *p)
+ 	/*
+ 	 * For all intents and purposes a preempted task is a running task.
+ 	 */
+-	if (task_thread_info(p)->preempt_count & PREEMPT_ACTIVE)
++	if (task_thread_info(p)->preempt_count)
+ 		state = TASK_RUNNING;
+ #endif
+ 

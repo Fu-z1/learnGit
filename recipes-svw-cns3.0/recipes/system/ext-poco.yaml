@@ -1,0 +1,89 @@
+inherit: [cmake, packing-module]
+
+depends:
+  - libs::ext-zlib-dev
+  - system::ext-expat-dev
+  - system::ext-pcre-dev
+  - system::ext-sqlite-dev
+  - use: []
+    depends:
+      - libs::ext-zlib-target
+      - system::ext-expat-target
+      - system::ext-pcre-target
+      - system::ext-sqlite-target
+
+environment:
+   PKG_VERSION: "1.7.5.6"
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.poco.git
+    dir: poco-${PKG_VERSION}-all
+    tag: poco-${PKG_VERSION}-release
+    branch: pcc_poco-1.7.5-release
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden"
+   CFLAGS: "${CFLAGS} -fvisibility=hidden"
+
+buildVars: [PKG_VERSION]
+buildTools: [toosl]
+buildScript: |
+   CMAKE_SRC_PATH="$1/poco-${PKG_VERSION}-all"
+   cmakeConfigure -DENABLE_XML=ON \
+               -DENABLE_JSON=ON \
+               -DENABLE_MONGODB=OFF \
+               -DENABLE_PDF=OFF \
+               -DENABLE_UTIL=ON \
+               -DENABLE_NET=ON \
+               -DENABLE_NETSSL=OFF \
+               -DENABLE_NETSSL_WIN=OFF \
+               -DENABLE_CRYPTO=OFF \
+               -DENABLE_DATA=ON \
+               -DENABLE_DATA_SQLITE=ON \
+               -DENABLE_DATA_MYSQL=OFF \
+               -DENABLE_DATA_ODBC=OFF \
+               -DENABLE_SEVENZIP=OFF \
+               -DENABLE_ZIP=OFF \
+               -DENABLE_APACHECONNECTOR=OFF \
+               -DENABLE_CPPPARSER=OFF \
+               -DENABLE_POCODOC=OFF \
+               -DENABLE_PAGECOMPILER=OFF \
+               -DENABLE_PAGECOMPILER_FILE2PAGE=OFF \
+               -DPOCO_UNBUNDLED=ON
+   makeParallel
+   cmakeInstall install
+multiPackage:
+   dev:
+      provideDeps: ['*-dev']
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+         DbgPostFix=""
+         shopt -s nocasematch
+         if [[ "${CMAKE_BUILD_TYPE:-}" == "Debug" ]]; then
+            DbgPostFix="d"
+         fi
+         shopt -u nocasematch
+         if [ "${LIBDIR:-}" != "lib" ]; then
+             cp -r ./usr/lib ./usr/${LIBDIR}
+         fi
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} \
+            -l PocoData${DbgPostFix} \
+            -l PocoDataSQLite${DbgPostFix} \
+            -l PocoFoundation${DbgPostFix} \
+            -l PocoJSON${DbgPostFix} \
+            -l PocoNet${DbgPostFix} \
+            -l PocoUtil${DbgPostFix} \
+            -l PocoXML${DbgPostFix} \
+            ext.poco
+   target:
+      provideDeps: ['*-target']
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-poco" \
+            -p "emmc.system" \
+            -o "system:ext-poco" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

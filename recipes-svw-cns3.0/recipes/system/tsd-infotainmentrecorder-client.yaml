@@ -1,0 +1,28 @@
+inherit: [buildenv]
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-infotainmentrecorder-api-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-infotainmentrecorder-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.infotainmentrecorder.client.git
+   dir: tsd.infotainmentrecorder.client
+   tag: 1.1.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

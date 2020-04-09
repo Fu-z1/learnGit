@@ -1,0 +1,18 @@
+inherit: [buildenv]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:paul.peschel/tsd.test.utils.git
+   dir: tsd.test.utils
+
+depends:
+   - system::ext-boost-dev
+   - test::ext.nlohmann.json-dev
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]

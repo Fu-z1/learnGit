@@ -1,0 +1,21 @@
+#!/bin/sh
+
+#
+# Helper for generating and updating the artifacts used for building. Say no to
+# tedious work.
+#
+
+
+set -e
+
+
+./genNavimaps.py $@
+
+sed -i -e '/multiPackage:/q' ../../recipes/zr3-navimap.yaml
+cat zr3-navimap.fragment.yaml >> ../../recipes/zr3-navimap.yaml
+
+
+#./genNavimapsMultirelease.py $@
+
+#sed -i -e '/multiPackage:/q' ../../recipes/zr3-navimap-multirelease.yaml
+#cat zr3-navimap-multirelease.fragment.yaml >> ../../recipes/zr3-navimap-multirelease.yaml

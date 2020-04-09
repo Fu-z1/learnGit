@@ -1,0 +1,61 @@
+inherit: [strip, packing-module]
+
+depends:
+  - name: system::bsp::ext-linux-headers
+    use: [result, environment]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/renesas-rcar-vspm_drv.git
+   branch: yocto-3.15.0
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/vspm-module/files/vspm/ ${PWD}
+   sed -i "s@\$(CP)@#\$(CP)@g" drv/Makefile
+   cp drv/*.h drv/fdp
+   cp drv/*.h drv/manager
+   cp drv/*.h drv/vsp
+
+   export EXTRA_CFLAGS="-I${PWD}/include \
+                        -I${PWD}/drv \
+                        -I${PWD}/drv/fdp \
+                        -I${PWD}/drv/manager \
+                        -I${PWD}/drv/vsp"
+   pushd drv
+   make EXTRA_CFLAGS=${EXTRA_CFLAGS} KERNELSRC=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build all
+   popd
+
+packageScript: |
+   DIR="lib/modules/${KERNEL_VERSION}/extra"
+   mkdir -p "${DIR}"
+
+   packageDev() {
+      mkdir -p usr
+      rsync -a --delete $1/include usr/
+      cp -rf $1/drv/vspm.ko lib/modules/${KERNEL_VERSION}/extra
+   }
+
+   packageTarget() {
+      cp -rf $1/drv/vspm.ko ${DIR}
+      stripAllKernelModules "${DIR}" "${STRIP}"
+   }
+
+multiPackage:
+   dev:
+      packageScript: |
+         packageDev $1
+   target:
+      packageVars: [STRIP, KERNEL_VERSION]
+      packageScript: |
+         packageTarget $1
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-kmod-vspm" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-kmod-vspm " -f $d -- \
+            -U "Partition=rootfs_ro" \
+            -U Depmod=${KERNEL_VERSION}
+         rm -rf $d
+

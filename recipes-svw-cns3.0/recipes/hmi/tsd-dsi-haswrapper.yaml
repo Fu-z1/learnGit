@@ -1,0 +1,30 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Application and Services"
+   PKG_ARTEFACT_TYPE: "Lib"
+
+depends:
+   - system::tsd-common-dev
+   - hmi::tsd-dsi-cpp-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.dsi.haswrapper.git
+   dir: tsd.dsi.haswrapper
+   tag: mqb_sop1_eu-1.0.7
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: [ '*-dev' ]
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget

@@ -1,0 +1,32 @@
+inherit: [autotools, packing-module]
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/enki/libev
+   dir: ext.libev
+   branch: master
+
+buildScript: |
+   rsync -a --delete $1/ext.libev/ .
+
+   autotoolsBuild ${PWD}
+
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -l ev -I include ext.libev
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libev" \
+            -p "emmc.libs" \
+            -o "libs:ext-libev " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

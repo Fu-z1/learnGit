@@ -1,0 +1,51 @@
+buildTools: [toolchain]
+buildVars: [GDB]
+buildScript: |
+
+   # TODO: set in gdbinit
+   # set substitute-path <jenkins path>/work ${BOB_TOP_DIR}/work
+
+   # $1: sysroot with debug symbols (-> .debug)
+   # $2: embedded target IP
+   createGdbEnvironment()
+   {
+      pushd $1
+
+      DEBUG_DIRS="$(find . -type d -name .debug -printf './%P:')"
+
+   cat << EOF_GDBINIT > ".gdbinit"
+   set sysroot .
+   set auto-load safe-path ./*
+   set debug-file-directory $DEBUG_DIRS
+   EOF_GDBINIT
+
+   cat << EOF_GDBSH > "gdb.sh"
+   #!/bin/bash
+   ### usage: ./gdb.sh <path to binary>
+   ###        ./gdb.sh <path to binary> -c <path to corefile>
+   set -x
+   GDB=$(which $GDB)
+   if [ \$# -gt 1 ]; then
+      \$GDB -q -nh -ex "set auto-load local-gdbinit on" \$*
+   else
+      \$GDB -q -nh -ex "set auto-load local-gdbinit on" -ex "set remote exec-file \$1" -ex "target extended-remote $2:1000" \$1
+   fi
+   EOF_GDBSH
+   chmod a+x "gdb.sh"
+
+   cat << EOF_DDDSH > "ddd.sh"
+   #!/bin/bash
+   ### usage: ./ddd.sh <path to binary>
+   ###        ./ddd.sh <path to binary> -c <path to corefile>
+   set -x
+   GDB=$(which $GDB)
+   if [ \$# -gt 1 ]; then
+      ddd --debugger "\$GDB -q -nh -ex \"set auto-load local-gdbinit on\" \$*"
+   else
+      ddd --debugger "\$GDB -q -nh -ex \"set auto-load local-gdbinit on\" -ex \"set remote exec-file \$1\" -ex \"target extended-remote $2:1000\"" \$1
+   fi
+   EOF_DDDSH
+   chmod a+x "ddd.sh"
+
+      popd
+   }

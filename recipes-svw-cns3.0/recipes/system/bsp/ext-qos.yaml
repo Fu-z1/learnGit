@@ -1,0 +1,47 @@
+depends:
+  - system::bsp::ext-kmod-qos-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/renesas-rcar-qos_lib.git
+   tag: 1.0.0
+   branch: rcar-gen3
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, CC, LIBDIR]
+buildTools: [toolchain]
+
+multiPackage:
+   tool:
+      depends:
+        - system::bsp::ext-qos-lib-dev
+        - use: []
+          depends:
+            - system::bsp::ext-qos-lib-target
+
+      buildScript: |
+         rsync -a --delete $1/qos_if-tp-user/files/qos_if/* .
+         make INCSHARED=${BOB_DEP_PATHS['system::bsp::ext-qos-lib-dev']}/usr/include LIBSHARED=${BOB_DEP_PATHS['system::bsp::ext-qos-lib-dev']}/usr/${LIBDIR} all
+
+      packageScript: |
+         mkdir -p usr/bin
+         cp $1/qos_tp usr/bin
+      provideDeps: ['*-target']
+
+   lib:
+      buildScript: |
+         rsync -a --delete $1/qos_if-module/files/qos_if/* .
+         pushd if
+         make ARCH=${ARCH} INCSHARED=${BOB_DEP_PATHS['system::bsp::ext-kmod-qos-dev']}/usr/include all
+         popd
+
+      multiPackage:
+         dev:
+            packageScript: |
+               mkdir -p usr/${LIBDIR} usr/include
+               cp -R $1/if/libqos.so* usr/${LIBDIR}
+               cp $1/include/qos_public.h usr/include
+
+         target:
+            packageScript: |
+               mkdir -p usr/${LIBDIR}
+               cp -R $1/if/libqos.so* usr/${LIBDIR}/

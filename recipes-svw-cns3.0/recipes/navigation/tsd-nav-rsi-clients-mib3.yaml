@@ -1,0 +1,33 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+   - system::tsd-common-dev
+   - navigation::tsd-nav-rsi-viwi-dev
+   - navigation::tsd-nav-mapdisplay-bridge-dev
+   - navigation::tsd-nav-mapdisplay-mib3-dev
+   - navigation::tsd-nav-middleware-interface-dev
+  # - navigation::tsd-nav-usersettings-mib3-dev
+   - navigation::tsd-nav-utils-api-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.rsi.clients.mib3.git
+      dir: tsd.nav.rsi.clients.mib3
+      tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+   ? ""
+   :
+      inherit: [navi_compflags_werror_sanitize]
+      #inherit: [navi_compflags_sanitize]
+      multiPackage:
+       dev:
+          buildScript: |
+             buildenvBuildAll
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']

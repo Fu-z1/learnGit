@@ -1,0 +1,24 @@
+shared: True
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "0.4.0-gb1da565"
+   PKG_NAME: "bats-core"
+   PKG_PATCH_VERSION: "1.0.0"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tools/bats-core.git
+   dir: bats
+   commit: 3e65b4337421dae75dfbcea81291102df3a460ad
+
+buildScript: $1/bats/install.sh .
+
+packageScript: |
+   cp -a $1/bin .
+   cp -a $1/libexec .
+
+provideTools:
+   bats:
+      path: "bin"

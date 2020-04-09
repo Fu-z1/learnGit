@@ -1,0 +1,53 @@
+inherit: [autotools, patch, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "LGPL-2.1-only"
+   PKG_VERSION: "3.4.0"
+   PKG_NAME: "libnl"
+   PKG_PATCH_VERSION: "3.4.0_fix-memory-corruption"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#   PKG_VERSION: "3_4_0"
+   PKG_DIR: "ext.libnl"
+checkoutVars: [PKG_VERSION, PKG_DIR]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/${PKG_DIR}.git
+    dir: ${PKG_DIR}
+    tag: libnl3_4_0
+
+checkoutDeterministic: true
+checkoutScript: |
+   cd ${PKG_DIR}
+   patchApplySeries -p1 $<<Patches/ext.libnl/fix-memory-corruption-in-rtnl_link_vlan_set_egress_map.patch>>
+buildVars: [PKG_DIR, LIBDIR]
+buildScript: |
+   # Preparing build process (cleanup etc.)
+   rm -rf *
+   rsync -a --delete $1/${PKG_DIR}/ ${PWD}
+
+   # Run autotools
+   ./autogen.sh
+
+   # Build
+   autotoolsBuild .
+
+packageVars: [LIBDIR]
+packageTools: [buildenv]
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -l nl-3 -I include/libnl3 ext.libnl
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -d ext.libnl -l nl-route-3 -I include/libnl3 ext.libnl.route
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libnl" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-libnl " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

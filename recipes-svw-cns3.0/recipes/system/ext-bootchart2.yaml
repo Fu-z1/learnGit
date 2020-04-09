@@ -1,0 +1,32 @@
+inherit: [make, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-or-later"
+   PKG_VERSION: "0.14.8"
+   PKG_NAME: "bootchart2"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.bootchart2.git
+   tag: 0.15.0.1
+   branch: bootchart2_pcc_zr3
+
+buildVars: [PKG_VERSION, CROSS_COMPILE, CC, CFLAGS]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   rm -rf dist
+   mkdir -p dist
+   DESTDIR=dist make install
+
+packageScript: |
+   d=$(mktemp -d)
+   rsync -a --delete  --exclude=usr --exclude=lib/systemd $1/dist/ $d
+   buildSwupModule -n "ext-bootchart2" \
+      -p "emmc.system" \
+      -o "system:ext-bootchart2" -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+   mkdir -p pybootchartgui
+   rsync -a --delete $1/dist/usr pybootchartgui

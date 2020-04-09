@@ -1,0 +1,9 @@
+depends:
+   - sds::asr::ext-nuance-clm-res
+
+buildScript: |
+
+   copyCommonResFromCLM()
+   {
+      cp -rf ${BOB_DEP_PATHS[sds::asr::ext-nuance-clm-res]}/* common/
+   }

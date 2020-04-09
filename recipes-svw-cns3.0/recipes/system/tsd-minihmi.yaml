@@ -1,0 +1,62 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - libs::ext-cairo-dev
+  - if: "$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+    depends:
+      - system::bsp::ext-weston-dev
+  - if: "$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+    depends:
+      - system::ext-wayland-dev
+
+  - system::tsd-common-dev
+  - system::tsd-swupdate-client-dev
+  - use: []
+    depends:
+      - libs::ext-cairo-target
+      - if: "$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+        depends:
+          - system::bsp::ext-weston-target
+      - if: "$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+        depends:
+          - system::ext-wayland-target
+
+      - system::tsd-common-target
+      - system::tsd-swupdate-client-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.minihmi.git
+   dir: tsd.minihmi
+   tag: 2.11.0
+   branch: master_mqb_sop1_eu
+
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "minihmi" \
+            -p "emmc.system" \
+            -o "system:tsd-minihmi " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

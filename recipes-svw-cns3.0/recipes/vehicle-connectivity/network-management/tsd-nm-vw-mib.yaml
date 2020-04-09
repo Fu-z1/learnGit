@@ -1,0 +1,56 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+# This environment variable must be set by a higher level recipe (e.g. "tsd-canstack-mib3.yaml")!
+#environment:
+#   TSD_NM_VW_MIB_CONFIG: "TSD_NM_VW_MIB_CONFIG_CAN" # CAN - TSD_NM_VW_MIB_CONFIG_CAN
+                                                     # ETH - TSD_NM_VW_MIB_CONFIG_ETH
+
+depends:
+  - system::tsd-common-dev
+  - vehicle-connectivity::network-management::tsd-nm-api-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - vehicle-connectivity::network-management::tsd-nm-api-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.nm.vw.mib.git
+    dir: tsd.nm.vw.mib
+    tag: mqb_sop1_eu-4.2.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildVars: [TSD_NM_VW_MIB_CONFIG]
+      buildScript: buildenvBuildAll -DTSD_NM_VW_MIB_CONFIG=${TSD_NM_VW_MIB_CONFIG}
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildVars: [TSD_NM_VW_MIB_CONFIG]
+      buildScript: buildenvBuildAll -DTSD_NM_VW_MIB_CONFIG=${TSD_NM_VW_MIB_CONFIG}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "nm-vw-mib" \
+            -p "emmc.vehicle-connectivity.network-management" \
+            -o "vehicle-connectivity.network-management:tsd-nm-vw-mib " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

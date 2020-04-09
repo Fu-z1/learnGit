@@ -1,0 +1,24 @@
+inherit: [make, packing-module]
+
+checkoutSCM:
+   scm: url
+   url: http://pyropus.ca/software/memtester/old-versions/memtester-4.3.0.tar.gz
+
+buildVars: [CROSS_COMPILE, CC]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/memtester-4.3.0/ .
+   echo "${CC} -O2 -DPOSIX -D_POSIX_C_SOURCE=200809L -D_FILE_OFFSET_BITS=64 -DTEST_NARROW_WRITES -c" > conf-cc
+   echo "${CC} -s" > conf-ld
+   make
+
+packageScript: |
+   mkdir -p ./tsd/tools
+   cp $1/memtester ./tsd/tools/
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-memtester" \
+      -p "emmc.test" \
+      -o "test:ext-memtester " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

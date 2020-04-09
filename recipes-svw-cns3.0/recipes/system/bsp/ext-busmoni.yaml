@@ -1,0 +1,43 @@
+inherit: [packing-module]
+environment:
+   PKG_VERSION: '1.3'
+
+depends:
+  - name: system::bsp::ext-linux-headers
+    use: [result, environment]
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-busmoni/busmoni_v${PKG_VERSION}_customer.tar.bz2
+   digestSHA1: "eac4e3a6f8504ab88dec4898d3dcb28afad654e1"
+   extract: no
+
+buildVars: [CROSS_COMPILE, ARCH, KERNEL_VERSION, LIBDIR, SOC_NAME]
+buildTools: [toolchain]
+buildScript: |
+   if [ "${SOC_NAME}" = "H3N" ]; then
+      SOC_NAME="H3"
+   fi
+
+   mkdir -p dist/usr/bin dist/usr/${LIBDIR} dist/lib/modules/${KERNEL_VERSION}/extra
+
+   tar --strip-components=2 -xjf $1/busmoni_v${PKG_VERSION}_customer.tar.bz2 busmoni_tool/busmoni_driver
+   tar --strip-components=3 -C dist/usr/bin -xjf $1/busmoni_v${PKG_VERSION}_customer.tar.bz2 busmoni_tool/busmoni_bin/${SOC_NAME}/busmoni_app
+   tar --strip-components=3 -C dist/usr/${LIBDIR} -xjf $1/busmoni_v${PKG_VERSION}_customer.tar.bz2 busmoni_tool/busmoni_bin/${SOC_NAME}/libbusmoni.so
+
+   make -f Kbuild KERNELDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build all
+
+   cp *.ko dist/lib/modules/${KERNEL_VERSION}/extra
+
+packageVars: [KERNEL_VERSION]
+packageScript: |
+   rsync -a --delete $1/dist/ ${PWD}
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-busmoni" \
+      -p "emmc.system.bsp" \
+      -o "system.bsp:ext-busmoni " -f $d -- \
+      -U Depmod=${KERNEL_VERSION} \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

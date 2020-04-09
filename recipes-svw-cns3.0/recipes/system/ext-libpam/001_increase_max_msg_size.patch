@@ -1,0 +1,13 @@
+--- Linux-PAM-1.3.0/libpam/include/security/_pam_types.h.orig	2018-04-10 16:15:18.801920448 +0200
++++ Linux-PAM-1.3.0/libpam/include/security/_pam_types.h	2018-04-10 16:15:54.353920039 +0200
+@@ -238,8 +238,8 @@
+    arbitrary so Linux-PAM should handle longer values). */
+ 
+ #define PAM_MAX_NUM_MSG       32
+-#define PAM_MAX_MSG_SIZE      512
+-#define PAM_MAX_RESP_SIZE     512
++#define PAM_MAX_MSG_SIZE      1024
++#define PAM_MAX_RESP_SIZE     1024
+ 
+ /* Used to pass prompting text, error messages, or other informatory
+  * text to the user.  This structure is allocated and freed by the PAM

@@ -1,0 +1,52 @@
+#!/bin/bash
+
+#
+# Helper for generating and updating the artifacts used for building. Say no to
+# tedious work.
+#
+
+set -e
+./genZr3CuModules.py $@
+
+#in which zu modules, multiPackage will be reset
+zr3CuModules="
+            zr3-cu-bt-phone.yaml
+            zr3-cu-wlan.yaml
+            zr3-cu-web-browser.yaml
+            zr3-cu-radio-tuner.yaml
+            zr3-cu-sal.yaml
+            zr3-cu-media.yaml
+"
+
+for each in $zr3CuModules
+do
+    echo "Process $each"
+    noyaml=${each%.yaml}
+    nozr3cu=${noyaml#zr3-cu-}
+    lowerCasereplace=${nozr3cu//-/_}
+    upperCaseReplace=$(tr '[a-z]' '[A-Z]' <<<$lowerCasereplace)
+
+    sed -i -e '/multiPackage:/q' ../../recipes/$each
+    sed -e '/TRAIN_NUMBER/ s/CU_/&'${upperCaseReplace}'_/' zr3-cu-modules.fragment.yaml >> ../../recipes/$each
+done
+
+###########################################################################################################
+# this is for fbu-diff target
+###########################################################################################################
+
+
+./genZr3CuModulesDifferenciateFBU.py $@
+zr3CuModulesDiffFbu="
+            zr3-cu-stationdb.yaml
+"
+for each in $zr3CuModulesDiffFbu
+do
+    echo "Process $each"
+    noyaml=${each%.yaml}
+    nozr3cu=${noyaml#zr3-cu-}
+    lowerCasereplace=${nozr3cu//-/_}
+    upperCaseReplace=$(tr '[a-z]' '[A-Z]' <<<$lowerCasereplace)
+
+    sed -i -e '/multiPackage:/q' ../../recipes/$each
+    sed -e '/TRAIN_NUMBER/ s/CU_/&'${upperCaseReplace}'_/' zr3-cu-modules-diff-fbu.fragment.yaml >> ../../recipes/$each
+done

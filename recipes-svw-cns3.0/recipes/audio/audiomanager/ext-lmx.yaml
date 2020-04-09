@@ -1,0 +1,30 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+   PKG_VERSION: "7.1"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/ext.lmx.git
+   dir: ext.lmx
+   tag: 7.1.1
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-lmx" \
+            -p "emmc.audio.audiomgr" \
+            -o "audio.audiomanager:ext-lmx " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

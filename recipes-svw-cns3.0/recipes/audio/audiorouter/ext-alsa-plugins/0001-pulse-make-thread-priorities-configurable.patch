@@ -1,0 +1,170 @@
+From e82ca58a187b99d2ab5270102d694e481d9707b5 Mon Sep 17 00:00:00 2001
+From: Thomas Hutschenreuther <thomas.hutschenreuther@preh.de>
+Date: Thu, 8 Nov 2018 10:52:44 +0100
+Subject: [PATCH] pulse: make thread priorities configurable
+
+We at pcc need to be able to set the priorities for all audio
+transport threads.
+And we have a pretty clear mindset on how this is going down.
+---
+ pulse/pulse.c | 89 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ pulse/pulse.h |  4 +++
+ 2 files changed, 92 insertions(+), 1 deletion(-)
+
+diff --git a/pulse/pulse.c b/pulse/pulse.c
+index cf0546b..dca1b9e 100644
+--- a/pulse/pulse.c
++++ b/pulse/pulse.c
+@@ -24,9 +24,17 @@
+ #include <unistd.h>
+ #include <signal.h>
+ #include <sys/poll.h>
+-
++#include <sys/syscall.h>
++#include <sys/time.h>
++#include <sys/resource.h>
++#include <pthread.h>
+ #include "pulse.h"
+ 
++#define TARGET_OS_POSIX
++#include <tsd/common/config/c_configmanager.h>
++
++
++
+ int pulse_check_connection(snd_pulse_t * p)
+ {
+ 	pa_context_state_t state;
+@@ -75,6 +83,45 @@ int pulse_wait_operation(snd_pulse_t * p, pa_operation * o)
+ 	return 0;
+ }
+ 
++static void pulse_adjust_priorities(pthread_t thread, char const *thread_name) {
++   int prio;
++   int policy = SCHED_OTHER;
++   cpu_set_t cpuset;
++   struct sched_param param;
++
++   memset(&param,0,sizeof(param));
++   if(0 != ConfigManager_getPriority(thread_name, &prio)) {
++      SNDERR("PulseAudio: Unable to get thread priority for thread '%s'\n", thread_name);
++   } else {
++      if(0 != ConfigManager_getSchedpolicy(thread_name, &policy)) {
++         SNDERR("PulseAudio: Unable to get scheduling policy for thread '%s'\n", thread_name);
++      }
++      if(policy == SCHED_OTHER) {
++         param.sched_priority = 0;
++      } else {
++         param.sched_priority = prio;
++      }
++      if(0 != pthread_setschedparam(thread, policy, &param)) {
++         SNDERR("PulseAudio: Unable to set thread priority for thread '%s'\n", thread_name);
++      }
++      if(policy == SCHED_OTHER) {
++         pid_t tid = syscall(SYS_gettid);
++         if(-1 == setpriority(PRIO_PROCESS, tid, prio)) {
++            int err = errno;
++            SNDERR("PulseAudio: Unable to set nice level %i for thread '%s': %s\n", prio, thread_name, strerror(err));
++         }
++      }
++   }
++   if(0 != ConfigManager_getCPUAffinity(thread_name, &cpuset)) {
++      SNDERR("PulseAudio: Unable to get cpu affinity for thread '%s'\n", thread_name);
++   } else {
++      int ret = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
++      if(0 != ret) {
++         SNDERR("PulseAudio: Unable to set cpu affinity for thread '%s': %s\n", thread_name, strerror(ret));
++      }
++   }
++}
++
+ static void context_state_cb(pa_context * c, void *userdata)
+ {
+ 	pa_context_state_t state;
+@@ -89,6 +136,8 @@ static void context_state_cb(pa_context * c, void *userdata)
+ 
+ 	switch (state) {
+ 	case PA_CONTEXT_READY:
++      pulse_adjust_priorities(pthread_self(), p->thread_name);
++
+ 	case PA_CONTEXT_TERMINATED:
+ 	case PA_CONTEXT_FAILED:
+ 		pa_threaded_mainloop_signal(p->mainloop, 0);
+@@ -119,11 +168,46 @@ static int make_close_on_exec(int fd)
+     return fcntl(fd, F_SETFD, FD_CLOEXEC);
+ }
+ 
++char* assemble_thread_name(char* dest, char const* name, size_t buflen) {
++   size_t remain = buflen;
++   size_t len = 0;
++   char* ret = dest;
++   memset(dest, 0, buflen);
++
++   strcpy(dest, PULSE_THREAD_PREFIX);
++   len = strlen(dest);
++   dest += len;
++   remain -= len;
++   *dest++ = '.';
++   remain -= 1;
++   if(name && name[0] != '\0') {
++      size_t postfix_len = sizeof(PULSE_THREAD_POSTFIX) - 1;
++      size_t in_length = strlen(name);
++      size_t in_length_max = remain - (postfix_len + 2);
++      if(in_length > in_length_max) {
++         name += in_length - in_length_max;
++         in_length = in_length_max;
++      }
++      strncpy(dest, name, in_length);
++      dest += in_length;
++      *dest++ = '.';
++   }
++   strcpy(dest, PULSE_THREAD_POSTFIX);
++   ret[buflen - 1] = '\0';
++   len = strlen(ret);
++   if(len >= 15) {
++      ret += len - 15;
++   }
++
++   return ret;
++}
++
+ snd_pulse_t *pulse_new(void)
+ {
+ 	snd_pulse_t *p;
+ 	int fd[2] = { -1, -1 };
+ 	char proc[PATH_MAX], buf[PATH_MAX + 20];
++   char* mainloop_name = NULL;
+ 
+ 	p = calloc(1, sizeof(snd_pulse_t));
+ 
+@@ -154,6 +238,9 @@ snd_pulse_t *pulse_new(void)
+ 		snprintf(buf, sizeof(buf), "ALSA plug-in");
+ 	buf[sizeof(buf)-1] = 0;
+ 
++   mainloop_name = assemble_thread_name(p->thread_name, proc, sizeof(p->thread_name));
++   pa_threaded_mainloop_set_name(p->mainloop, mainloop_name);
++
+ 	p->context =
+ 	    pa_context_new(pa_threaded_mainloop_get_api(p->mainloop), buf);
+ 
+diff --git a/pulse/pulse.h b/pulse/pulse.h
+index 9b337bc..e32853c 100644
+--- a/pulse/pulse.h
++++ b/pulse/pulse.h
+@@ -25,10 +25,14 @@
+ #include <pulse/pulseaudio.h>
+ 
+ #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
++#define PULSE_THREAD_NAME_MAX 256
++#define PULSE_THREAD_PREFIX "tsd.audio.router.transport"
++#define PULSE_THREAD_POSTFIX "alsa"
+ 
+ typedef struct snd_pulse {
+ 	pa_threaded_mainloop *mainloop;
+ 	pa_context *context;
++   char thread_name[PULSE_THREAD_NAME_MAX];
+ 
+ 	int thread_fd, main_fd;
+ } snd_pulse_t;
+-- 
+2.17.1
+

@@ -1,0 +1,46 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_LICENSE: "Apache-2.0	"
+   PKG_NAME: "refox"
+   PKG_VERSION: "0.3"
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+depends:
+  - libs::ext-libev-dev
+  - navigation::ext-hiredis-dev
+  - use: []
+    depends:
+     - libs::ext-libev-target
+     - navigation::ext-hiredis-target
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/hmartiro/redox
+   dir: ext.redox
+   branch: master
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+         if [ -d $1/dist/usr/lib64 ]; then
+            LIBDIR=lib64
+         fi
+         if [ -d $1/dist/usr/lib ]; then
+            LIBDIR=lib
+         fi
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l redox -I include \
+            -d ext.libev -d ext.hiredis ext.redox
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+      provideDeps: ['*-target']

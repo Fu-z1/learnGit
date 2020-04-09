@@ -1,0 +1,6 @@
+environment:
+   TARGET_VERSION: main/svw_cns3.0_1520_dev.eng.20200409.1
+
+packageVars: [TARGET_VERSION]
+packageScript:
+   echo ${TARGET_VERSION} > version.txt

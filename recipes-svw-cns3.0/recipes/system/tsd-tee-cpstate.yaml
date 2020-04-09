@@ -1,0 +1,87 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Security"
+
+depends:
+  - system::tsd-common-dev
+  - if: "$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+    depends:
+      - system::ext-optee::os-dev
+      - system::ext-optee::client-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::ext-optee::client-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.tee.cpstate.git
+   dir: tsd.tee.cpstate
+   tag: mqb_sop1_eu-1.2.1
+   branch: master_mqb_sop1_eu
+
+privateEnvironment:
+   TA_UUID: 8184a662-72a8-4a5c-8ade-8c3a4c45a758
+
+buildVars: [ARCH, CC, CROSS_COMPILE, TA_UUID]
+buildTools: [toolchain]
+
+buildScript: |
+   if [[ ${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0} == 0 ]]; then
+      export TA_DEV_KIT_DIR=${BOB_DEP_PATHS["system::ext-optee::os-dev"]}
+   fi
+
+multiPackage:
+   ? ""
+   :  buildScript: buildenvBuildAll -DTSD_TEE_CPSTATE_RAM_STATES=${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0}
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               mkdir -p lib/optee_armtz
+               find $1/tsd.tee.cpstate/ -name "*.ta" -print0 -exec cp {} lib/optee_armtz/ \;
+               buildenvPackageTarget install
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "tee-cpstate" \
+                       -p "emmc.system" \
+                       -o "system:tsd-tee-cpstate " -f $d -- \
+                       -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   apps:
+      depends:
+        - system::tsd-tee-cpstate-target
+      packageScript: buildenvPackageTarget
+      provideDeps: ['*-target']
+      multiPackage:
+         testmode:
+            buildScript: |
+               buildenvBuildModules -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+                  tsd.tee.cpstate.app.testmode.state \
+                  tsd.tee.cpstate.app.testmode.disable \
+                  tsd.tee.cpstate.app.testmode.enable
+
+         cpactive:
+            buildScript: |
+               buildenvBuildModules -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+                  tsd.tee.cpstate.app.cpactive.state \
+                  tsd.tee.cpstate.app.cpactive.disable \
+                  tsd.tee.cpstate.app.cpactive.enable
+
+         cpprogrammed:
+            buildScript: |
+               buildenvBuildModules -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+                  tsd.tee.cpstate.app.cpprogrammed.state \
+                  tsd.tee.cpstate.app.cpprogrammed.disable \
+                  tsd.tee.cpstate.app.cpprogrammed.enable
+
+         test:
+            buildScript: |
+               buildenvBuildModules -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+                  tsd.tee.cpstate.app.test

@@ -1,0 +1,110 @@
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.activation.intern.api.git
+//Ignore (main function)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiomgr.app.mib3.git
+//Ignore (no code)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiomgr.mib3.resources.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiomgr.testclient.mib3.api.git
+//Ignore (no code)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiorouter.config.mib3.git
+//Ignore (test code)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.common.test.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.microphoneprocessing.asr.mib3.api.git
+//Ignore (main function)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.pulsemodule.communication.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.blueware.mib3.bluego.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.management.mib3.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.api.mib3.mqb.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-gem/tsd.gem.generic.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.infotainmentrecorder.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.infotainmentrecorder.testinterface.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mib3.gem.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mount.control.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mount.status.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.asr.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.diagnosis.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.itr.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.pos.gps.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.pos.sensors.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.psd.v15.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sal.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.secure.fs.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.testinterface.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.vehiclestatus.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-internet/tsd.networking.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-internet/tsd.networking.wlan.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.diagnosis.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.web.engine.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.peripheral.controller.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.persistence.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.persistence.testinterface.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.pwc-proxy.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.tss.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.sal.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.sal.viwiproxy.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.tts.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.stationdb.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.conn.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.rsihmiserver.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.testinterface.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.guard.api.mib3.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.manager.api.git
+//nur Interfaces
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.common.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.api.mib3.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.vkms.api.git
+//Ignore (CommonAPI)
+git@${DEFAULT_PCC_GIT_SERVER}:tip-internet/tsd.networking.wlan.api.git

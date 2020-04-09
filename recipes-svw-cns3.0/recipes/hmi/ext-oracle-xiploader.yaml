@@ -1,0 +1,27 @@
+inherit: [packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MicroDoc Computersysteme GmbH"
+   PKG_VERSION: "1.0.0"
+   PKG_NAME: "oracle-xiploader"
+   PKG_PATCH_VERSION: "1.0.0"
+   PKG_RESPONSIBLE: "MMI-HMI"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.oracle.xiploader.git
+   tag: mqb_sop1_eu-1.0.0
+
+buildScript: |
+   mkdir -p java/lib/ext
+   cp -au $1/Runtime/xiploader.jar   java/lib/ext/xiploader.jar
+
+packageScript: |
+   rsync -a --delete $1/java ${PWD}
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-oracle-xiploader" \
+      -p "emmc.hmi" \
+      -o "hmi:ext-oracle-xiploader " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

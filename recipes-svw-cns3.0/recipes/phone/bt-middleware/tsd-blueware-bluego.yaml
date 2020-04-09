@@ -1,0 +1,75 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - media::pictureserver::tsd-media-picserver-dev
+ - phone::bt-middleware::ext-bluego-dev
+ - name: phone::bt-middleware::ext-bluego-mock-dev
+   if: $(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)
+ - name: connectivity::usb::ext-libusb-dev
+   if: $(eq,${TARGET_TYPE},host)
+ - phone::bt-middleware::tsd-blueware-api-dev
+ - phone::tsd-parser-vobject-api-dev
+ - phone::tsd-parser-vobject-dev
+ - phone::tsd-phone-common-dev
+ - system::tsd-common-dev
+ - system::tsd-threadmessages-dev
+ - use: []
+   depends:
+    - media::pictureserver::tsd-media-picserver-target
+    - phone::bt-middleware::ext-bluego-target
+    - name: connectivity::usb::ext-libusb-target
+      if: $(eq,${TARGET_TYPE},host)
+    - phone::bt-middleware::tsd-blueware-api-target
+    - phone::tsd-parser-vobject-api-target
+    - phone::tsd-parser-vobject-target
+    - phone::tsd-phone-common-target
+    - system::tsd-common-target
+    - system::tsd-threadmessages-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.blueware.bluego.git
+   dir: tsd.blueware.bluego
+   tag: mqb_sop1_eu-1.146.0
+multiPackage:
+   dev:
+      buildVars: [TARGET_TYPE]
+      buildScript: |
+         case $TARGET_TYPE in
+            host)
+               buildenvBuildAll -DPHONE_LINK_EXT_LIBUSB=1
+               ;;
+            embedded)
+               buildenvBuildAll -DPHONE_LINK_EXT_LIBUSB=0
+               ;;
+         esac
+
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "blueware-bluego" \
+            -p "emmc.phone.bt-middleware" \
+            -o "phone.bt-middleware:tsd-blueware-bluego " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

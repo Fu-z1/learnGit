@@ -1,0 +1,88 @@
+inherit: [buildenv,packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+   - hmi::ext-zulu-dev
+   - system::tsd-system-displaymanager-dev
+   - hmi::tsd-dsi-cpp-dev
+   - use: []
+     depends:
+      - hmi::ext-zulu-target
+      - system::tsd-system-displaymanager-target
+      - hmi::tsd-dsi-cpp-target
+
+checkoutSCM:
+   -
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengles.git
+     dir: tsd.opengles
+     tag: mqb_sop1_eu-1.0.0
+   -
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengles.java.git
+     dir: tsd.opengles.java
+     tag: mqb_sop1_eu-1.0.0
+
+checkoutDeterministic: True
+checkoutScript: |
+   rm tsd.opengles.java/CMakeLists.txt
+
+buildVars: [LIBDIR,JVM, VARIANT_NAME, DISPLAY_HEIGHT, DISPLAY_WIDTH]
+buildScript: |
+   buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/tsd -DJVM=ext.zulu -DDISPLAY_HEIGHT=${DISPLAY_HEIGHT} -DDISPLAY_WIDTH=${DISPLAY_WIDTH}
+
+   mkdir -p dist/tsd/hmi/tsd_jars/
+   cp -au $1/tsd.opengles.java/lib/tsd.opengles.jar dist/tsd/hmi/tsd_jars/
+
+multiPackage:
+   lowres:
+
+      privateEnvironment:
+         VARIANT_NAME: "lowres"
+         VARIANT_LIST: "$(getMatchingVariantStrings,HW_DISPLAY_VARIANT=800480)"
+         DISPLAY_HEIGHT: "480"
+         DISPLAY_WIDTH: "800"
+
+      multiPackage: &multiPkg
+         dev:
+            packageScript: |
+               buildenvPackageDev
+            provideDeps:
+               - hmi::ext-zulu-dev
+               - system::tsd-system-displaymanager-dev
+               - hmi::tsd-dsi-cpp-dev
+
+         pkg:
+            packageVars: [VARIANT_NAME, VARIANT_LIST]
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "opengles" -p "emmc.hmi" -v "${VARIANT_NAME}" -o 'hmi::tsd-opengles' -f $d -- \
+                      --variantList $VARIANT_LIST \
+                      -U "Partition=mmcblk0p2"
+               rm -rf $d
+
+            provideDeps: ['*-target'] 
+   highres:
+
+      privateEnvironment:
+         VARIANT_NAME: "highres"
+         VARIANT_LIST: "$(getMatchingVariantStrings,HW_DISPLAY_VARIANT=1280640)"
+         DISPLAY_HEIGHT: "640"
+         DISPLAY_WIDTH: "1280"
+
+      multiPackage: *multiPkg
+
+   37wres:
+
+      privateEnvironment:
+         VARIANT_NAME: "37wres"
+         VARIANT_LIST: "$(getMatchingVariantStrings,HW_DISPLAY_VARIANT=1560700)"
+         DISPLAY_HEIGHT: "700"
+         DISPLAY_WIDTH: "1560"
+
+      multiPackage: *multiPkg

@@ -1,0 +1,54 @@
+--- runHMI.sh	2017-09-15 10:26:16.509464187 +0200
++++ tsd/hmi/runHMI.sh	2017-09-15 10:27:36.155460111 +0200
+@@ -1,4 +1,3 @@
+-
+ #!/bin/sh
+ 
+ # info "runHMI.sh started" 
+@@ -313,4 +312,45 @@
+ # Start HMI
+ # info "runHMI.sh JVM started" 
+ 
+-$JVM $VMOPTIONS -Xbootclasspath/a:$BOOTCLASSPATH de.vw.mib.MIBMain &
++#$JVM $VMOPTIONS -Xbootclasspath/a:$BOOTCLASSPATH de.vw.mib.MIBMain &
++
++# Azul additional options
++VMOPTIONS="$VMOPTIONS -XX:+TraceStartupTime -XX:+UnlockDiagnosticVMOptions"
++VMOPTIONS="$VMOPTIONS -XX:PreloadClassListFile=/var/lib/hmi/preload"
++VMOPTIONS="$VMOPTIONS -XX:LookupCacheFile=/var/lib/hmi/lookup"
++VMOPTIONS="$VMOPTIONS -XX:SharedArchiveFile=/var/lib/hmi/classes.jsa"
++
++VMOPTIONS="$VMOPTIONS -XX:+TieredCompilation -XX:-ProfileInterpreter"
++VMOPTIONS="$VMOPTIONS -XX:CompilationPolicyChoice=2 -XX:CICompilerCount=2 -XX:-CICompilerCountPerCPU"
++VMOPTIONS="$VMOPTIONS -XX:CICompilerCountC1=2 -XX:CICompilerCountC2=1 -XX:PrecompiledMethodsLimit=150"
++VMOPTIONS="$VMOPTIONS -XX:+AllowParallelDefineClass -XX:+UseNeon"
++VMOPTIONS="$VMOPTIONS -XX:-UsePerfData"
++
++while true; do
++   if [ -d '/var/lib/hmi' ]; then
++      # Step 3
++      _VMOPTIONS="$VMOPTIONS"
++      if [ -f '/var/lib/hmi/classes.jsa' -a -f '/var/lib/hmi/lookup' -a -f '/var/lib/hmi/preload' ]; then
++         VMOPTIONS="$VMOPTIONS -Xpreload:on"
++         VMOPTIONS="$VMOPTIONS -XX:+PrecompilePreloadedClasses -XX:PrecompiledMethodsLimit=150"
++         VMOPTIONS="$VMOPTIONS -XX:DelayCompilationMillis=10000"
++      elif [ -f '/var/lib/hmi/preload' ]; then
++         # Step 2
++         VMOPTIONS="$VMOPTIONS -Xpreload:dump -XX:+DumpSharedLookupCache"
++      else
++         # Azul preload lib usage
++         # Step 1
++         VMOPTIONS="$VMOPTIONS -Xint -XX:+ProfileInterpreter -XX:+UseLoopCounter -XX:+CreateListOfPreloadedClasses"
++         VMOPTIONS="$VMOPTIONS -XX:PrecompiledMethodsLimit=150 -XX:+CreateListOfPrecompiledMethods"
++         VMOPTIONS="$VMOPTIONS -XX:CreateListOfPreloadedClassesMillis=25000 -XX:+CreateSharedLookupCache"
++      fi
++   fi
++
++   if ! $JVM $VMOPTIONS -Xbootclasspath/a:$BOOTCLASSPATH de.vw.mib.MIBMain ; then
++      if [ ! -d '/var/lib/hmi' ]; then
++         exit 1
++      fi
++      rm -rf /var/lib/hmi/
++   fi
++   VMOPTIONS="$_VMOPTIONS"
++done

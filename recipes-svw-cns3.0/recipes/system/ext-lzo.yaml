@@ -1,0 +1,26 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-or-later"
+   PKG_VERSION: "2.09"
+   PKG_NAME: "lzo"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-lzo/lzo-${PKG_VERSION}.tar.gz
+   digestSHA1: "e2a60aca818836181e7e6f8c4f2c323aca6ac057"
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/lzo-${PKG_VERSION}
+
+packageScript: |
+   autotoolsPackageDev
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-lzo" \
+      -p "emmc.system" \
+      -o "system:ext-lzo " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

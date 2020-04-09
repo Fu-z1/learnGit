@@ -1,0 +1,35 @@
+packageTools: [lz4]
+packageScript: &scripts |
+   # pad image to multiple of 16 bytes and write it to the current folder
+   bl2_pad() {
+      FILE=$(basename $1)
+      size=$(wc -c $1 | awk '{print $1}')
+      PADSIZE=$(($size%16))
+      if [ $PADSIZE -ne 0 ]; then
+         dd if=/dev/zero of=pad bs=1 count=$((16-$PADSIZE)) > /dev/null
+         cat pad >> $FILE
+      fi
+   }
+
+   # compress file. will generate a new file with 'lz4' file ending in
+   # the current directory
+   # args: $1 file to compress
+   bl2_compress() {
+      bl2_pad $1
+      tmpfile=$(mktemp)
+      lz4 -3 -B4 -f --no-frame-crc $1 ${tmpfile} 2>&1
+
+      # add magicNumber, compressed Size, original Size
+      python3 -c "exec(\"\
+   import sys\\n\
+   with open(sys.argv[1], 'br') as input, open(sys.argv[2], 'bw') as output:\\n\
+      output.write(bytes('PCCP','utf-8'))\\n\
+      output.write((int(sys.argv[3]).to_bytes(4,'little')))\\n\
+      output.write((int(sys.argv[4]).to_bytes(4,'little')))\\n\
+      output.write(input.read())\")" ${tmpfile} "$(basename $1).lz4" $(wc -c < ${tmpfile}) $(wc -c < $1)
+
+      rm -rf ${tmpfile}
+   }
+
+buildTools: [lz4]
+buildScript: *scripts

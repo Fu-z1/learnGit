@@ -1,0 +1,12 @@
+inherit: [packing-utils]
+
+buildVars: [MANIFEST_VERSION, CHECKSUM, SIGNATURE]
+buildTools: [mib3-packing]
+buildScript: |
+   # --moduleDepth: restricts module/package names of the update container
+   buildSwupDevice() {
+      mib3-packing device \
+         --manifestVersion ${MANIFEST_VERSION} \
+         --moduleDepth 3 \
+         $@
+   }

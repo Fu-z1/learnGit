@@ -1,0 +1,41 @@
+inherit: [make, install, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/ext.preloaded.webapps.git
+   tag: mqb_sop1_eu-1.0.15
+environment:
+   PREIN_WEB_APPS_VW: "$(flagIsSet,${VARIANTS},SW_WEB_APPS_INITIAL_CONFIG,VW)"
+   PREIN_WEB_APPS_SK: "$(flagIsSet,${VARIANTS},SW_WEB_APPS_INITIAL_CONFIG,SK)"
+
+buildVars: [SYSROOT, CC, PREIN_WEB_APPS_VW, PREIN_WEB_APPS_SK]
+buildTools: [toolchain]
+buildScript: |
+   if [[ $PREIN_WEB_APPS_VW == "True" ]]; then
+      WEB_APP_FOLDER="VW"
+   elif [[ $PREIN_WEB_APPS_SK == "True" ]]; then
+      WEB_APP_FOLDER="SK"
+   fi
+
+   rsync -a --delete --exclude README.md $1/${WEB_APP_FOLDER}/* ${PWD}
+
+packageScript: |
+   mkdir -p var/lib/tsd.onlineservices.webapp.management/systemapps/
+   rsync -a --delete $1/* var/lib/tsd.onlineservices.webapp.management/systemapps/
+
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-preloaded-webapps" \
+      -p "emmc.onlineservices" \
+      -m 'wam,wam,0770,/var/lib/tsd.onlineservices.webapp.management$'   \
+      -m 'wam,wam,0770,/var/lib/tsd.onlineservices.webapp.management/.*' \
+      -m 'wam,wam,0755,/var/lib/tsd.onlineservices.webapp.management/systemapps$'   \
+      -m 'wam,wam,0644,/var/lib/tsd.onlineservices.webapp.management/systemapps/.*' \
+      -m 'wam,wam,0755,/var/lib/tsd.onlineservices.webapp.management/systemapps/ETag$'   \
+      -m 'wam,wam,0644,/var/lib/tsd.onlineservices.webapp.management/systemapps/ETag/.*' \
+      -o "onlineservices:ext-preloaded-webapps " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

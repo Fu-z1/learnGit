@@ -1,0 +1,60 @@
+inherit: [rootfs, gdb, packing-module]
+
+depends:
+  - system::tsd-config-buildcfg  # not copied to target. see buildScript
+  - system::target-version
+
+buildVars: [KERNEL_VERSION]
+buildVarsWeak: [NFS]
+buildScript: |
+   rm -rf *
+
+   mkdir -p tmp
+
+   # add default directories and special files
+   pushd tmp
+   mkdir -p boot
+   mkdir -p dev/pts
+   mkdir -p data/tee
+   mkdir -p etc/init.d
+   mkdir -p home/user
+   mkdir -p lib
+   mkdir -p media
+   mkdir -p mnt/nfs
+   mkdir -p opt/bin
+   mkdir -p proc
+   mkdir -p root
+   mkdir -p run
+   mkdir -p sys
+   mkdir -p tmp
+   mkdir -p usr/lib
+   mkdir -p var/log
+   ln -sfT /run var/run
+   mkdir -p var/lib/nfs
+   mkdir -p var/core
+   popd
+
+   # copy rootfs from SDK
+   copyFromFile ${BOB_DEP_PATHS["system::tsd-config-buildcfg"]}/rootfs-arm64.txt tmp
+
+   # TODO: readd
+   #   createGdbEnvironment tmp 192.168.1.4
+   #
+   #   [ -f tmp/.gdbinit ] && mv tmp/.gdbinit symbols/tmp
+   #   [ -f tmp/gdb.sh   ] && mv tmp/gdb.sh   symbols/tmp
+   #   [ -f tmp/ddd.sh   ] && mv tmp/ddd.sh   symbols/tmp
+
+   # Add a tmp directory within /var
+   mkdir -p tmp/var/tmp
+   # copy target-version to /etc
+   cp ${BOB_DEP_PATHS[system::target-version]}/* ./tmp/etc
+
+packageScript: |
+   rsync -a $1/tmp/ .
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n 'rootfs' -p "emmc.images" -o 'images::rootfs' -f $d \
+          -m 'root,root,1777,/var/tmp$' -- \
+          -U "Partition=rootfs_ro"
+   rm -rf $d
+

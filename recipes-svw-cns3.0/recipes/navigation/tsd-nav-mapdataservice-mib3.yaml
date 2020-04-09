@@ -1,0 +1,86 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+privateEnvironment:
+   UPDATE_MANAGER_AUTONAVI: "$(flagIsSet,${VARIANTS},SW_NAV_MapUpdateManager,AutoNavi)"
+environment:
+   TSD_NAV_DISABLE_UPDATE_MANAGER: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_NAV_MapUpdateManager,AutoNavi),1,${TSD_NAV_DISABLE_UPDATE_MANAGER:-0})" #disable updatemanager for JP/ KR
+
+depends:
+  - navigation::tsd-nav-mapdataservice-mib3-api-dev
+  - navigation::tsd-nav-sdk-mapdataservice-api-dev
+  - navigation::tsd-nav-sdk-mapdataservice-dev
+  - navigation::tsd-nav-crypto-api-dev
+  - navigation::tsd-nav-utils-api-dev
+  - navigation::tsd-nav-configdata-dev
+  - navigation::tsd-nav-sdk-namebuilder-dev
+  - navigation::tsd-nav-sdk-roadnumberbuilder-dev
+  - navigation::tsd-nav-sdk-addressformatter-dev
+  - if: "TSD_BUILDENV_ENABLE_TEST_TARGETS"
+    depends:
+        - navigation::tsd-nav-utils-dev
+  - if: "$(not,${TSD_NAV_DISABLE_UPDATE_MANAGER:-0})"
+    depends:
+      - navigation::tsd-nav-updatemanager-mib3-dev
+      - navigation::tsd-nav-updatemanager-mib3-ext-api-dev
+      - if: "$(flagIsSet,${VARIANTS},SW_NAV_MapUpdateManager,AutoNavi)"
+        depends:
+          - navigation::ext-autonavi-updatemanager-dev
+      - if: "$(flagIsSet,${VARIANTS},SW_NAV_MapUpdateManager,Here)"
+        depends:
+          - navigation::tsd-nav-updatemanager-here-wrapper-mib3-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mapdataservice.mib3.git
+   dir: tsd.nav.mapdataservice.mib3
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+buildVars: [TSD_NAV_DISABLE_UPDATE_MANAGER, UPDATE_MANAGER_AUTONAVI, TSD_UPDATE_MANAGER_SWIT_TEST]
+
+buildScript: |
+   build()
+   {
+      if [ ${TSD_NAV_DISABLE_UPDATE_MANAGER:-0} != 0 ]; then
+         buildenvBuildAll -DTSD_NAV_UPDATE_MANAGER=Off -DTSD_UPDATE_MANAGER_SWIT_TEST=${TSD_UPDATE_MANAGER_SWIT_TEST:-0}
+      elif [ "${UPDATE_MANAGER_AUTONAVI:-}" == "True" ]; then
+         buildenvBuildAll -DTSD_NAV_UPDATE_MANAGER=Autonavi -DTSD_UPDATE_MANAGER_SWIT_TEST=${TSD_UPDATE_MANAGER_SWIT_TEST:-0}
+      else
+         buildenvBuildAll -DTSD_NAV_UPDATE_MANAGER=HERE -DTSD_UPDATE_MANAGER_SWIT_TEST=${TSD_UPDATE_MANAGER_SWIT_TEST:-0}
+      fi
+   }
+   buildDoc()
+   {
+      if [ ${TSD_NAV_DISABLE_UPDATE_MANAGER:-0} != 0 ]; then
+         buildenvBuildDocAll -DTSD_NAV_UPDATE_MANAGER=Off
+      elif [ "${UPDATE_MANAGER_AUTONAVI:-}" == "True" ]; then
+         buildenvBuildDocAll -DTSD_NAV_UPDATE_MANAGER=Autonavi
+      else
+         buildenvBuildDocAll -DTSD_NAV_UPDATE_MANAGER=HERE
+      fi
+   }
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+      dev:
+        buildScript: build
+        packageScript: buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  unittests:
+      privateEnvironment:
+         TSD_NAV_MIDDLEWARE_INTERFACE_MAPMANAGER_BASEDIR: "/mnt/map_archive"
+      depends:
+         - navigation::tsd-nav-middleware-nds-2_5_2-dev
+      buildScript: |
+         buildenvTestAll -DTSD_NAV_UPDATE_MANAGER=Off \
+                         -DTSD_NAV_MIDDLEWARE_INTERFACE_MAPMANAGER_BASEDIR=/mnt/map_archive
+      packageScript: buildenvPackageTests
+
+  doc:
+      buildScript: buildDoc
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,17 @@
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+depends:
+  - navigation::tsd-nav-prednav-swittestswhite
+  - navigation::tsd-nav-sdk-prednav-swittestswhite
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   rsync -a --delete $1/ .

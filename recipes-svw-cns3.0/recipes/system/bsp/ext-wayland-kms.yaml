@@ -1,0 +1,48 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "15184e5bd3701938a6b30b8f03b471477fc742e8"
+   PKG_NAME: "wayland.kms"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-libdrm-dev
+  - system::ext-wayland-dev
+  - system::bsp::ext-opengl-dev
+  - use: []
+    depends:
+      - system::ext-libdrm-target
+      - system::ext-wayland-target
+      - system::bsp::ext-opengl-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.wayland.kms.git
+   branch: rcar-gen3
+   commit: 15184e5bd3701938a6b30b8f03b471477fc742e8
+
+buildTools: [wayland-scanner]
+buildScript: |
+   rsync -a --delete $1/ .
+   autoreconf -i
+   autotoolsBuild .
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include -l wayland-kms ext.wayland.kms
+      provideDeps: ["*-dev"]
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-wayland-kms" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-wayland-kms " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

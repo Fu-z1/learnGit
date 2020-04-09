@@ -1,0 +1,11 @@
+privateEnvironment:
+
+   CFLAGS: "${CFLAGS} \
+              $(if-then-else,$(eq,${LTO_JOBS:+true},true),${LTO_FLAGS}=${LTO_JOBS:-},${LTO_ENABLE:+${LTO_FLAGS}}) \
+              ${COMPFLAGS_ADDRESS_SANITIZE:-}"
+   CXXFLAGS: "${CXXFLAGS:-} \
+              $(if-then-else,$(eq,${LTO_JOBS:+true},true),${LTO_FLAGS}=${LTO_JOBS:-},${LTO_ENABLE:+${LTO_FLAGS}}) \
+              ${COMPFLAGS_ADDRESS_SANITIZE:-}"
+
+   LDFLAGS: "${LDFLAGS} \
+             ${LDFLAGS_ADDRESS_SANITIZE:-}"

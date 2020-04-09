@@ -1,0 +1,44 @@
+environment:
+   RUN_UNITTESTS: "true"
+
+# change branches for binarytest apps
+include: [ master ]
+
+scmOverrides:
+   #SWI BTF Parts
+   -
+      match:
+         url: "git@git-repo.server.technisat-digital:swi-btf/pcc.swi.testapp.git"
+      del: [commit, tag, branch]
+      set:
+         branch: master_mqb_sop1_eu
+   -
+      match:
+         url: "git@git-repo.server.technisat-digital:swi-btf/pcc.swi.btf.common.git"
+      del: [commit, tag, branch]
+      set:
+         branch: master_mqb_sop1_eu
+   -
+      match:
+         url: "git@git-repo.server.technisat-digital:swi-btf/pcc.swi.btf.common.api.git"
+      del: [commit, tag, branch]
+      set:
+         branch: master_mqb_sop1_eu
+   -
+      match:
+         url: "git@git-repo.server.technisat-digital:swi-btf/pcc.swi.btf.common.dsi.git"
+      del: [commit, tag, branch]
+      set:
+         branch: master_mqb_sop1_eu
+   -
+      match:
+         url: "git@git-repo.server.technisat-digital:swi-btf/pcc.swi.btf.common.rsi.git"
+      del: [commit, tag, branch]
+      set:
+         branch: master_mqb_sop1_eu
+   -
+      match:
+         url: "git@git-repo.server.technisat-digital:swi-btf/pcc.swi.btf.common.commonapi.git"
+      del: [commit, tag, branch]
+      set:
+         branch: master_mqb_sop1_eu

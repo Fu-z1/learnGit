@@ -1,0 +1,33 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.api.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/MIB3REQ-51237_TTS_GetContact"
+        commit: "8e3c06d09abcce8facc697fd630962ca3ac95f8d"
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/MIB3REQ-51237_TTS_GetContact"
+        commit: "769047f5afd73675104255895e894aef2bf2c30b"
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.ime.git"
+     del: [commit, tag]
+     set:
+        branch: "develop"
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.asr.app.mib3.testapps.git"
+     del: [commit, tag]
+     set:
+        branch: "MIB3MQB-7121"
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.asr.app.mib3.git"
+     del: [commit, tag]
+     set:
+        branch: "MIB3MQB-7121"

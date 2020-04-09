@@ -1,0 +1,61 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - basic-services::rsi-library::tsd-rsi-common-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::rsi-library::tsd-rsi-common-target
+      - basic-services::rsi-library::tsd-rsi-server-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.vw.rsi.viwi.server.git
+   dir: tsd.vw.rsi.viwi.server
+   tag: R1.21.6.1
+   branch: release/R1.000.21
+
+multiPackage:
+   ? ""
+   :  buildScript: |
+         buildenvBuildAll -DTSD_VW_RSI_VIWI_SERVER_LINK_SHARED=1
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps:
+              - "*-dev"
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "vw-rsi-viwi-server" \
+                  -p "emmc.basic-services.rsi-library" \
+                  -o "basic-services.rsi-library:tsd-vw-rsi-viwi-server " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ['*-target']
+
+   apps:
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget
