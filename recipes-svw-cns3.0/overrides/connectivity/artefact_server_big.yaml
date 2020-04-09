@@ -1,0 +1,5 @@
+archive:
+   -
+     backend: http
+     url: "http://10.30.157.204:8069"
+     flags: [download, upload]

@@ -1,0 +1,82 @@
+root: True
+
+environment:
+   HOST: "amd64"
+   RELEASE: "jessie"
+   VARIANT: "buildd"
+   MIRROR: "http://ftp.de.debian.org/debian/"
+   PACKAGES_ARCHIVE: "packages.tar"
+   ADDITIONAL_PACKAGES: "gcc,g++"
+
+checkoutDeterministic: True
+checkoutVars: [HOST, RELEASE, VARIANT, MIRROR, PACKAGES_ARCHIVE, ADDITIONAL_PACKAGES]
+checkoutScript: |
+   /usr/sbin/debootstrap \
+      --arch=${HOST} \
+      --variant=$VARIANT \
+      --include=$ADDITIONAL_PACKAGES \
+      --no-check-gpg \
+      --download-only \
+      --make-tarball=$PACKAGES_ARCHIVE \
+      --keep-debootstrap-dir \
+      $RELEASE \
+      gcc \
+      $MIRROR
+
+   /usr/sbin/debootstrap \
+      --arch=${HOST} \
+      --variant=$VARIANT \
+      --no-check-gpg \
+      --download-only \
+      --make-tarball=$PACKAGES_ARCHIVE \
+      --keep-debootstrap-dir \
+      $RELEASE \
+      bootstrap \
+      $MIRROR
+
+buildScript: |
+   # add debootstrap to sudoers like this
+   # user ALL=(root) NOPASSWD: /usr/sbin/debootstrap
+   sudo /usr/sbin/debootstrap \
+      --arch=${HOST} \
+      --variant=$VARIANT \
+      --include=$ADDITIONAL_PACKAGES \
+      --no-check-gpg \
+      --unpack-tarball=$1/$PACKAGES_ARCHIVE \
+      --keep-debootstrap-dir \
+      --exclude=build-essential,systemd \
+      $RELEASE \
+      gcc \
+      $MIRROR
+
+   sudo /usr/sbin/debootstrap \
+      --arch=${HOST} \
+      --variant=$VARIANT \
+      --no-check-gpg \
+      --unpack-tarball=$1/$PACKAGES_ARCHIVE \
+      --keep-debootstrap-dir \
+      --exclude=build-essential,systemd \
+      $RELEASE \
+      bootstrap \
+      $MIRROR
+
+   comm -23 <(find -L gcc -type f | sed 's/gcc\///' | sort) <(find -L bootstrap -type f | sed 's/bootstrap\///'| sort) | > diff.list
+
+packageScript: |
+   tar --files-from=$1/diff.list --preserve-permissions \
+      --exclude=./dev \
+      --exclude=./bin \
+      --exclude=./boot \
+      --exclude=./debootstrap \
+      --exclude=./home \
+      --exclude=./media \
+      --exclude=./mnt \
+      --exclude=./opt \
+      --exclude=./proc \
+      --exclude=./run \
+      --exclude=./sbin \
+      --exclude=./var \
+      --exclude=./srv \
+      --exclude=./sys \
+      --exclude=./tmp \
+      -Jcf amd64-gcc.tar.xz -C $1/gcc .

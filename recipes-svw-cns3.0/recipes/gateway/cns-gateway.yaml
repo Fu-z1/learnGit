@@ -1,0 +1,101 @@
+inherit: [buildenv, packing-module, werror]
+
+depends:
+   - project::proto-api-cns3.0
+   - basic-services::common-base::common-base-dev
+   - system::tsd-common-dev
+   - communication::tsd-communication-dev
+   - hmi::tsd-dsi-cpp-dev
+   - basic-services::persistence::tsd-persistence-client-mib3-dev
+   - basic-services::rsi-library::tsd-rsi-client-dev
+   - basic-services::rsi-library::tsd-rsi-common-dev
+   - basic-services::rsi-library::tsd-rsi-server-dev
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-common-dev
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+   - media::mountingservice::tsd-media-mount-status-api-dev
+   - connectivity::networking::tsd-networking-api-dev
+   - system::ext-poco-dev
+   #audio special start
+   - audio::audiorouter::tsd-audio-audiorouter-client-api-dev
+   - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-dev
+   #audio special end
+   - navigation::tsd-nav-pos-gps-api-dev
+   - system::system-lifecycle::tsd-systemstate-manager-api-dev
+   - hmi::tsd-keypanel-api-dev
+   # language
+   - hmi::tsd-hmi-language-client-mib3-dev
+   - phone::bt-organizer::tsd-organizer-mib3-api-dev
+   # vehicle status for day night
+   - navigation::tsd-nav-vehiclestatus-api-dev
+   # can signal for KL15 switch
+   - vehicle-connectivity::canstack::tsd-canstack-api-dev
+
+   - use: []
+     depends:
+     - system::tsd-common-target
+     - communication::tsd-communication-target
+     - hmi::tsd-dsi-cpp-target
+     - basic-services::persistence::tsd-persistence-client-mib3-target
+     - basic-services::rsi-library::tsd-rsi-client-target
+     - basic-services::rsi-library::tsd-rsi-common-target
+     - basic-services::rsi-library::tsd-rsi-server-target
+     - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+     - basic-services::rsi-library::tsd-vw-rsi-viwi-common-target
+     - basic-services::rsi-library::tsd-vw-rsi-viwi-server-target
+     - media::mountingservice::tsd-media-mount-status-api-target
+     - connectivity::networking::tsd-networking-api-target
+     #audio special start
+     - audio::audiorouter::tsd-audio-audiorouter-client-api-target
+     - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-target
+     #audio special end
+     - system::ext-poco-target
+     - navigation::tsd-nav-pos-gps-api-target
+     - system::system-lifecycle::tsd-systemstate-manager-api-target
+     - hmi::tsd-keypanel-api-target
+     # language
+     - hmi::tsd-hmi-language-client-mib3-target
+     - phone::bt-organizer::tsd-organizer-mib3-api-target
+     # vehicle status for day night
+     - navigation::tsd-nav-vehiclestatus-api-target
+     # can signal for KL15 switch
+     - vehicle-connectivity::canstack::tsd-canstack-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:architecture/cns_gateway_linux.git
+   dir: server
+   branch: main/svw_cns3.0_1480_dev
+
+buildScript: |
+   buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/tsd -DMIB3_BASE_VERSION=125 -DSW_VARIANT=MQB
+   mkdir -p dist/var/nfs
+   mkdir -p dist/etc/android
+   cp -au $1/server/ini/commonapi.ini dist/etc/android
+   cp -au $1/server/ini/servicelist.conf dist/etc/android
+   cp -au $1/server/ini/cs-client.crt dist/etc/android
+   cp -au $1/server/ini/cs-pk.key dist/etc/android
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+         - '*-dev'
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "cns-gateway" \
+            -p "emmc.gateway" \
+            -m 'fdbus,fdbus,0777,/var/nfs$'       \
+            -m 'fdbus,fdbus,0777,/var/nfs/.*'     \
+            -o "gateway:cns-gateway " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+      
+

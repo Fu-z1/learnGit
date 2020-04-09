@@ -1,0 +1,52 @@
+inherit: [make, strip, packing-module]
+
+depends:
+  - system::bsp::ext-renesas-h3-bsp
+  - name: system::bsp::ext-linux-headers
+    use: [result, environment]
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP, STRIP]
+buildTools: [toolchain]
+buildScript: |
+   tar xf $2/RCG3VUDRL4101ZDO.tar.bz2 --strip-components=1
+
+   export UVCS_SRC="${PWD}/src"
+   export UVCS_INC="${PWD}"
+   export VCP4_SRC="${PWD}/src"
+
+   pushd src/makefile
+   make KERNELDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build all
+   popd
+
+packageScript: |
+   DIR="lib/modules/${KERNEL_VERSION}/extra"
+   mkdir -p "${DIR}"
+
+   packageDev() {
+      mkdir -p usr/include
+      cp $1/include/*.h usr/include
+   }
+
+   packageTarget() {
+      cp -rf $1/src/makefile/uvcs_drv.ko ${DIR}
+      stripAllKernelModules "${DIR}" "${STRIP}"
+   }
+
+multiPackage:
+   dev:
+      packageScript: |
+         packageDev $1
+
+   target:
+      packageVars: [STRIP, KERNEL_VERSION]
+      packageScript: |
+         packageTarget $1
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-kmod-uvcs" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-kmod-uvcs " -f $d -- \
+            -U Depmod=${KERNEL_VERSION} \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

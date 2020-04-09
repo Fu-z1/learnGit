@@ -1,0 +1,27 @@
+diff -ru h2o-2.0.1_org/lib/common/socket/uv-binding.c.h h2o-2.0.1/lib/common/socket/uv-binding.c.h
+--- lib/common/socket/uv-binding.c.h	2019-02-06 13:37:29.023230253 +0100
++++ lib/common/socket/uv-binding.c.h	2019-02-06 13:44:22.143230204 +0100
+@@ -100,7 +100,22 @@
+ void do_dispose_socket(h2o_socket_t *_sock)
+ {
+     struct st_h2o_uv_socket_t *sock = (struct st_h2o_uv_socket_t *)_sock;
+-    uv_close((uv_handle_t *)sock->uv.stream, free_sock);
++
++    /* Patch from a future h2o release
++       From efc17b8d795bc6a9d48dab8ab971fadae475915d Mon Sep 17 00:00:00 2001
++       From: Kazuho Oku <kazuhooku@gmail.com>
++       Date: Fri, 7 Apr 2017 10:49:29 +0900
++       Subject: [PATCH] set the write callback to NULL to prevent `uv_close` calling
++       the write callback
++    */
++    sock->super._cb.write = NULL; /* avoid the write callback getting called when closing the socket (#1249) */
++
++    /* Workaround for prematurely closed sockets in
++       extendedservice.cpp uvWalkCallback. This can lead to double
++       closing sockets, which will fail with a assertion. */
++    if (uv_is_closing((uv_handle_t *)sock->uv.stream) == 0) {
++        uv_close((uv_handle_t *)sock->uv.stream, free_sock);
++    }
+ }
+ 
+ int h2o_socket_get_fd(h2o_socket_t *_sock)

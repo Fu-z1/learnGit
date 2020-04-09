@@ -1,0 +1,60 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+   # build dependencies
+ - media::libraries::ext-cinemo-dev
+ - sal::tsd-sal-common-dev
+
+   # runtime dependencies
+ - use: []
+   depends:
+    - media::libraries::ext-cinemo-target
+    - sal::tsd-sal-common-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.sal.cinemo.git
+   dir: tsd.sal.cinemo
+   tag: mqb_sop1_eu-1.119.1
+multiPackage:
+   ? ""
+   :  buildVars: [AUTOCONF_HOST]
+      buildScript: buildenvBuildAll
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "sal-cinemo" \
+                  -p "emmc.sal" \
+                  -o "sal:tsd-sal-cinemo " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+         tsd.sal.cinemo \
+         tsd.sal.cinemo.app.createOptionsFile
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

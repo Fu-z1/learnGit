@@ -1,0 +1,166 @@
+environment:
+   PKG_NAME: "ext.avbstack.cetitec"
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary AND (MIT OR GPL-2.0-only))"
+   PKG_VERSION: "1.5.0"
+   PKG_PATCH_VERSION: "2.6.0"
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - vehicle-connectivity::automotive-ethernet::tsd-aeth-interface-dev
+  - use: []
+    depends:
+      - vehicle-connectivity::automotive-ethernet::tsd-aeth-interface-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/ext.avbstack.cetitec.git
+    dir: ${PKG_NAME}
+    #tag: mqb_sop1_eu-3.9.0
+    #branch: master_mqb_sop1_eu
+    branch: hotfix/CNS-569
+
+multiPackage:
+   dev:
+      inherit: [buildenv]
+
+      depends:
+        - name: vehicle-connectivity::automotive-ethernet::ext-avbstack-cetitec-diag-dev
+          if: "$(eq,${TARGET_TYPE},embedded)"
+
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   diag-dev:
+      # attention: used this library only for arm v8 platform
+      buildVars: [PKG_NAME, LIBDIR]
+      inherit: [buildenv]
+      buildScript: |
+         mkdir -p ${PWD}/dist/usr/${LIBDIR}
+         mkdir -p ${PWD}/dist/usr/include
+         # copy diag lib to $LIBDIR
+         rsync $1/${PKG_NAME}/src/gptp_bridge_reporting/libbridgereporting.a ${PWD}/dist/usr/${LIBDIR}
+         rsync $1/${PKG_NAME}/src/gptp_bridge_reporting/ctc_gptp_reporting.h ${PWD}/dist/usr/include
+
+      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         # copy the diag stuff and prepare for building against using cmake
+         rsync -a $1/dist/usr/* usr/
+         tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -l bridgereporting -I include ext.avbstack.cetitec.diag
+      provideDeps: ['*-dev']
+
+   target:
+      # don't remove the inherit section from here otherwise ld will
+      # fail due to imported flags from cmake
+      inherit: [install, strip, packing-module]
+      depends:
+        - name: system::bsp::ext-linux-headers
+          use: [result, environment]
+
+      buildTools: [toolchain]
+      buildVars: [PKG_NAME, CROSS_COMPILE, ARCH, KERNEL_VERSION]
+      buildScript: |
+         rsync -a --delete $1/${PKG_NAME}/src/kernel_modules/ ${PWD}
+         export KERNELDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build
+
+         # build kernel modules
+         pushd ${PWD}/avb-4-linux/open/modules
+         make
+         popd
+
+         pushd ${PWD}/ctc_gptp/open/modules/switch
+         make
+         popd
+
+         # copy kernel modules
+         mkdir -p ${PWD}/dist/lib/modules/${KERNEL_VERSION}/extra
+         find . -name \*.ko | rsync -a --files-from - --no-relative . ./dist/lib/modules/${KERNEL_VERSION}/extra
+
+         # copy bridge app
+         mkdir -p ${PWD}/dist/usr/bin
+         rsync -a $1/${PKG_NAME}/src/cetitec-gptp-bridge/opt/cetitec/bin/gptp-bridge ${PWD}/dist/usr/bin
+         # rename the cetitec bridge to a unique name
+         mv ${PWD}/dist/usr/bin/gptp-bridge ${PWD}/dist/usr/bin/${PKG_NAME}.bridge
+
+      packageVars: [STRIP, KERNEL_VERSION]
+      packageScript: |
+         installPackageTarget $1/dist
+         stripAllKernelModules lib/modules/${KERNEL_VERSION}/extra ${STRIP}
+         rm -rf lib/modules/${KERNEL_VERSION}/extra/.debug/
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-avbstack-cetitec" \
+            -p "emmc.vehicle-connectivity.autom-enet" \
+            -o "vehicle-connectivity.automotive-ethernet:ext-avbstack-cetitec " -f $d -- \
+            -U "Partition=rootfs_ro" \
+            -U Depmod=${KERNEL_VERSION}
+         rm -rf $d
+
+   sja1105-abstraction:
+      # don't remove the inherit section from here otherwise ld will
+      # fail due to imported flags from cmake
+      inherit: [install, strip]
+      depends:
+        - name: system::bsp::ext-linux-headers
+          use: [result, environment]
+
+      buildTools: [toolchain]
+      buildVars: [PKG_NAME, CROSS_COMPILE, ARCH, KERNEL_VERSION]
+      buildScript: |
+         rsync -a --delete $1/${PKG_NAME}/src/kernel_modules/ ${PWD}
+         export KERNELDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build
+
+         pushd ${PWD}/ctc_gptp/open/modules/switch
+         make
+         popd
+
+         # copy sja1105 switch abstraction modules
+         mkdir -p ${PWD}/dist/lib/modules/${KERNEL_VERSION}/extra
+         find . -name \*.ko | rsync -a --files-from - --no-relative . ./dist/lib/modules/${KERNEL_VERSION}/extra
+
+         # remove ptp broker because it is not used in swup
+         rm dist/lib/modules/${KERNEL_VERSION}/extra/ptp_broker.ko
+
+      packageVars: [STRIP, KERNEL_VERSION]
+      packageScript: |
+         installPackageTarget $1/dist --no-strip
+         stripAllKernelModules lib/modules/${KERNEL_VERSION}/extra ${STRIP}
+         rm -rf lib/modules/${KERNEL_VERSION}/extra/.debug/
+
+   apps:
+      # don't remove the inherit section from here otherwise ld will
+      # fail due to imported flags from cmake
+      inherit: [install, strip]
+      buildTools: [toolchain]
+      buildVars: [PKG_NAME, CROSS_COMPILE, CC]
+      buildScript: |
+         rsync -a --delete $1/${PKG_NAME}/src/ ${PWD}
+         pushd ${PWD}/gptp_bridge_reporting
+         $CC set_gptp_bridge_port.c ${PWD}/libbridgereporting.a -lrt -lpthread -o set_gptp_bridge_port
+         $CC report_callback_test.c ${PWD}/libbridgereporting.a -lrt -lpthread -o report_callback_test
+         popd
+         mkdir dist
+         cp ${PWD}/gptp_bridge_reporting/set_gptp_bridge_port ${PWD}/dist
+         cp ${PWD}/gptp_bridge_reporting/report_callback_test ${PWD}/dist
+
+      packageScript: |
+         installPackageTarget $1/dist --no-strip
+
+   apps-avb-gstreamer:
+      # don't remove the inherit section from here otherwise ld will
+      # fail due to imported flags from cmake
+      inherit: [install, strip]
+      buildVars: [PKG_NAME]
+      buildScript: |
+         rsync $1/${PKG_NAME}/app/gstreamer.tar.xz ${PWD}/dist/
+         tar xf gstreamer.tar.xz -C ${PWD}/dist/
+         rm ${PWD}/dist/gstreamer.tar.xz
+
+      packageScript: |
+         installPackageTarget $1/dist --no-strip

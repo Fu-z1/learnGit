@@ -1,0 +1,56 @@
+inherit: [autotools, patch, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "1.16"
+   PKG_NAME: "popt"
+   PKG_PATCH_VERSION: "0001"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-popt/popt-${PKG_VERSION}.tar.gz
+   digestSHA1: "cfe94a15a2404db85858a81ff8de27c8ff3e235e"
+
+checkoutVars: [PKG_VERSION, CONFIG_OPTIONS]
+checkoutDeterministic: true
+checkoutScript: |
+   cd popt-${PKG_VERSION}
+   patchApplySeries $<<ext-libpopt/*.patch>>
+
+buildScript: |
+   autotoolsBuild $1/popt-${PKG_VERSION} ${CONFIG_OPTIONS:-}
+
+multiPackage:
+   ? ""
+   :  environment:
+         CONFIG_OPTIONS: ""
+
+      multiPackage:
+         dev:
+            packageScript: |
+               autotoolsPackageDev
+
+         target:
+            packageScript: |
+               autotoolsPackageTarget
+               d=$(mktemp -d)
+                 rsync -a --delete --exclude ".debug" ./ $d
+                 buildSwupModule -n "ext-libpopt" \
+                    -p "emmc.system" \
+                    -o "system:ext-libpopt " -f $d -- \
+                    -U "Partition=rootfs_ro"
+                 rm -rf $d
+
+   static:
+      environment:
+         CONFIG_OPTIONS: "--enable-static --disable-shared"
+      multiPackage:
+         dev:
+            packageScript: |
+               autotoolsPackageDev
+
+         target:
+            packageScript: |
+               # NOP
+

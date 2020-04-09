@@ -1,0 +1,37 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+   - navigation::tsd-nav-sdk-namebuilder-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.addressformatter.git
+   dir: tsd.nav.sdk.addressformatter
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+   ? ""
+   :
+      inherit: [navi_compflags_werror_sanitize]
+      #inherit: [navi_compflags_sanitize]
+      multiPackage:
+       dev:
+          buildScript: |
+             buildenvBuildAll
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+   swittestswhite:
+      buildVars: [TSD_BUILDENV_IS_SWITTESTWHITE]
+      buildScript: |
+         buildenvTestAll -DTSD_NAV_SDK_ADDRESSFORMATTER_SWITWHITES_ENABLED=${TSD_BUILDENV_IS_SWITTESTWHITE}
+      packageScript: |
+         buildenvPackageTests

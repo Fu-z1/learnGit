@@ -1,0 +1,79 @@
+inherit: [cmake, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_VERSION: "2.13.B160"
+   PKG_NAME: "ViWi CarService"
+   PKG_PATCH_VERSION: "2.13.B160"
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden"
+
+depends:
+  - libs::ext-openssl-dev
+  - system::ext-poco-dev
+  - system::tsd-common-dev
+  - basic-services::car-function-management::ext-vw-carssw-dev
+
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+      - system::ext-poco-target
+      - system::tsd-common-target
+      - basic-services::car-function-management::ext-vw-carssw-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.carssw.viwicarservice.git
+    dir: ext.vw.carssw.viwicarservice
+    tag: SOP1_v2.13.0562
+    branch: master_mqb_sop1_eu
+
+buildScript: |
+   CMAKE_SRC_PATH="$1/ext.vw.carssw.viwicarservice"
+   cmakeConfigure -DSHARED_LIBRARY_VERSION=00
+   makeParallel
+   cmakeInstall install
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+
+         # for debug there is a postfix
+         DbgPostFix=""
+         if [ "${CMAKE_BUILD_TYPE:-}" == "Debug" ]; then
+            DbgPostFix="d"
+         fi
+
+         rsync -a --delete $1/dist/ .
+         if [ "${LIBDIR:-}" != "lib" ]; then
+            mv ./usr/lib ./usr/${LIBDIR}
+         fi
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR}        \
+                                        -l MIBCarServiceLib${DbgPostFix}   \
+                                        -l MIBSecurityLib${DbgPostFix}     \
+                                        -l MIBServiceLib${DbgPostFix}      \
+                                        -l MIBUtilLib${DbgPostFix}         \
+                                        ext.vw.carssw.viwicarservice
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         # the following libs are already build with ServiceRegistry, dont't distribute again
+         find ./usr/${LIBDIR}/ -name "*MIBSecurityLib*" -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceLib*"  -delete
+         find ./usr/${LIBDIR}/ -name "*MIBUtilLib*"     -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceDataLib*" -delete
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-vw-carssw-viwicarsrv" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:ext-vw-carssw-viwicarservice " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

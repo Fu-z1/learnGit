@@ -1,0 +1,59 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - media::libraries::tsd-media-common-dev
+  - media::mountingservice::tsd-media-io-dev
+  - media::mountingservice::tsd-media-mount-status-api-dev
+  - media::mountingservice::tsd-media-mount-control-api-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - media::libraries::tsd-media-common-target
+      - media::mountingservice::tsd-media-io-target
+      - media::mountingservice::tsd-media-mount-status-api-target
+      - media::mountingservice::tsd-media-mount-control-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mount.status.service.mib3.git
+   dir: tsd.media.mount.status.service.mib3
+   tag: mqb_sop1_eu-1.0.14
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DTSD_CAPTURE_CINEMO_AUDIO_OUTPUT=ON
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll -DTSD_CAPTURE_CINEMO_AUDIO_OUTPUT=ON
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "mnt-stat-sve-mib3" \
+            -p "emmc.media.mountingsvc" \
+            -o "media.mountingservice:tsd-media-mount-status-service-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

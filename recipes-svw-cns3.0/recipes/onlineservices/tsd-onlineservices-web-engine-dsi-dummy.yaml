@@ -1,0 +1,56 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - system::tsd-common-dev
+ - onlineservices::tsd-onlineservices-common-dev
+ - hmi::tsd-dsi-cpp-dev
+ - system::tsd-system-displaymanager-definitions
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - hmi::tsd-dsi-cpp-target
+
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.web.engine.dsi.dummy.git
+   dir: tsd.onlineservices.web.engine.dsi.dummy
+
+   tag: mqb_sop1_eu-1.100.16
+multiPackage:
+   target:
+      buildScript: |
+         buildenvBuildAll -DONLY_DSI=1
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "web-engine-dsi-dummy" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-web-engine-dsi-dummy " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+      provideDeps: ["*-target"]
+
+   dev:
+      buildScript: |
+         buildenvBuildAll -DONLY_DSI=1
+
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev", "system::tsd-system-displaymanager-definitions"]
+
+#   unittests:
+#      buildScript: |
+#         buildenvTestAll
+#      packageScript: |
+#         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

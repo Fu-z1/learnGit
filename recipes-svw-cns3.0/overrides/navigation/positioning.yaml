@@ -1,0 +1,50 @@
+scmOverrides:
+#positioning
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.*mapmatching*.git"
+   del: [commit, tag]
+   set:
+      branch: develop_mqb_sop1_eu
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.*positioning*.git"
+   del: [commit, tag]
+   set:
+      branch: develop_mqb_sop1_eu
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.positioning.git"
+   del: [commit, tag]
+   set:
+      branch: develop_mqb_sop1_eu
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.positioning.api.git"
+   del: [commit, tag]
+   set:
+      branch: develop_mqb_sop1_eu
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.gnss.ublox.git"
+   del: [commit, tag]
+   set:
+      branch: develop_mqb_sop1_eu
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/ext-ntut.git"
+   del: [commit, tag]
+   set:
+      branch: develop_mqb_sop1_eu
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.pos.sensors.mib3.git"
+   del: [commit, tag]
+   set:
+      branch: develop_mqb_sop1_eu
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.pos.tools.git"
+   del: [commit, tag]
+   set:
+      branch: develop   # This is a host tool!! There is no develop_mqb_sop1_eu for this

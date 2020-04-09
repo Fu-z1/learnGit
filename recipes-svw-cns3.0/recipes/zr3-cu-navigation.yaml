@@ -1,0 +1,282 @@
+inherit: [packing-device, packing-release]
+
+depends:
+   - keys::devkeys::devkeys-updatecontainer
+   - name: toolchain::aarch64-linux-gnu
+     use: [tools, environment]
+     forward: True
+
+   - navigation::tsd-nav-mainapp-mib3-target
+   - navigation::tsd-nav-configdata-variant-embedded-target
+   - navigation::tsd-nav-vehiclestatus-proxy-target
+   - navigation::tsd-gnss-ublox
+   - navigation::tsd-gnss-ocu
+   - navigation::tsd-pos-sensors-mib3
+   - navigation::tsd-nav-diagnosis-proxy-target
+
+
+privateEnvironment:
+   SANDBOX: "$(is-sandbox-enabled)"
+environment:
+   DEVELOPMENT_FLAGS: "true"
+   CMAKE_BUILD_TYPE: "MinSizeRel"
+   PACKAGE_VERSION: "${MAJOR}.${DELIVERY}.${BUILDREF}"
+   MODULE_VERSION:  "${MAJOR}.${DELIVERY}.${BUILDREF}"
+
+buildVars:
+   - MU_VERSION
+   - TRAIN_NUMBER
+   - UPDATE_VARIANTS
+   - VARIANTS #important to save in the audit-trail
+   - SIGNATURE
+   - SANDBOX
+   - DEVELOPMENT_FLAGS
+   - CONFIG_FDS
+
+buildVarsWeak:
+   - MAJOR
+   - DELIVERY
+   - BUILDREF
+
+
+buildScript: |
+   rm -rf *
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      if [[ $key =~ "navigation" ]] || [[ $key =~ "ext-sqlite-nds" ]] ; then
+         tocopy[$key]=${BOB_DEP_PATHS[$key]}
+      fi
+   done
+   unset tocopy[zr3-cu-navigation]
+   unset tocopy[packing::packing-scripts]
+   unset tocopy[keys::devkeys::devkeys-updatecontainer]
+
+   copy_and_check_modules() {
+      modules=""
+      for key in $@; do
+         if [ ${tocopy[$key]+isset} ]; then
+            modules="$modules --module ${tocopy[$key]}/_swupdata"
+            unset tocopy[$key]
+         else
+            echo "ERROR: while building device: $key not found in tocopy!"
+         fi
+      done
+   }
+
+   # We don't want all the transitive dependencies, so we have to list the relevant packages again.
+   list_of_packages=(
+      "navigation::tsd-nav-mainapp-mib3-target"
+      "navigation::tsd-nav-vehiclestatus-proxy-target"
+      "navigation::tsd-gnss-ublox"
+      "navigation::tsd-gnss-ocu"
+      "navigation::tsd-pos-sensors-mib3"
+      "navigation::tsd-nav-diagnosis-proxy-target"
+   )
+
+   _PKGS=""
+   for key in ${!tocopy[@]}; do
+      _PKGS+=" --submodule ${key%::*}=${tocopy[$key]}/_swupdata"
+   done
+
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+    --packageType="device" --packageName="emmc" \
+    --outputDir UpdateContainer \
+    --diagnosticAddress=0 \
+    --deviceType=MU \
+    ${_PKGS//::/.}
+
+
+   # set development flags for development software
+   _DEVFLAGS=""
+   if [ $DEVELOPMENT_FLAGS == true ]; then
+      _DEVFLAGS+=" --devFlag SkipCheckManifestChecksum=false"
+      _DEVFLAGS+=" --devFlag SkipCheckInstallerChecksum=false"
+      _DEVFLAGS+=" --devFlag SkipCheckVariant=false"
+   fi
+
+
+   buildSwupRelease --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+    --packageType="main" --packageName=${TRAIN_NUMBER} \
+    --updateContainerDir UpdateContainer --release ${TRAIN_NUMBER} \
+    --muVersion ${MU_VERSION} --variant ${UPDATE_VARIANTS} \
+    --buildRef ${BUILDREF} \
+    --device emmc \
+    --flag CheckAllUpdates=true \
+    --supportedTrains '["*_?127*","*_?128*","*_?129*","*_?131*","*_?132*","*_?133*","*_?134*","*_?136*","*_?137*","*_?138*","*_?139*","*_?140*","*_?141*","*_?142*","*_?143*","*_?144*","*_?145*","*_?146*","*_?147*","*_?148*","*_?149*","*_?150*","*_?151*","*_?152*"]' \
+    --devKey ${BOB_DEP_PATHS['keys::devkeys::devkeys-updatecontainer']}/dev/MetainfoDevKey-MIB3/config_FDSProject_${CONFIG_FDS:0}_E/keys/FDSProject_${CONFIG_FDS:0}_E.p8 \
+    --sandboxEnabled ${SANDBOX} \
+    ${_DEVFLAGS}
+
+   copy_symbols()
+   {
+      local DEST DIR RET=1
+
+      for DIR in $(cd $1; find . -type d -name ".debug") ; do
+         DEST="$2/$DIR"
+         mkdir -p $DEST
+         rsync -a $1/$DIR/ $DEST
+         RET=0
+      done
+
+      return $RET
+   }
+
+   # symbols
+   if [[ ${CONFIG_NO_SYMBOLS_TGZ:-0} == 0 ]]; then
+      mkdir Symbols
+      for key in ${!tocopy[@]}; do
+         symfile="Symbols/${key//::/_}.tgz"
+         if [[ -e ${tocopy[$key]}/symbols.tgz ]] ; then
+            cp ${tocopy[$key]}/symbols.tgz $symfile
+         else
+            symbolsTmp=$(mktemp -d)
+            if copy_symbols ${tocopy[$key]} $symbolsTmp ; then
+               tar -C $symbolsTmp -cvzf $symfile .
+            fi
+            rm -rf $symbolsTmp
+         fi
+      done
+   fi
+
+
+packageScript: |
+   rsync -a --delete $1/ .
+
+multiPackage:
+    mqb:
+       environment:
+          MU_VERSION: "X${MAJOR}"  # update for every baselineupdate
+          TRAIN_NUMBER: "MOI3_PCC_MQB_CU_NAVIGATION_E${MAJOR}${DELIVERY}P"  # update for every baselineupdate
+          VARIANTS: "101001,101002,101004,101005,101007,101008,101010,101011,101016,101017,101018,101033,101034,101035,101036,101037,101038,101042,101043,101044,101048,101049,101050,101051,101052,101053"
+          #UPDATE_VARIANTS: "FM3-*-*-EU-*-MQB-PC,FM3-*-*-EE-*-MQB-PC,FM3-*-*-RW-*-MQB-PC,FM3-*-*-W2-*-MQB-PC,FM3-*-*-R2-*-MQB-PC,FM3-*-*-W3-*-MQB-PC,FM3-*-*-JP-*-MQB-PC,FM3-*-*-KR-*-MQB-PC"
+          UPDATE_VARIANTS: "\
+            FM3-SM-NWBY4-EU-VW-MQB-PC,\
+            FM3-SM-NWBY4-EU-SK-MQB-PC,\
+            FM3-SM-NDWBY4-EU-VW-MQB-PC,\
+            FM3-SM-NDWBY4-EU-SK-MQB-PC,\
+            FM3-SM-NWBY4-RW-VW-MQB-PC,\
+            FM3-SM-NWBY4-RW-SK-MQB-PC,\
+            FM3-SM-NWBY4-R2-VW-MQB-PC,\
+            FM3-SM-NWBY4-R2-SK-MQB-PC,\
+            FM3-SM-NWBY4-KR-VW-MQB-PC,\
+            FM3-SM-NWBY4-KR-SK-MQB-PC,\
+            FM3-SM-NWBY4-JP-VW-MQB-PC,\
+            FM3-S-NDWBY4-EU-VW-MQB-PC,\
+            FM3-S-NDWBY4-EU-SK-MQB-PC,\
+            FM3-S-NWBY4-RW-SK-MQB-PC,\
+            FM3-S-NWBY4-RW-VW-MQB-PC,\
+            FM3-S-NWBY4-R2-SK-MQB-PC,\
+            FM3-S-NWBY4-R2-VW-MQB-PC,\
+            FM3-S-NWBY4-KR-VW-MQB-PC,\
+            FM3-S-NWBY4-KR-SK-MQB-PC,\
+            FM3-S-NWBY4-JP-VW-MQB-PC,\
+            FM3-SM-NWBY4-W3-SK-MQB-PC,\
+            FM3-S-NWBY4-W3-SK-MQB-PC,\
+            FM3-SM-NDWBY4-EE-VW-MQB-PC,\
+            FM3-SM-NDWBY4-EE-SK-MQB-PC,\
+            FM3-S-NDWBY4-EE-VW-MQB-PC,\
+            FM3-S-NDWBY4-EE-SK-MQB-PC"
+
+    mqb-sec:
+       environment:
+          MU_VERSION: "0${MAJOR}"  # update for every baselineupdate
+          TRAIN_NUMBER: "MOI3_PCC_MQB_CU_NAVIGATION_R${MAJOR}${DELIVERY}P"  # update for every baselineupdate
+          VARIANTS: "111001,111002,111004,111005,111007,111008,111010,111011,111016,111017,111018,111033,111034,111035,111036,111037,111038,111042,111043,111044,111048,111049,111050,111051,111052,111053"
+          #UPDATE_VARIANTS: "FM3-*-*-EU-*-MQB-PC,FM3-*-*-EE-*-MQB-PC,FM3-*-*-RW-*-MQB-PC,FM3-*-*-W2-*-MQB-PC,FM3-*-*-R2-*-MQB-PC,FM3-*-*-W3-*-MQB-PC,FM3-*-*-JP-*-MQB-PC,FM3-*-*-KR-*-MQB-PC"
+          UPDATE_VARIANTS: "\
+            FM3-SM-NWBY4-EU-VW-MQB-PC,\
+            FM3-SM-NWBY4-EU-SK-MQB-PC,\
+            FM3-SM-NDWBY4-EU-VW-MQB-PC,\
+            FM3-SM-NDWBY4-EU-SK-MQB-PC,\
+            FM3-SM-NWBY4-RW-VW-MQB-PC,\
+            FM3-SM-NWBY4-RW-SK-MQB-PC,\
+            FM3-SM-NWBY4-R2-VW-MQB-PC,\
+            FM3-SM-NWBY4-R2-SK-MQB-PC,\
+            FM3-SM-NWBY4-KR-VW-MQB-PC,\
+            FM3-SM-NWBY4-KR-SK-MQB-PC,\
+            FM3-SM-NWBY4-JP-VW-MQB-PC,\
+            FM3-S-NDWBY4-EU-VW-MQB-PC,\
+            FM3-S-NDWBY4-EU-SK-MQB-PC,\
+            FM3-S-NWBY4-RW-SK-MQB-PC,\
+            FM3-S-NWBY4-RW-VW-MQB-PC,\
+            FM3-S-NWBY4-R2-SK-MQB-PC,\
+            FM3-S-NWBY4-R2-VW-MQB-PC,\
+            FM3-S-NWBY4-KR-VW-MQB-PC,\
+            FM3-S-NWBY4-KR-SK-MQB-PC,\
+            FM3-S-NWBY4-JP-VW-MQB-PC,\
+            FM3-SM-NWBY4-W3-SK-MQB-PC,\
+            FM3-S-NWBY4-W3-SK-MQB-PC,\
+            FM3-SM-NDWBY4-EE-VW-MQB-PC,\
+            FM3-SM-NDWBY4-EE-SK-MQB-PC,\
+            FM3-S-NDWBY4-EE-VW-MQB-PC,\
+            FM3-S-NDWBY4-EE-SK-MQB-PC"
+          SIGNATURE: "false"
+          DEVELOPMENT_FLAGS: "false"
+    37w:
+       environment:
+          MU_VERSION: "X${MAJOR}"  # update for every baselineupdate
+          TRAIN_NUMBER: "MOI3_PCC_37W_CU_NAVIGATION_E${MAJOR}${DELIVERY}P"  # update for every baselineupdate
+          VARIANTS: "201001,201002,201004,201005,201007,201008,201010,201011,201017,201018,201019,201026,201027,201028,201029,201030,201031,201036,201037,201038,201048,201049,201050,201051,201052,201053"
+          #UPDATE_VARIANTS: "FM3-*-*-EU-*-MQ2-PC,FM3-*-*-EE-*-MQ2-PC,FM3-*-*-RW-*-MQ2-PC,FM3-*-*-W2-*-MQ2-PC,FM3-*-*-R2-*-MQ2-PC,FM3-*-*-W3-*-MQ2-PC,FM3-*-*-JP-*-MQ2-PC,FM3-*-*-KR-*-MQ2-PC"
+          UPDATE_VARIANTS: "\
+            FM3-SM-NWBY4-EU-VW-MQ2-PC,\
+            FM3-SM-NWBY4-EU-SK-MQ2-PC,\
+            FM3-SM-NDWBY4-EU-VW-MQ2-PC,\
+            FM3-SM-NDWBY4-EU-SK-MQ2-PC,\
+            FM3-SM-NWBY4-RW-VW-MQ2-PC,\
+            FM3-SM-NWBY4-RW-SK-MQ2-PC,\
+            FM3-SM-NWBY4-R2-VW-MQ2-PC,\
+            FM3-SM-NWBY4-R2-SK-MQ2-PC,\
+            FM3-SM-NWBY4-KR-VW-MQ2-PC,\
+            FM3-SM-NWBY4-KR-SK-MQ2-PC,\
+            FM3-SM-NWBY4-JP-VW-MQ2-PC,\
+            FM3-S-NDWBY4-EU-VW-MQ2-PC,\
+            FM3-S-NDWBY4-EU-SK-MQ2-PC,\
+            FM3-S-NWBY4-RW-SK-MQ2-PC,\
+            FM3-S-NWBY4-RW-VW-MQ2-PC,\
+            FM3-S-NWBY4-R2-SK-MQ2-PC,\
+            FM3-S-NWBY4-R2-VW-MQ2-PC,\
+            FM3-S-NWBY4-KR-VW-MQ2-PC,\
+            FM3-S-NWBY4-KR-SK-MQ2-PC,\
+            FM3-S-NWBY4-JP-VW-MQ2-PC,\
+            FM3-SM-NWBY4-W3-SK-MQ2-PC,\
+            FM3-S-NWBY4-W3-SK-MQ2-PC,\
+            FM3-SM-NDWBY4-EE-VW-MQ2-PC,\
+            FM3-SM-NDWBY4-EE-SK-MQ2-PC,\
+            FM3-S-NDWBY4-EE-VW-MQ2-PC,\
+            FM3-S-NDWBY4-EE-SK-MQ2-PC"
+    37w-sec:
+       environment:
+          MU_VERSION: "0${MAJOR}"  # update for every baselineupdate
+          TRAIN_NUMBER: "MOI3_PCC_37W_CU_NAVIGATION_R${MAJOR}${DELIVERY}P"  # update for every baselineupdate
+          VARIANTS: "211001,211002,211004,211005,211007,211008,211010,211011,211017,211018,211019,211026,211027,211028,211029,211030,211031,211036,211037,211038,211048,211049,211050,211051,211052,211053"
+          #UPDATE_VARIANTS: "FM3-*-*-EU-*-MQ2-PC,FM3-*-*-EE-*-MQ2-PC,FM3-*-*-RW-*-MQ2-PC,FM3-*-*-W2-*-MQ2-PC,FM3-*-*-R2-*-MQ2-PC,FM3-*-*-W3-*-MQ2-PC,FM3-*-*-JP-*-MQ2-PC,FM3-*-*-KR-*-MQ2-PC"
+          UPDATE_VARIANTS: "\
+            FM3-SM-NWBY4-EU-VW-MQ2-PC,\
+            FM3-SM-NWBY4-EU-SK-MQ2-PC,\
+            FM3-SM-NDWBY4-EU-VW-MQ2-PC,\
+            FM3-SM-NDWBY4-EU-SK-MQ2-PC,\
+            FM3-SM-NWBY4-RW-VW-MQ2-PC,\
+            FM3-SM-NWBY4-RW-SK-MQ2-PC,\
+            FM3-SM-NWBY4-R2-VW-MQ2-PC,\
+            FM3-SM-NWBY4-R2-SK-MQ2-PC,\
+            FM3-SM-NWBY4-KR-VW-MQ2-PC,\
+            FM3-SM-NWBY4-KR-SK-MQ2-PC,\
+            FM3-SM-NWBY4-JP-VW-MQ2-PC,\
+            FM3-S-NDWBY4-EU-VW-MQ2-PC,\
+            FM3-S-NDWBY4-EU-SK-MQ2-PC,\
+            FM3-S-NWBY4-RW-SK-MQ2-PC,\
+            FM3-S-NWBY4-RW-VW-MQ2-PC,\
+            FM3-S-NWBY4-R2-SK-MQ2-PC,\
+            FM3-S-NWBY4-R2-VW-MQ2-PC,\
+            FM3-S-NWBY4-KR-VW-MQ2-PC,\
+            FM3-S-NWBY4-KR-SK-MQ2-PC,\
+            FM3-S-NWBY4-JP-VW-MQ2-PC,\
+            FM3-SM-NWBY4-W3-SK-MQ2-PC,\
+            FM3-S-NWBY4-W3-SK-MQ2-PC,\
+            FM3-SM-NDWBY4-EE-VW-MQ2-PC,\
+            FM3-SM-NDWBY4-EE-SK-MQ2-PC,\
+            FM3-S-NDWBY4-EE-VW-MQ2-PC,\
+            FM3-S-NDWBY4-EE-SK-MQ2-PC"
+          SIGNATURE: "false"
+          DEVELOPMENT_FLAGS: "false"

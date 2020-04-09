@@ -1,0 +1,147 @@
+inherit: [buildenv]
+
+depends:
+   - swi::pcc-swi-btf-common-api-dev
+
+   - communication::tsd-communication-dev
+   - basic-services::rsi-library::tsd-rsi-client-dev
+   - basic-services::rsi-library::tsd-rsi-server-dev
+
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-common-dev
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+   - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+
+   #- communication::tsd-rsi-generator-generic-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@git-repo.server.technisat-digital:swi-btf/pcc.swi.btf.common.rsi.git
+      dir: pcc.swi.btf.common.rsi
+      branch: master_mqb_sop1_eu
+      tag: "${PCC_SWI_BTF_COMMON_RSI_VERSION:-}"
+
+buildVars: [PCC_SWI_BTF_COMMON_RSI_VERSION, PCC_SWI_BTF_COMMON_RSI_DOMAINS, PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION]
+buildScript: |
+   # prepare the build dir
+   if [ -d "$1/pcc.swi.btf.common.rsi/.git" ]; then
+      # get the real version from git
+      pushd $1/pcc.swi.btf.common.rsi
+      GIT_VERSION=$(git describe --abbrev=4 --dirty --always --tags)
+      popd
+   else
+      # we are in sandbox and can take the git tag checked output
+      GIT_VERSION=${PCC_SWI_BTF_COMMON_RSI_VERSION:-unknown}
+   fi
+
+   # we generate the source code to build dir
+   GEN_DIR="`pwd`/src/pcc.swi.btf.common.rsi.${PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION}"
+   mkdir -p $GEN_DIR
+
+   # copy the main CMakeLists.txt to build with buildenv correct
+   cp "$CMAKE_SRC_PATH/CMakeLists.txt" "`pwd`/src/"
+   # and sync sources to the generation directory
+   rsync -r --delete $CMAKE_SRC_PATH/pcc.swi.btf.common.rsi/* $GEN_DIR/
+
+   # we setting CMAKE_SRC_PATH to the new src dir in the build dir
+   CMAKE_SRC_PATH="`pwd`/src"
+
+   # after checkout from repo we generate the sourcecode according to used rsi version of the dependency
+   path_to_rsi_client="${BOB_ALL_PATHS[basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev]}/usr/include"
+   path_to_rsi_common="${BOB_ALL_PATHS[basic-services::rsi-library::tsd-vw-rsi-viwi-common-dev]}/usr/include"
+
+   # start generation of source code
+   $1/pcc.swi.btf.common.rsi/src/scripts/pcc_swi_generate_rsi_files.sh \
+      --rsi-path-client "$path_to_rsi_client" \
+      --rsi-path-common "$path_to_rsi_common" \
+      --remove-output-dir-first \
+      --output-dir "$GEN_DIR" \
+      --only-domains "$PCC_SWI_BTF_COMMON_RSI_DOMAINS" \
+      --name-addition "$PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION" \
+      -v
+
+multiPackage:
+   "":
+      buildScript: |
+         buildenvBuildAll -DGIT_VERSION=$GIT_VERSION
+
+      packageScript: |
+         buildenvPackageDev
+
+      multiPackage:
+         amb:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "amb"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS: "audiomanagement,mediacontent,mediaplayback,waveplayer"
+         car:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "car"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS:  "eco,carglobal,gearbox,capabilitiesmanagement,door,maintenance,parking,vehicleinformation,velocitythreshold,seating,driverassistance,drivingstate,drivingstatistic,energystorage"
+               
+         speech:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "speech"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS: "tts"
+
+         nav:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "nav"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS: "guidance,maprenderer,navdata,navsystem,places,routing,tripview"
+               
+         phone:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "phone"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS: "basicphonecall,phonemecontentnetwork"
+               
+         connect:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "connect"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS: "appconnectrouteguidanceactive,mirror,auth,usermanagement,tokenmanagement,digitalkey,privacysetup,psodataexchange"
+               
+         online:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "online"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS: "onlinekvs,onlineregistration,onlinestate,ownerverification,webappmanagement,tmwlanconfig"
+               
+         radio:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "radio"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS: "traffic,radio,sdars"
+               
+         hmi:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "hmi"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS: "hmiintegration,language,homeview,display,displaymanagement,notificationmanager,functionondemand,gestures,charisma,window"
+               
+         system:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "system"
+               PCC_SWI_BTF_COMMON_RSI_DOMAINS: "servicemanagement,softwareupdate,sourcemanager,platformmonitor,backendjobs,propulsion,persistence,external,time,unit,hvac,cdn"
+
+   unittests:
+      privateEnvironment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+         TSD_BUILDENV_ENABLE_TEST_RUN_TARGETS: "1"
+         TSD_BUILDENV_ENABLE_RPATH: "1"
+         PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "radio"
+         PCC_SWI_BTF_COMMON_RSI_DOMAINS: "radio,sdars"
+
+      depends:
+         - swi::pcc-swi-btf-common-dev
+
+      buildScript:  |
+         buildenvTestAll -DGIT_VERSION=$GIT_VERSION
+
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      privateEnvironment:
+         PCC_SWI_BTF_COMMON_RSI_NAME_ADDITION: "radio"
+         PCC_SWI_BTF_COMMON_RSI_DOMAINS: "radio,sdars"
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+provideDeps:
+   - "*"

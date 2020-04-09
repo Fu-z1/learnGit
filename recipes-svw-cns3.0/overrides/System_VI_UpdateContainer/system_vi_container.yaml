@@ -1,0 +1,20 @@
+environment:
+   CONFIG_AUDIO: "0"
+   ##System-Vernetzung
+   #CONFIG_CARCOM:-1 
+   ##System-Basisfunktionen
+   #CONFIG_COMMUNICATION: "0" 
+   #CONFIG_CONNECTIVITY: "0"
+   CONFIG_HMI: "0"
+   CONFIG_MEDIA: "0"
+   CONFIG_NAV: "0"
+   CONFIG_ONLINE: "0"
+   CONFIG_PHONE: "0"
+   CONFIG_RADIO: "0"
+   CONFIG_SDS: "0"
+   ##System-System
+   #CONFIG_SYSTEM_CORE: "0"
+   CONFIG_TRACING: "0"
+   #CONFIG_SYSTEM_EXTRA:-0 #Default 0
+   ##System-Basisfunktionen
+   #CONFIG_SYSTEM_BASIS: "0" 

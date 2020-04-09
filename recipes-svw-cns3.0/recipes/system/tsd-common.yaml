@@ -1,0 +1,103 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - name: system::tsd-freertos-mib3
+    if: "$(eq,${TARGET_OS},freertos)"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.git
+    dir: tsd.common
+    #tag: mqb_sop1_eu-5.9.0
+    branch:  main/svw_cns3.0_1520_dev
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.block.git
+    dir: tsd.common.block
+    tag: 1.3.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.checksums.git
+    dir: tsd.common.checksums
+    tag: mqb_sop1_eu-1.10.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.ini.git
+    dir: tsd.common.ini
+    tag: 2.1.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-system/tsd.persistence.file.git
+    dir: tsd.persistence.file
+    tag: 2.4.0
+    branch: master_mqb_sop1_eu
+
+buildVars: [TSD_COMMON_BUILD_APPS]
+buildScript: |
+   build()
+   {
+      buildenvBuildAll -DTSD_COMMON_LINK_SHARED:BOOL=ON \
+         -DTSD_COMMON_LOGGING_USE_JOURNAL:BOOL=OFF \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=${TSD_COMMON_BUILD_APPS:-0} \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=${TSD_COMMON_BUILD_APPS:-0}
+   }
+
+multiPackage:
+   ? ""
+   :  inherit: [werror]
+
+      multiPackage:
+         dev:
+            depends:
+              - name: system::ext-cppunit-google-mock-dev
+                if: "$(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+            privateEnvironment:
+               CXXFLAGS: "${CXXFLAGS} -Wno-deprecated-declarations"
+            buildScript: build
+            packageScript: |
+               buildenvPackageDev
+            provideDeps:
+              - system::tsd-freertos-mib3
+              - system::ext-cppunit-google-mock-dev
+
+         target:
+            privateEnvironment:
+               CXXFLAGS: "${CXXFLAGS} -Wno-deprecated-declarations"
+            buildScript: build
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "common" \
+                  -p "emmc.system" \
+                  -o "system:tsd-common " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+
+   unittests:
+      depends:
+        - system::ext-cppunit-google-mock-dev
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Wno-deprecated-declarations"
+      buildVars: [TARGET_TYPE]
+      buildScript: |
+         opts=( -DTSD_COMMON_LOGGING_USE_JOURNAL:BOOL=OFF )
+         [[ "$TARGET_TYPE" != embedded ]] &&
+            opts+=( -DTSD_COMMON_SYSTEM_PRIORITIES:BOOL=OFF )
+         buildenvTestTargets ${opts[@]} \
+                       tsd.common.test \
+                       tsd.common.block.test \
+                       tsd.common.checksums.test \
+                       tsd.common.ini.test \
+                       tsd.persistence.file.test
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Wno-deprecated-declarations"
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll \
+            -DTSD_COMMON_LOGGING_USE_JOURNAL:BOOL=OFF
+      packageScript: |
+         buildenvPackageDoc

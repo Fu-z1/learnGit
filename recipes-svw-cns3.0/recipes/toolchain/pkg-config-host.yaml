@@ -1,0 +1,4 @@
+inherit: [autotools]
+
+provideTools:
+    pkg-config: "this_is_a_dummy_placeholder_only_for_dev_mode"

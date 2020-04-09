@@ -1,0 +1,60 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+   - navigation::tsd-nav-psd-v20-api-dev
+#   - navigation::tsd-nav-sdk-adashorizon-api-dev
+   - navigation::tsd-nav-mapdataservice-mib3-api-dev
+   - navigation::tsd-nav-pathfinder-mib3-api-dev
+   - navigation::tsd-nav-traffic-mib3-api-dev
+   - navigation::tsd-nav-utils-api-dev
+   - navigation::tsd-nav-prednav-api-dev
+   - navigation::tsd-nav-positioning-mib3-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.psd.v20.git
+   dir: tsd.nav.psd.v20
+   branch: master
+
+buildScript: |
+   build() {
+      buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=0
+   }
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+       dev:
+          buildScript:
+             build
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+       app-target:
+          depends:
+             - navigation::tsd-nav-sdk-mapdataservice-dev
+             - navigation::tsd-nav-utils-dev
+          buildScript:
+             buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+
+          packageScript: |
+             buildenvPackageTarget
+
+  unittests:
+      buildScript: |
+         buildenvTestAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=0
+      packageScript: |
+         buildenvPackageTests
+      depends:
+         - navigation::tsd-nav-sdk-mapdataservice-dev
+         - navigation::tsd-nav-utils-dev
+  doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

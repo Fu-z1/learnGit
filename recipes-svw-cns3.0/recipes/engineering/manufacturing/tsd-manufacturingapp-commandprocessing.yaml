@@ -1,0 +1,45 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - engineering::testmanager::tsd-testmanager-communication-dev
+  - engineering::testmanager::tsd-testmanager-commandprocessing-common-dev
+
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-manufacturingsupport/tsd.manufacturingapp.commandprocessing.git
+   dir: tsd.manufacturingapp.commandprocessing
+   tag: mqb_sop1_eu-2.6.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+      provideDeps:
+        - "*-target"
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget
+

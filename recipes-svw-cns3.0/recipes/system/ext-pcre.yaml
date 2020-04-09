@@ -1,0 +1,44 @@
+inherit: [cmake, packing-module]
+
+metaEnvironment:
+   PKG_VERSION: "8.42"
+   # TODO
+
+depends:
+   - libs::ext-zlib-dev
+   - use: []
+     depends:
+      - libs::ext-zlib-target
+
+checkoutSCM:
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-pcre/pcre-${PKG_VERSION}.zip
+    digestSHA1: cd22b32c3776351978346235a1bd2241b864367f
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden"
+   CFLAGS:   "${CFLAGS} -fvisibility=hidden"
+   CMAKE_BUILD_TYPE: "MinSizeRel"
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   CMAKE_SRC_PATH="$1/pcre-${PKG_VERSION}"
+   cmakeConfigure
+   makeParallel
+   cmakeInstall install
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-pcre" \
+            -p "emmc.system" \
+            -o "system:ext-pcre" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

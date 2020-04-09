@@ -1,0 +1,146 @@
+inherit: [packing-module]
+
+depends:
+  - libs::ext-tzdata
+  - system::tsd-config-generator
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:sys/tsd.config.normal.mib3.git
+   #tag: mqb_sop1_eu-10.18.5
+   branch: main/svw_cns3.0_1520_dev
+
+privateEnvironment:
+   SW_DEV_ACCESS: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1),1,0)"
+
+buildVars: [CONFIG_TARGET, SW_DEV_ACCESS]
+
+multiPackage:
+   # build-time configuration files of other packages, e.g. busybox
+   buildcfg:
+      buildScript: |
+         rsync -a --delete $1/$CONFIG_TARGET/buildcfg/ .
+      packageScript: |
+         cp -a $1/* .
+
+# files that are put into the root file system
+   target:
+      buildVars: [CONFIG_HYPERVISOR]
+      buildScript: |
+         rsync -a --delete $1/$CONFIG_TARGET/target/ .
+
+         # mountpoint for truststore
+         mkdir -p etc/ssl
+
+         if [ $SW_DEV_ACCESS -eq 0 ]; then
+            sed -i '/# REMOVE_IN_SECURE_SW_START/,/# REMOVE_IN_SECURE_SW_END/{//!d}' init
+         fi
+
+         if [ ${CONFIG_HYPERVISOR:-0} -eq 0 ]; then
+            sed -i '/# REMOVE_WITHOUT_HV_START/,/# REMOVE_WITHOUT_HV_END/{//!d}' init
+         fi
+      packageScript: |
+         cp -a $1/* .
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "config-normal-mib3" \
+            -p "emmc.system" \
+            -o "system:tsd-config-normal-mib3" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   pkg:
+      environment:
+         EU: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,eu)"
+         EU_VARIANTS: "$(getMatchingVariantStrings,SW_HMI_REGION=eu)"
+         JP: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,jp)"
+         JP_VARIANTS: "$(getMatchingVariantStrings,SW_HMI_REGION=jp)"
+         KOR: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,kr)"
+         KOR_VARIANTS: "$(getMatchingVariantStrings,SW_HMI_REGION=kr)"
+         CHN: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,cn)"
+         CHN_VARIANTS: "$(getMatchingVariantStrings,SW_HMI_REGION=cn)"
+         CHN: "$(flagIsSet,${VARIANTS},Region,CHINA)"
+         CHN_VARIANTS: "$(getMatchingVariantStrings,Region=CHINA)"
+         TWN: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,tw)"
+         TWN_VARIANTS: "$(getMatchingVariantStrings,SW_HMI_REGION=tw)"
+         RDW1: "$(flagIsSet,${VARIANTS},Region,RDW1)"
+         RDW1_VARIANTS: "$(getMatchingVariantStrings,Region=RDW1)"
+         RDW2: "$(flagIsSet,${VARIANTS},Region,RDW2)"
+         RDW2_VARIANTS: "$(getMatchingVariantStrings,Region=RDW2)"
+         is37W: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W)"
+         SW_DEVELOP: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+         HM: "$(flagIsSet,${VARIANTS},Region,HONGKONG_MACAO)"
+         HM_VARIANTS: "$(getMatchingVariantStrings,Region=HONGKONG_MACAO)"
+
+      buildVars: [EU, JP, KOR, CHN, TWN, RDW1, RDW2, is37W, SW_DEVELOP, CONFIG_HYPERVISOR, CONFIG_ANDROID, HM]
+      buildScript: |
+         function buildVariant {
+            mkdir -p $2
+            rsync -a --delete $1/$CONFIG_TARGET/target/ $2
+
+            # mountpoint for truststore
+            mkdir -p $2/etc/ssl
+
+            # install time zone
+            mkdir -p $2/usr/share/zoneinfo
+            cp ${BOB_DEP_PATHS['libs::ext-tzdata']}/usr/share/zoneinfo/UTC $2/usr/share/zoneinfo
+            mkdir -p $2/etc
+            ln -sfT /usr/share/zoneinfo/UTC $2/etc/localtime
+
+            if [ $SW_DEV_ACCESS -eq 0 ]; then
+               mv $2/etc/pam.d/login_secure $2/etc/pam.d/login || true
+               rm -f $2/etc/pam.d/login_unsecure
+            else
+               mv $2/etc/pam.d/login_unsecure $2/etc/pam.d/login || true
+               rm -f $2/etc/pam.d/login_secure
+            fi
+
+            local defines="${2^^*}"
+            if [[ $defines == "RDW" ]] ; then
+               defines=RDW2
+            fi
+
+            if [[ "${CONFIG_TARGET}" == "normal"  && ${CONFIG_HYPERVISOR:-1} == 0 ]]; then
+               sed -i 's/coq/#coq/g'   $2/etc/modules-load.d/modules.conf
+               sed -i 's/ixcf/#ixcf/g' $2/etc/modules-load.d/modules.conf
+            fi
+
+            # change the name of the console - TODO: move this to cpu.conf
+            if [[ z$CONFIG_HYPERVISOR == "z1" ]] ; then
+               pushd $2/etc/systemd/system/getty.target.wants
+               mv serial-getty@ttySC0.service serial-getty@ttyS0.service
+               popd
+            fi
+            if [[ z$CONFIG_ANDROID == "z1" &&  ${CONFIG_HYPERVISOR:-1} == 1 ]] ; then
+               python ${BOB_DEP_PATHS['system::tsd-config-generator']}/genConf.py $1/$CONFIG_TARGET/buildcfg/cpu.conf $2 -D$defines \
+                  -D37W=${is37W} -DSW_DEVELOP=${SW_DEVELOP} -DCONFIG_ANDROID
+            else
+               python ${BOB_DEP_PATHS['system::tsd-config-generator']}/genConf.py $1/$CONFIG_TARGET/buildcfg/cpu.conf $2 -D$defines \
+                  -D37W=${is37W} -DSW_DEVELOP=${SW_DEVELOP}
+            fi
+         }
+         rm -rf *
+         if [[ $EU   == "True" ]]; then buildVariant $1 eu; fi
+         if [[ $JP   == "True" ]]; then buildVariant $1 jp; fi
+         if [[ $KOR  == "True" ]]; then buildVariant $1 kor; fi
+         if [[ $CHN  == "True" ]]; then buildVariant $1 chn; fi
+         if [[ $TWN  == "True" ]]; then buildVariant $1 twn; fi
+         if [[ $HM  == "True" ]]; then buildVariant $1 hm; fi
+         if [[ $RDW1 == "True" ]]; then buildVariant $1 rdw1; fi
+         if [[ $RDW2 == "True" ]]; then buildVariant $1 rdw; fi
+
+      packageVars: [EU_VARIANTS, JP_VARIANTS, KOR_VARIANTS, CHN_VARIANTS, TWN_VARIANTS,
+         RDW1_VARIANTS, RDW2_VARIANTS, HM_VARIANTS]
+      packageScript: |
+         function packageVariant {
+            buildSwupModule -n config-$2 -p "emmc.system" -o 'tsd-config-normal' -f $1/$2 -- \
+                 -U "Partition=rootfs_ro" --variantList $3
+         }
+         if [[ $EU   == "True" ]]; then packageVariant $1 eu   ${EU_VARIANTS}; fi
+         if [[ $JP   == "True" ]]; then packageVariant $1 jp   ${JP_VARIANTS}; fi
+         if [[ $KOR  == "True" ]]; then packageVariant $1 kor  ${KOR_VARIANTS};fi
+         if [[ $CHN  == "True" ]]; then packageVariant $1 chn  ${CHN_VARIANTS};fi
+         if [[ $TWN  == "True" ]]; then packageVariant $1 twn  ${TWN_VARIANTS};fi
+         if [[ $HM  == "True" ]]; then packageVariant $1 hm  ${HM_VARIANTS};fi
+         if [[ $RDW1 == "True" ]]; then packageVariant $1 rdw1 ${RDW1_VARIANTS};fi
+         if [[ $RDW2 == "True" ]]; then packageVariant $1 rdw  ${RDW2_VARIANTS};fi

@@ -1,0 +1,59 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - system::tsd-common-guid-dev
+ - system::tsd-common-dev
+ - basic-services::rsi-library::tsd-rsi-server-dev
+ - system::ext-libarchive-dev
+ - system::tsd-vkms-api-dev
+ - libs::ext-openssl-dev
+ - onlineservices::tsd-onlineservices-common-dev
+ - onlineservices::tsd-onlineservices-diagnosis-dev
+ - use: []
+   depends:
+    - basic-services::rsi-library::tsd-rsi-server-target
+    - system::tsd-common-target
+    - system::ext-libarchive-target
+    - libs::ext-openssl-target
+    - onlineservices::tsd-onlineservices-common-target
+    - onlineservices::tsd-onlineservices-diagnosis-target
+    - system::tsd-vkms-api-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webapp.common.git
+   dir: tsd.onlineservices.webapp.common
+   tag: mqb_sop1_eu-1.148.6
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-webapp-common" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-webapp-common " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,56 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - carcom::tsd-carcom-datapool-api-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - carcom::tsd-carcom-datapool-api-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.carcom.datapool.git
+    dir: tsd.carcom.datapool
+    tag: mqb_sop1_eu-1.7.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "carcom-datapool" \
+            -p "emmc.carcom" \
+            -o "carcom:tsd-carcom-datapool " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

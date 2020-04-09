@@ -1,0 +1,33 @@
+inherit: [packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-Vorintegration"
+
+multiPackage:
+   high-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "high"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_REGION=kr,SW_HMI_BRAND=vw,HW_DISPLAY_VARIANT=1560700,SW_HMI_PROJECT=37W)"
+
+      checkoutSCM:
+         scm: url
+         url: ${DEFAULT_DOWNLOAD_SCM_URL}src/hmi/hmi_deliveries/HMI_H42.13.09.02/ext.37w.vw.kor.high.tar.gz
+         digestSHA1: "a4da615b0b3abe056bd7f25894e3b1ade37979e8"
+
+buildScript: |
+   rm -rf *
+   ln -sf $1/* .
+
+packageVars: [VARIANT_NAME, VARIANT_LIST]
+packageScript: |
+   mkdir -p tmp/tsd
+   rsync -a --delete $1/ext.37w.vw.kor.${VARIANT_NAME}/tsd/* tmp/tsd
+   mkdir -p tmp/var/lib/hmi
+   buildSwupModule -n "pcc-hmi-37w-vw-kor" -p "emmc.hmi" -v "${VARIANT_NAME}" \
+       -m 'display,display,0700,/var/lib/hmi$'    \
+       -m 'display,display,0700,/var/lib/hmi/.*'  \
+       -o 'hmi::pcc-hmi-37w-vw-kor' -f tmp -- \
+       --variantList $VARIANT_LIST \
+       --requiredBy '{"Packages":[{"PackageName":"prescripts.hmi-delete","Flags":"Selected"},{"PackageName":"scripts.set-hmi-files","Flags":"Selected"},{"PackageName":"emmc.hmi.ext-zulu","Flags":"Selected"}]}' \
+       -U "Partition=rootfs_ro"
+   rm -rf tmp

@@ -1,0 +1,57 @@
+inherit: [install, make, strip, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_VERSION: "Release P8.2 2018-03"
+   PKG_PATCH_VERSION: "1.99.2"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+depends:
+ - name: system::bsp::ext-linux-headers
+   use: [result, environment]
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.dhd.cypress.git
+   dir: ext.dhd.cypress
+   branch: main/svw_cns3.0_1520_dev
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, CC, CXX, CPP, KERNEL_VERSION, LIBDIR]
+buildTools: [toolchain]
+buildScript: |
+   export SYSROOT="${BOB_TOOL_PATHS[toolchain]}/${SYSROOT}"
+   export PKG_CONFIG_PATH="${SYSROOT}/usr/${LIBDIR}/pkgconfig"
+
+   # copy sources from src to build
+   rsync -a --delete $1/ext.dhd.cypress/ .
+
+   # kernel module
+   pushd ${PWD}/host_bcmdhd_src/bcmdhd/
+
+   makeParallel KDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build M=${PWD} CONFIG_BCMDHD_PCIE=y CONFIG_BCMDHD=m CONFIG_BCM4359=y CONFIG_PCC_WAPI=y
+   popd
+
+packageVars: [STRIP]
+packageScript: |
+   mkdir -p lib/modules/${KERNEL_VERSION}/extra lib/firmware/brcm
+   cp -a $1/firmwares/fw_bcmdhd_RSDB.bin lib/firmware/brcm
+   cp -a $1/firmwares/fw_bcmdhd_mfg.bin lib/firmware/brcm
+   cp -a $1/firmwares/nvram.txt lib/firmware/brcm
+   cp -a $1/clm_blob/*.clm_blob lib/firmware/brcm
+   find $1 -type f -name "bcmdhd.ko" -exec cp -a {} lib/modules/${KERNEL_VERSION}/extra \;
+   stripAllKernelModules lib ${STRIP}
+
+   # kernel module options
+   mkdir -p etc/modprobe.d
+   cp -a $1/depl/etc/modprobe.d/bcmdhd.conf etc/modprobe.d/
+
+   # wpa_supplicant configuration files
+   mkdir -p etc/wpa_supplicant
+   cp -a $1/depl/etc/wpa_supplicant/* etc/wpa_supplicant/
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-dhd-cypress" \
+      -p "emmc.connectivity.networking" \
+      -o "connectivity.networking:ext-dhd-cypress " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

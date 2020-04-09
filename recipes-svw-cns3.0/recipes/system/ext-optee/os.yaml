@@ -1,0 +1,64 @@
+inherit: [make, bl2]
+
+environment:
+   PLATFORM: rcar
+   SECURE_ENGINE_CORE_PKG_VERSION: "RTM0RC0000SSTZSD31SS02C_2_0_0"
+
+privateEnvironment:
+   CCACHE_DISABLE: "true"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.optee.os.git
+    dir: ext.optee.os
+    branch: yocto-3.15.0
+
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/yocto/${SECURE_ENGINE_CORE_PKG_VERSION}.tgz
+    extract: false
+    dir: secureEngineCore
+    digestSHA1: b7ce9d5858d5e6c68a6bbe5ccdc977edad29c467
+
+   # Checklist for updating OP-TEE OS:
+   #
+   #    * Add/adjust matching revision of libtomcrypt in
+   #      core/lib/libtomcrypt. See Yocto recipe optee-os_git.bb for the
+   #      actual revision. As our build needs patches for silencing compiler
+   #      warnings anyway, we've committed this code into ext.optee.os.
+   #
+   #    * Adjust revision of matching xtest suite in test.yaml TODO for yocto 3.9.0
+checkoutDeterministic: true
+checkoutVars: [SECURE_ENGINE_CORE_PKG_VERSION]
+checkoutScript: |
+   tar xz --strip-components=1 -f secureEngineCore/${SECURE_ENGINE_CORE_PKG_VERSION}.tgz
+   tar xzf Secure_Engine_Core/secure_engine_core.tar.gz
+
+buildVars: [ARCH, CROSS_COMPILE, PLATFORM, SYSROOT]
+buildVarsWeak: [CCACHE_DISABLE]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ext.optee.os/ ${PWD}
+
+   cp -R $1/secure_engine_core/* core/lib/libcryptoengine/
+   # FIXME: After release 125 the flag CFG_RPMB_WRITE_KEY should
+   #        only be used for the manufacturing software!
+   makeParallel ARCH=arm CROSS_COMPILE64=$CROSS_COMPILE MAKEFLAGS= PLATFORM=$PLATFORM \
+      CFG_ARM64_core=y \
+      CFG_CRYPT_HW_CRYPTOENGINE=y CFG_DYNAMIC_TA_AUTH_BY_HWENGINE=n \
+      CFG_REE_FS=y CFG_RPMB_FS=y CFG_RPMB_WRITE_KEY=y \
+      CFG_STANDALONE_FS=n V=1 VERBOSE=1 \
+      CFG_CORE_HEAP_SIZE=524288 \
+      CFG_NUM_THREADS=16
+
+multiPackage:
+   target:
+      packageScript: |
+         mkdir -p .debug
+         cp -f $1/out/arm-plat-${PLATFORM}/core/tee.elf .debug
+
+         cp $1/out/arm-plat-${PLATFORM}/core/tee.bin .
+         bl2_compress tee.bin
+   dev:
+      packageScript: |
+         rsync -a --delete $1/out/arm-plat-${PLATFORM}/export-ta_arm64/ .
+         sed -i '1aNOWERROR=1' mk/ta_dev_kit.mk

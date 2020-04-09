@@ -1,0 +1,43 @@
+inherit: [packing-module]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+environment:
+   RESOURCES_INSTALL_PATH: "usr/share/tsd.media.waveplayer.mib3"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.waveplayer.mib3.resources.git
+   tag: mqb_sop1_eu-1.0.0
+
+packageVars: [VARIANT_NAME, VARIANT_LIST]
+packageScript: |
+   rsync -a --delete $1/ $PWD/
+   d=$(mktemp -d)
+   rsync -a --delete ./ $d
+   buildSwupModule -n "mib3-res" \
+      -p "emmc.media.waveplayer" \
+      -v ${VARIANT_NAME} \
+      -o "media.waveplayer:tsd-media-waveplayer-mib3-resources " -f $d -- \
+      --variantList ${VARIANT_LIST} \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+multiPackage:
+   vw-pkg:
+      environment:
+         VARIANT_NAME: "vw"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=vw,SW_HMI_PROJECT=MQB)"
+      buildVars: [RESOURCES_INSTALL_PATH, VARIANT_NAME]
+      buildScript: |
+         mkdir -p $PWD/${RESOURCES_INSTALL_PATH}
+         rsync --exclude=".git*" -a --delete $1/${VARIANT_NAME}/ $PWD/${RESOURCES_INSTALL_PATH}
+   sk-pkg:
+      environment:
+         VARIANT_NAME: "sk"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=sk,SW_HMI_PROJECT=MQB)"
+      buildVars: [RESOURCES_INSTALL_PATH, VARIANT_NAME]
+      buildScript: |
+         mkdir -p $PWD/${RESOURCES_INSTALL_PATH}
+         rsync --exclude=".git*" -a --delete $1/${VARIANT_NAME}/ $PWD/${RESOURCES_INSTALL_PATH}

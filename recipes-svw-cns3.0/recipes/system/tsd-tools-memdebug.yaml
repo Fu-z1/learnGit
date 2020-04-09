@@ -1,0 +1,36 @@
+inherit: [packing-module]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-system/tsd.tools.memdebug.git
+   dir: tsd.tools.memdebug
+   tag: mqb_sop1_eu-1.3.0
+   branch: master_mqb_sop1_eu
+
+buildTools: [toolchain]
+buildVars: [CXX, CXXFLAGS]
+buildScript: |
+   $CXX $CXXFLAGS -O1 -std=c++03 -g -Wall -o mem.so -fPIC -shared $1/tsd.tools.memdebug/src/mem.cpp -ldl -pthread
+   cp -a $1/tsd.tools.memdebug/src/mem.cfg .
+   cp -a $1/tsd.tools.memdebug/src/README.docx .
+   cp -a $1/tsd.tools.memdebug/src/makemem3.pl .
+
+packageVars: [LIBDIR]
+multiPackage:
+   target:
+      packageScript: |
+         mkdir -p usr/${LIBDIR}
+         mkdir -p etc
+         cp -a $1/mem.so usr/$LIBDIR/
+         cp -a $1/mem.cfg etc/mem.cfg
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "tools-memdebug" \
+            -p "emmc.system" \
+            -o "system:tsd-tools-memdebug " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+   host:
+      packageScript: |
+         cp -a $1/mem.so .   # if you want the lib for host too
+         cp -a $1/makemem3.pl .
+         cp -a $1/README.docx .

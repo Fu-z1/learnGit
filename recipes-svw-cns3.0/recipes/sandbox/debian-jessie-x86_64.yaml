@@ -1,0 +1,33 @@
+shared: True
+
+environment:
+   RELEASE: "jessie"
+
+checkoutVars: [RELEASE]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/sandbox/debian-${RELEASE}-amd64-rootfs.tgz
+   digestSHA1: "a0825519f35ff670470eb2c479fb8f4cc87fdbac"
+   extract: False
+
+buildScript: |
+   tar -xf $1/debian-${RELEASE}-amd64-rootfs.tgz --exclude=./dev
+
+packageScript: |
+   for DIR in bin etc lib lib64 opt sbin usr var; do
+      if [[ -d $1/${DIR} ]];then
+         cp -al $1/${DIR} ${PWD}
+      fi
+   done
+
+provideVars:
+   HOME: "/tmp"
+
+provideSandbox:
+   paths: [ "/bin", "/usr/bin", "/sbin"]
+   mount:
+        # mount proc fs. autogen needs this
+       - "/etc/resolv.conf"
+       - [ "/proc", "/proc" ]
+       - [ "\\$HOME/.ssh", "/nonexistent/.ssh"]
+       - [ "\\$SSH_AUTH_SOCK", "\\$SSH_AUTH_SOCK", [nojenkins, nofail] ]

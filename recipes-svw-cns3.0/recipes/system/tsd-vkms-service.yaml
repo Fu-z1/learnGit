@@ -1,0 +1,23 @@
+inherit: [buildenv, werror]
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-vkms-api-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-vkms-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.vkms.service.git
+   dir: tsd.vkms.service
+   tag: 1.0.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install

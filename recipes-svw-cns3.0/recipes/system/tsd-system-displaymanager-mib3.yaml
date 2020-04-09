@@ -1,0 +1,59 @@
+inherit: [buildenv, werror, packing-module]
+
+depends:
+  - basic-services::rsi-library::tsd-rsi-client-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+  - hmi::tsd-dsi-cpp-dev
+  - libs::ext-libpng-dev
+  - system::bsp::ext-omx-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-common-dev
+  - system::tsd-common-guid-dev
+  - system::tsd-system-displaymanager-dev
+  - use: []
+    depends:
+      - basic-services::rsi-library::tsd-rsi-client-target
+      - basic-services::rsi-library::tsd-rsi-server-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-server-target
+      - hmi::tsd-dsi-cpp-target
+      - libs::ext-libpng-target
+      - system::bsp::ext-omx-target
+      - system::tsd-common-daemon-target
+      - system::tsd-common-target
+      - system::tsd-system-displaymanager-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-displaymanager/tsd.system.displaymanager.mib3.git
+   dir: tsd.system.displaymanager.mib3
+   #tag: mqb_sop1_eu-3.21.0
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1480_dev
+
+buildScript: |
+   buildenvBuildModules \
+      -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+      -DFEATURE_CR11105_HACK:BOOL=OFF \
+      tsd.system.displaymanager.mib3 \
+      tsd.system.displaymanager.mib3.app.test-client \
+      tsd.system.displaymanager.mib3.app.test-client-dsi \
+      tsd.system.displaymanager.mib3.app.test-client-rsi
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "system-displaymanager-mib3" \
+            -p "emmc.system" \
+            -o "system:tsd-system-displaymanager-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

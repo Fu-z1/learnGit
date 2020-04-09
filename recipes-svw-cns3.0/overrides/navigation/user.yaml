@@ -1,0 +1,6 @@
+######### This is a template and not to be included. Paths are correct
+include:
+   - overrides/navigation/override
+   - overrides/navigation/buildartifacts
+environment:
+   MAKE_LOAD_LIMIT: nproc

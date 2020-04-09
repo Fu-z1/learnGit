@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.dataformats.git"
+     del: [commit, tag]
+     set:
+        branch: "develop"
+        commit: "ab7da2c63e33863439995622e36a58973d95bfa3"

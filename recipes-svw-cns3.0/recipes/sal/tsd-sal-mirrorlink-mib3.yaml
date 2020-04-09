@@ -1,0 +1,100 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "StaticLib"
+
+depends:
+   # build dependencies
+ - sal::ext-jrtplib-dev
+ - system::tsd-common-dev
+ - system::ext-boost-dev
+ - system::tsd-threadmessages-dev
+ - connectivity::usb::ext-libusb-dev
+ - libs::ext-libxml2-dev
+ - if: "$(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},1)"
+   depends:
+    - sal::ext-realvnc-dev
+ - sal::tsd-sal-common-dev
+ - sal::tsd-sal-video-dev
+ - sal::tsd-sal-video-cinemo-dev
+ - sal::tsd-sal-audio-dev
+
+   # runtime dependencies
+ - use: []
+   depends:
+    - sal::ext-jrtplib-target
+    - system::tsd-common-target
+    - system::ext-boost-target
+    - system::tsd-threadmessages-target
+    - connectivity::usb::ext-libusb-target
+    - libs::ext-libxml2-target
+    - sal::ext-realvnc-target
+    - sal::tsd-sal-common-target
+    - sal::tsd-sal-video-target
+    - sal::tsd-sal-video-cinemo-target
+    - sal::tsd-sal-audio-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.sal.mirrorlink.mib3.git
+   dir: tsd.sal.mirrorlink.mib3
+   branch: main/svw_cns3.0_1520_dev
+
+environment:
+   SW_HMI_REGION_TWN: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_HMI_REGION,cn),HMI_VARIANT_CHN,HMI_VARIANT_TWN)"
+
+buildVars: [SW_HMI_REGION_TWN]
+multiPackage:
+   dev:
+      buildVars: [ARCH]
+      buildScript: |
+
+         if [[ ${ARCH} == "arm64" ]]; then
+             buildenvBuildModules \
+             -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+             -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+             -DSW_HMI_VARIANT=$SW_HMI_REGION_TWN \
+             tsd.sal.mirrorlink.mib3 \
+             tsd.sal.mirrorlink.mib3.app.tester \
+             tsd.sal.mirrorlink.mib3.app.cli \
+             vncdeviceprovider-usb \
+             vncdecoder-h264
+          else
+             buildenvBuildModules \
+             -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+             -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+             -DSW_HMI_VARIANT=$SW_HMI_REGION_TWN \
+             tsd.sal.mirrorlink.mib3 \
+             tsd.sal.mirrorlink.mib3.app.tester \
+             tsd.sal.mirrorlink.mib3.app.cli \
+             vncdecoder-h264
+          fi
+
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: buildenvBuildAll -DSW_HMI_VARIANT=$SW_HMI_REGION_TWN
+
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "sal-mirrorlink-mib3" \
+            -p "emmc.sal" \
+            -o "sal:tsd-sal-mirrorlink-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

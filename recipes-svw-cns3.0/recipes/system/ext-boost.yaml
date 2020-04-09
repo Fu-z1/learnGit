@@ -1,0 +1,157 @@
+inherit: [install, patch, packing-module]
+
+depends:
+   - libs::ext-zlib-dev
+   - use: []
+     depends:
+       - libs::ext-zlib-target
+
+environment:
+   PKG_VERSION: "1_67_0"
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-boost/boost_${PKG_VERSION}.tar.bz2
+   digestSHA1: "694ae3f4f899d1a80eb7a3b31b33be73c423c1ae"
+   fileName: "boost_${PKG_VERSION}.tar.bz2"
+
+checkoutDeterministic: true
+checkoutScript: |
+   pushd boost_${PKG_VERSION}
+   patchApplySeries -p1 $<<ext-boost/*.patch>>
+   popd
+
+buildTools: [host-toolchain, toolchain]
+buildVars: [PKG_VERSION, CROSS_COMPILE, TARGET_OS, LIBDIR, CXXFLAGS]
+buildVarsWeak: [MAKE_JOBS]
+buildScript: |
+   if [[ "$TARGET_OS" == *linux* ]] ; then
+      # build b2 if not done already
+      if [[ ! -x b2/install/bin/b2 ]] ; then
+         mkdir -p b2
+         pushd b2
+         mkdir -p install build
+         cd build
+         rsync -a --delete $1/boost_${PKG_VERSION}/tools/build/ .
+         ./bootstrap.sh
+         ./b2 install --prefix="$PWD/../install"
+         popd
+      fi
+      export PATH="$PWD/b2/install/bin:$PATH"
+      export ZLIB_LIBPATH=${BOB_DEP_PATHS[libs::ext-zlib-dev]}/usr/${LIBDIR}
+      export ZLIB_INCLUDE=${BOB_DEP_PATHS[libs::ext-zlib-dev]}/usr/include
+
+      # parallel make
+      if [ x"$MAKE_JOBS" = xnproc ] ; then
+         MAKE_JOBS="$(nproc)"
+      fi
+
+      # build out-of-tree
+      mkdir -p build install
+      EXTRA=( )
+      if [ ${CROSS_COMPILE:+true} ] ; then
+         echo "using gcc : arm : ${CROSS_COMPILE}g++ ;" > user-config.jam
+         EXTRA+=( "--user-config=$PWD/user-config.jam" "toolset=gcc" )
+      fi
+      if [[ ${CXXFLAGS:+true} ]] ; then
+         EXTRA+=( cxxflags="$CXXFLAGS" )
+      fi
+
+      D="$PWD"
+      cd $1/boost_${PKG_VERSION}
+      b2 -j $MAKE_JOBS --build-dir=$D/build --prefix=$D/install \
+         --libdir=$D/install/$LIBDIR \
+         --with-system --with-thread --with-log --with-iostreams --with-program_options --with-locale -s NO_BZIP2=1 \
+         ${EXTRA:+"${EXTRA[@]}"} \
+         target-os=linux install
+   else
+      mkdir -p install/include
+      rsync -a --delete $1/boost_${PKG_VERSION}/boost install/include/
+   fi
+
+packageVars: [LIBDIR]
+packageTools: [buildenv]
+multiPackage:
+   dev:
+      packageScript: |
+         mkdir -p usr
+         cp -a $1/install/include usr/
+         tsd-buildenv-create-shim.sh -p usr -I include ext.boost
+   "":
+      depends:
+        - use: []
+          name: system::ext-boost-dev
+
+      packageScript: |
+         package() {
+            mkdir -p usr/${LIBDIR}
+            cp -a ${1}/install/${LIBDIR}/libboost_${2//-/_}* usr/${LIBDIR}/
+            tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l boost_${2//-/_} -d ext.boost ext.boost.${2//-/.}
+         }
+
+      multiPackage:
+         atomic-dev:
+            depends:
+               - use: []
+                 name: system::ext-boost-log-dev
+            packageScript: package ${1} atomic
+         chrono-dev:
+            depends:
+               - use: []
+                 name: system::ext-boost-log-dev
+            packageScript: package ${1} chrono
+         date-time-dev:
+            depends:
+               - use: []
+                 name: system::ext-boost-log-dev
+            packageScript: package ${1} date-time
+         filesystem-dev:
+            packageScript: package ${1} filesystem
+         iostream-dev:
+            packageScript: |
+               mkdir -p usr/${LIBDIR}
+               cp -a ${1}/install/${LIBDIR}/libboost_iostreams* usr/${LIBDIR}/
+               tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l boost_iostreams -d ext.boost ext.boost.iostream
+         log-dev:
+            packageScript: package ${1} log
+         program-options-dev:
+            packageScript: package ${1} program-options
+         "":
+            depends:
+               - if: "$(match,${TARGET_OS:-},'.*linux.*')"
+                 depends:
+                  - tip::ext-icu-dev
+                  - use: []
+                    name: tip::ext-icu-target
+            multiPackage:
+               locale-dev:
+                  packageScript: package ${1} locale
+               regex-dev:
+                  depends:
+                     - use: []
+                       name: system::ext-boost-log-dev
+                  packageScript: package ${1} regex
+         system-dev:
+            packageScript: package ${1} system
+         thread-dev:
+            packageScript: package ${1} thread
+
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         mkdir -p usr/${LIBDIR}
+         rsync -a --exclude="*.a" --delete $1/install/${LIBDIR} usr/
+         installStripAll ${PWD}
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-boost" \
+            -p "emmc.system" \
+            -o "system:ext-boost " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

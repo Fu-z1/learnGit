@@ -1,0 +1,92 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - basic-services::personalization::tsd-personalization-psomaster-lib-dev
+  - basic-services::tsd-settings-api-dev
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - hmi::tsd-hmi-language-client-mib3-dev
+  - libs::ext-curl-dev
+  - libs::ext-openssl-dev
+  - media::mountingservice::tsd-media-mount-status-api-dev
+  - navigation::tsd-nav-asr-api-dev
+  - navigation::tsd-nav-common-mib3-api-dev
+  - navigation::tsd-nav-configdata-dev
+  - navigation::tsd-nav-diagnosis-api-dev
+  - navigation::tsd-nav-itr-api-dev
+  - navigation::tsd-nav-logging-api-dev
+  - navigation::tsd-nav-mapdataservice-mib3-api-dev
+  - navigation::tsd-nav-memory-mib3-api-dev
+  - navigation::tsd-nav-pathfinder-mib3-api-dev
+  - navigation::tsd-nav-prednav-api-dev
+  - navigation::tsd-nav-psd-v15-dev
+  - navigation::tsd-nav-rsi-viwi-dev
+  - navigation::tsd-nav-rsi-clients-mib3-dev
+  - navigation::tsd-nav-sdk-mapdataservice-api-dev
+  - navigation::tsd-nav-secure-fs-api-dev
+  - navigation::tsd-nav-testinterface-api-dev
+  - navigation::tsd-nav-sal-api-dev
+  - navigation::tsd-nav-utils-api-dev
+  - navigation::tsd-nav-traffic-mib3-api-dev
+  - navigation::tsd-nav-positioning-mib3-api-dev
+  - system::ext-boost-date-time-dev
+  - system::ext-boost-filesystem-dev
+  - system::ext-boost-program-options-dev
+  - system::ext-boost-system-dev
+  - system::tsd-activation-api-dev
+  - system::tsd-clock-mib3-dev
+  - system::tsd-vkms-api-dev
+  - onlineservices::tsd-onlineservices-framework-dev
+  - onlineservices::tsd-onlineservices-diagnosis-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.utils.git
+   dir: tsd.nav.utils
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildVars:
+  - TARGET_TYPE
+  - RSI_STAT
+  #- CXXFLAGS_ADDRESS_SANITIZE
+  #- LDFLAGS_ADDRESS_SANITIZE
+
+buildTools: [protoc]
+
+buildScript: |
+   build()
+   {
+    if [ -d "$1/tsd.nav.utils/.git" ]; then
+         # get the real version from git
+         pushd $1/tsd.nav.utils
+         GIT_VERSION=$(git describe --abbrev=4 --dirty --always --tags | cut -f1 -d".")
+         popd
+      else
+         # we are in sandbox and can take the git tag checked output
+         GIT_VERSION=XXX
+      fi
+      buildenvBuildAll -DGIT_VERSION=$GIT_VERSION ${RSI_STAT:+-DRSI_STAT=${RSI_STAT}}
+   }
+
+multiPackage:
+  #inherit: [werror]
+   ? ""
+   :
+      inherit: [navi_compflags_protobuf]
+      #TODO: uncomment?
+      multiPackage:
+        dev:
+          buildScript: build $@
+          packageScript: |
+            buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

@@ -1,0 +1,49 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.io.git
+   dir: tsd.media.io
+   tag: mqb_sop1_eu-1.0.2
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "media-io" \
+            -p "emmc.media.mountingservice" \
+            -o "media.mountingservice:tsd-media-io " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+depends:
+   # build dependencies
+ - communication::tsd-communication-dev
+ - system::tsd-common-daemon-dev
+ - connectivity::usb::tsd-usb-dev
+ - connectivity::usb::tsd-usb-osal-linux-dev
+ - communication::ext-commonapi-runtime-dev
+ - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+ - system::system-lifecycle::tsd-systemstate-manager-api-dev
+
+   # runtime dependencies
+ - use: []
+   depends:
+    - communication::tsd-communication-target
+    - connectivity::usb::tsd-usb-target
+    - connectivity::usb::tsd-usb-osal-linux-target
+    - communication::ext-commonapi-runtime-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.usb.mib3.git
+   dir: tsd.usb.mib3
+   #tag: mqb_sop1_eu-1.100.13
+   branch: main/svw_cns3.0_1480_dev
+multiPackage:
+   target:
+      environment:
+         #
+         # ATTENTION: the switch SW_DEV_ACCESS is only used for testing purposes,
+         # it has to be replaced with a new switch for the DSRC feature!!
+         #
+         DSRC_UNIT: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1),1,0)"
+         SW_DEV_ACCESS: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1),1,0)"
+      buildVars: [DSRC_UNIT]
+      buildScript: buildenvBuildAll -DCMAKE_DSRC_UNIT_PRESENT=${DSRC_UNIT}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "usb-mib3" \
+            -p "emmc.connectivity.usb" \
+            -o "connectivity.usb:tsd-usb-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

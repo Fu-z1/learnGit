@@ -1,0 +1,40 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - communication::tsd-communication-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-dev
+  - navigation::tsd-nav-pos-gps-api-dev
+  - use: []
+    depends:
+      - navigation::tsd-nav-pos-gps-api-target
+
+checkoutSCM:
+   scm: git
+   #url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.gnss.ocu.git
+   url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-navigation/tsd.gnss.ocu.git
+   dir: tsd.gnss.ocu
+   #tag: mqb_sop1_eu-131.0.2      #navi-proxy (Integrated separately)
+   branch: main/svw_cns3.0_1480_dev
+
+buildScript: |
+   buildenvBuildAll
+
+   mkdir -p dist/etc/tsd.gnss.ocu
+   cp -au $1/tsd.gnss.ocu/ini/commonapi.ini dist/etc/tsd.gnss.ocu
+
+packageScript: |
+   buildenvPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "gnss-ocu" \
+      -p "emmc.navigation" \
+      -o "navigation:tsd-gnss-ocu " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps: ['*-target']

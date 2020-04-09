@@ -1,0 +1,12 @@
+inherit: [buildenv, packing-module]
+
+
+buildScript: |
+  mkdir -p dist/var 
+  touch dist/var/Readme
+
+packageScript: |
+   buildSwupModule -n "jpcc-emmc" \
+       -p "emmc.system" \
+       -o "system:jpcc-emmc " -f $1/dist -- \
+       -U "Partition=rootfs_ro"

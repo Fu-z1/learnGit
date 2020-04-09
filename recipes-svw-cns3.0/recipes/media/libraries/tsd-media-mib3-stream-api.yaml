@@ -1,0 +1,49 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mib3.stream.api.git
+   dir: tsd.media.mib3.stream.api
+   tag: mqb_sop1_eu-1.1.6
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "media-mib3-stream-api" \
+            -p "emmc.media.libraries" \
+            -o "media.libraries:tsd-media-mib3-stream-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

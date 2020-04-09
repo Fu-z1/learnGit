@@ -1,0 +1,114 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_NAME: "VMS-Beta2-soft-0.2.1.4"
+   PKG_RESPONSIBLE: "Navigation-System"
+
+environment:
+   PKG_NAME: "VMS-Beta2-soft-0.2.1.4"
+   PKG_LOCATION: "src/ext-hitachi-vms/"
+   PKG_ROOT_DIR: "vms-beta2/Beta2-soft"
+   PKG_CHECKSUM: "a9badcc8195339fe0fcf79c56ff081208ddbbc09"
+
+checkoutVars: [PKG_NAME, PKG_LOCATION]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/ext.hitachi.vms.git
+    dir: ext.hitachi.vms
+    tag: 75.1.1
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}${PKG_LOCATION}/${PKG_NAME}.zip
+    digestSHA1: ${PKG_CHECKSUM}
+    fileName: "${PKG_NAME}.zip"
+    dir: vms-beta2
+
+checkoutDeterministic: true
+checkoutScript: |
+   rm -rf -v "Beta1-soft/documents/Release note"
+
+buildVars: [PKG_ROOT_DIR]
+buildTools: [protoc]
+
+multiPackage:
+   "target":
+      depends:
+        - navigation::ext-hitachi-vms-api-target
+        - navigation::ext-hitachi-vms-lib-target
+      provideDeps: ['*-target']
+
+   ? ""
+   :  multiPackage:
+         api:
+            depends:
+              - libs::ext-protobuf-dev
+              - use: []
+                depends:
+                  - libs::ext-protobuf-target
+            multiPackage:
+               dev:
+                  buildScript: |
+                     mkdir -p ext.hitachi.vms/api/proto
+                     mkdir -p ext.hitachi.vms/api/public/hitachi
+                     cp -a $1/${PKG_ROOT_DIR}/software/src/VMS.proto         ext.hitachi.vms/api/proto/
+                     cp -a $1/${PKG_ROOT_DIR}/software/src/VMS_Enum.h        ext.hitachi.vms/api/public/hitachi/
+                     cp -a $1/${PKG_ROOT_DIR}/software/src/VMS_NAVI_Socket.h ext.hitachi.vms/api/public/hitachi/
+                     buildenvBuildAll
+
+                  packageScript: |
+                     buildenvPackageDev install
+                  provideDeps: ['*-dev']
+
+               target:
+                  buildScript: |
+                     mkdir -p ext.hitachi.vms/api/proto
+                     mkdir -p ext.hitachi.vms/api/public/hitachi
+                     cp -a $1/${PKG_ROOT_DIR}/software/src/VMS.proto         ext.hitachi.vms/api/proto/
+                     cp -a $1/${PKG_ROOT_DIR}/software/src/VMS_Enum.h        ext.hitachi.vms/api/public/hitachi/
+                     cp -a $1/${PKG_ROOT_DIR}/software/src/VMS_NAVI_Socket.h ext.hitachi.vms/api/public/hitachi/
+                     buildenvBuildAll
+
+                  packageScript: |
+                     buildenvPackageTarget
+                     d=$(mktemp -d)
+                     rsync -a --delete --exclude ".debug" ./ $d
+                     buildSwupModule -n "ext-hitachi-vms-api-target" \
+                        -p "emmc.navigation" \
+                        -o "navigation:ext-hitachi-vms" -f $d -- \
+                        -U "Partition=rootfs_ro"
+                     rm -rf $d
+                  provideDeps: ['*-target']
+
+
+         lib:
+            multiPackage:
+               dev:
+                  buildScript: |
+                     mkdir -p dist/usr/${LIBDIR}
+                     mkdir -p dist/usr/lib/cmake/ext.hitachi.vms.lib
+                     mkdir -p dist/usr/include/hitachi
+                     cp -a $1/${PKG_ROOT_DIR}/software/src/VMS.h     dist/usr/include/hitachi/
+                     cp $1/ext.hitachi.vms/ext.hitachi.vms.lib-config.cmake.zr3 dist/usr/lib/cmake/ext.hitachi.vms.lib/ext.hitachi.vms.lib-config.cmake
+                     cp $1/${PKG_ROOT_DIR}/software/lib/libVMS.so*   dist/usr/${LIBDIR}/libVMS.so
+
+                  packageScript: |
+                     buildenvPackageDev install
+
+               target:
+                  buildScript: |
+                     mkdir -p dist/etc/ext.hitachi.vms
+                     mkdir -p dist/usr/share/tsd.nav.vms.app/
+                     mkdir -p dist/usr/${LIBDIR}
+                     mkdir -p dist/usr/lib/cmake/ext.hitachi.vms.lib
+                     cp $1/ext.hitachi.vms/ext.hitachi.vms.lib-config.cmake.zr3 dist/usr/lib/cmake/ext.hitachi.vms.lib/ext.hitachi.vms.lib-config.cmake
+                     cp $1/${PKG_ROOT_DIR}/software/lib/libVMS.so*   dist/usr/${LIBDIR}/libVMS.so
+                     cp $1/ext.hitachi.vms/res/vms.conf              dist/etc/ext.hitachi.vms/vms.conf
+
+                  packageScript: |
+                     buildenvPackageTarget
+                     d=$(mktemp -d)
+                     rsync -a --delete --exclude ".debug" ./ $d
+                     buildSwupModule -n "ext-hitachi-vms-lib-target" \
+                        -p "emmc.navigation" \
+                        -o "navigation:ext-hitachi-vms" -f $d -- \
+                        -U "Partition=rootfs_ro"
+                     rm -rf $d

@@ -1,0 +1,52 @@
+inherit: [packing-module]
+
+environment:
+   ZIP: 2019_11_21_Startup_Animation_Container.zip
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-Vorintegration"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/hmi/cns_anim_container/${ZIP}
+   digestSHA1: "6518f13f15197bcc3c20e1c82c2afb60ee73de21"
+   dir: anim-container
+
+buildScript: |
+   rm -rf *
+   ln -sf $1/anim-container/ .
+
+packageVars: [VARIANT_NAME, VARIANT_LIST]
+packageScript: |
+   mkdir -p tmp/usr/share/tsd.anim.interpreter
+   rsync -a --delete $1/anim-container/${VARIANT_NAME}/ tmp/usr/share/tsd.anim.interpreter
+   buildSwupModule -n "pcc-anim-container" -p "emmc.hmi" -v "${VARIANT_NAME}" -o 'hmi::pcc-anim-container' -f tmp -- \
+       --variantList $VARIANT_LIST \
+       -U "Partition=rootfs_ro"
+   rm -rf tmp
+
+multiPackage:
+   vw-low-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "vw_low"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=vw,HW_DISPLAY_VARIANT=800480)"
+   vw-high-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "vw_high"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=vw,HW_DISPLAY_VARIANT=1280640)"
+   skoda-low-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "skoda_low"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=sk,HW_DISPLAY_VARIANT=800480)"
+   skoda-high-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "skoda_high"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=sk,HW_DISPLAY_VARIANT=1280640)"
+   37w-vw-high-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "vw_high"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=vw,HW_DISPLAY_VARIANT=1560700)"
+   37w-skoda-high-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "skoda_high"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_BRAND=sk,HW_DISPLAY_VARIANT=1560700)"

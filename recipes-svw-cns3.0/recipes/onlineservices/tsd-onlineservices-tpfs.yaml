@@ -1,0 +1,62 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.tpfs.git
+   dir: tsd.onlineservices.tpfs
+   tag: mqb_sop1_eu-1.0.7
+depends:
+ - system::tsd-common-dev
+ - system::tsd-common-daemon-dev
+ - onlineservices::ext-libfuse-dev
+ - libs::ext-openssl-dev
+ - use: []
+   depends:
+    - system::tsd-common-daemon-target
+    - system::tsd-common-target
+    - onlineservices::ext-libfuse-target
+    - libs::ext-openssl-target
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DHOST=1 
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+   target:
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+      packageScript: |
+         buildenvPackageTarget
+      provideDeps: ["*-target"]
+   tests-host:
+      depends:
+       - test::tsd.test.utils-dev
+       - test::ext-cucumber-cpp-dev
+       - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DTSD_BUILDENV_ENABLE_TEST_TARGETS_SWTESTS=1 -DHOST_BUILD=1 -DHOST=1
+         cp -r $1/tsd.onlineservices.tpfs/test/swtests/ .
+      packageScript: |
+         buildenvPackageDev
+         mkdir -p autotests/
+         cp -r $1/swtests autotests/
+   tests-target:
+      depends:
+       - test::tsd.test.utils-dev
+       - test::ext-cucumber-cpp-target
+       - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DTSD_BUILDENV_ENABLE_TEST_TARGETS_SWTESTS=1
+         cp -r $1/tsd.onlineservices.tpfs/test/swtests/ .
+      packageScript: |
+         buildenvPackageDev
+         mkdir -p autotests/
+         cp -r $1/swtests autotests/
+
+
+

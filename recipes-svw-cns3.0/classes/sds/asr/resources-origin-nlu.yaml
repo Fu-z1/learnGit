@@ -1,0 +1,41 @@
+checkoutVars: [NLU_PKG_NAME, NLU_PKG_DIGEST]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-carmeq/nlu/${NLU_PKG_NAME}.zip
+   dir: nlu
+   extract: false
+   digestSHA1: ${NLU_PKG_DIGEST}
+
+buildVars: [NLU_PKG_NAME]
+buildScript: |
+
+   NLU_ZIP=$1/nlu/${NLU_PKG_NAME}.zip
+
+   # param1 the HMI lang code e.g. "de_DE"
+   # param2 the engine lang code e.g. "ged"
+   copyContextResFromNLU()
+   {
+      TARGET_CTX_DIR=$1/context
+      TARGET_NLU_DIR=${TARGET_CTX_DIR}/nlu
+      LANG_DIR=$2
+
+      mkdir -p ${TARGET_NLU_DIR}
+
+      echo "Gathering context resources - from NLU - for ${LANG_DIR}"
+      unzip -jo ${NLU_ZIP} **${LANG_DIR}/picklistFiller.txt -d ${TARGET_CTX_DIR}
+
+      unzip -o ${NLU_ZIP} thresholds.txt -d ${TARGET_NLU_DIR}
+
+      unzip -jo ${NLU_ZIP} **${LANG_DIR}/sem/nlu.s3c -d ${TARGET_NLU_DIR}
+      unzip -jo ${NLU_ZIP} **${LANG_DIR}/slm/nlu.fcf -d ${TARGET_NLU_DIR}
+      unzip -jo ${NLU_ZIP} **${LANG_DIR}/topics.txt -d ${TARGET_NLU_DIR}
+      unzip -jo ${NLU_ZIP} **${LANG_DIR}/slotMap.json -d ${TARGET_NLU_DIR}
+
+      unzip -jo ${NLU_ZIP} **${LANG_DIR}/guest_contexts/* -d guest_contexts
+      unzip -jo ${NLU_ZIP} **${LANG_DIR}/guest_context_metadata.json -d ${TARGET_NLU_DIR}
+
+      # test if any guest contexts have been extracted
+      [ "$(ls -A guest_contexts)" ] || (echo "Error - files missing in archive!"; exit 1)
+      mv guest_contexts/* ${TARGET_NLU_DIR}
+      rm -d guest_contexts
+   }

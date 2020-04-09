@@ -1,0 +1,95 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - basic-services::systeminfo::tsd-systeminformation-common-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::systeminfo::tsd-systeminformation-common-target
+
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.systeminformation.hardware.git
+   dir: tsd.systeminformation.hardware
+   #tag: mqb_sop1_eu-3.1.1
+   branch: main/svw_cns3.0_1480_dev
+
+
+buildScript: |
+   buildShared()
+   {
+      buildenvBuildAll -DTSD_SYSTEMINFORMATION_HARDWARE_LINK_SHARED:BOOL=ON
+   }
+
+   buildStatic()
+   {
+      buildenvBuildAll -DTSD_SYSTEMINFORMATION_HARDWARE_LINK_SHARED:BOOL=OFF
+   }
+
+
+multiPackage:
+   # All applications for the System Information Provider Hardware. Some of
+   # them are provided individually by other packages.
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.systeminformation.hardware.app
+      packageScript: buildenvPackageTarget install
+
+   cli:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.systeminformation.hardware.app.cli
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "systeminfo-hardware-cli" \
+            -p "emmc.basic-svcs" \
+            -o "basic-services.systeminfo:tsd-systeminformation-hardware-cli " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   dev:
+      buildScript: buildShared
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   # Additional development target for special use-cases with benefit
+   # tremendously from static linking. For example software update which
+   # operates in library "twilight".
+   #
+   # Please think McFly! Think before using this and not the regular
+   # development package.
+   static-dev:
+      buildScript: buildStatic
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: buildShared
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "systeminfo-hardware" \
+            -p "emmc.basic-svcs" \
+            -o "basic-services.systeminfo:tsd-systeminformation-hardware " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

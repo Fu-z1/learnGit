@@ -1,0 +1,30 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+depends:
+  - navigation::tsd-nav-sdk-positioning-api-dev
+  - navigation::tsd-nav-sdk-mapmatching-api-dev
+  - navigation::tsd-nav-common-mib3-api-dev
+  - navigation::tsd-nav-middleware-interface-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.positioning.mib3.api.git
+   dir: tsd.nav.positioning.mib3.api
+   tag: mqb_sop1_eu-150.0.1       #navi-api (internal only interface)
+
+buildScript: |
+   buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+
+multiPackage:
+   ? ""
+   :
+      inherit: [navi_compflags_werror_sanitize]
+      #inherit: [navi_compflags_sanitize]
+      multiPackage:
+        dev:
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']

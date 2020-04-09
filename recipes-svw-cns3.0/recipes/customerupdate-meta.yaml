@@ -1,0 +1,136 @@
+inherit: [packing-image]
+
+depends:
+   - name: toolchain::aarch64-linux-gnu
+     use: [tools, environment]
+     forward: True
+
+buildVarsWeak: [PACKAGE_VERSION, MODULE_VERSION, BUILDREF]
+
+multiPackage:
+   media:
+      depends:
+         - media::mediaapplication::tsd-media-mib3-target
+         - media::libraries::ext-cinemo-target
+         - media::mediaapplication::tsd-media-engine-target
+         - media::mediaapplication::tsd-media-engine-cinemo-target
+      buildScript: |
+         rm -rf *
+         echo ${PACKAGE_VERSION} > cu_media.version
+
+      packageScript: |
+         buildSwupImage --packageName "media" \
+            --file $1/cu_media.version
+
+   sal:
+      depends:
+         - sal::tsd-sal-app-target
+         - sal::tsd-sal-config-mib3-target
+         - sal::tsd-sal-api-target
+         - sal::tsd-sal-audio-mib3-target
+         - sal::tsd-sal-video-cinemo-target
+         - sal::tsd-sal-mirrorlink-mib3-target
+         - sal::tsd-sal-carplay-target
+         - sal::tsd-sal-iap2-target
+         - sal::tsd-sal-gal-target
+         - sal::tsd-sal-carplay-brands-target
+         - sal::tsd-sal-audio-target
+         - sal::tsd-sal-video-target
+         - sal::ext-apple-carplay-target
+         - sal::tsd-sal-cinemo-target
+         - sal::tsd-android-aoa-target
+         - sal::ext-google-gal-target
+         - sal::tsd-sal-common-target
+         - sal::ext-realvnc-target
+         - sal::ext-jrtplib-target
+         - sal::ext-apple-bonjour-target
+      buildScript: |
+         rm -rf *
+         echo ${PACKAGE_VERSION} > cu_sal.version
+
+      packageScript: |
+         buildSwupImage --packageName "sal" \
+            --file $1/cu_sal.version
+
+   wlan:
+      depends:
+         - name: connectivity::networking::ext-cypress-utils-dhd
+           if: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+         - connectivity::networking::ext-cypress-utils-wl
+         - connectivity::networking::ext-dhd-cypress
+         - connectivity::networking::ext-wpasupplicant-cypress-target
+         #if tsd-networking-mib3-target relevant then uncomment follwoing comment
+         #- connectivity::networking::tsd-networking-mib3-target
+      buildScript: |
+         rm -rf *
+         echo ${PACKAGE_VERSION} > cu_wlan.version
+
+      packageScript: |
+         buildSwupImage --packageName "wlan" \
+            --file $1/cu_wlan.version
+
+   web-browser:
+      depends:
+         - onlineservices::tsd-onlineservices-web-engine-target
+         - onlineservices::ext-web-browser-target
+      buildScript: |
+         rm -rf *
+         echo ${PACKAGE_VERSION} > cu_web-browser.version
+
+      packageScript: |
+         buildSwupImage --packageName "web-browser" \
+            --file $1/cu_web-browser.version
+
+   stationdb:
+      depends:
+         - radio::ext-stationdb-sqlitedb-base-target
+      buildScript: |
+         rm -rf *
+         echo ${PACKAGE_VERSION} > cu_stationdb.version
+
+      packageScript: |
+         buildSwupImage --packageName "stationdb" \
+            --file $1/cu_stationdb.version
+
+   bt-phone:
+      depends:
+         - phone::bt-phone::tsd-bt-phone-mib3-target
+         - phone::bt-devicemanagement::tsd-bt-management-mib3-target
+         - phone::bt-handsfree::tsd-bt-handsfree-mib3-target
+         - phone::bt-handsfree::tsd-bt-handsfree-target
+         - phone::bt-mediacontroller::tsd-bt-media-mib3-target
+         - phone::bt-messaging::tsd-bt-messaging-mib3-target
+         - phone::bt-middleware::tsd-blueware-mib3-bluego-target
+         - phone::bt-middleware::tsd-blueware-bluego-target
+         - phone::bt-middleware::ext-bluego-target
+         - phone::bt-organizer::tsd-organizer-mib3-target
+      buildScript: |
+         rm -rf *
+         echo ${PACKAGE_VERSION} > cu_bt-phone.version
+
+      packageScript: |
+         buildSwupImage --packageName "bt-phone" \
+            --file $1/cu_bt-phone.version
+
+   radio-tuner:
+      depends:
+         - radio::ext-tuner-firmware-target
+      buildScript: |
+         rm -rf *
+         echo ${PACKAGE_VERSION} > cu_radio-tuner.version
+
+      packageScript: |
+         buildSwupImage --packageName "radio-tuner" \
+            --file $1/cu_radio-tuner.version
+
+   sds-asr-resources:
+      depends:
+         - name: sds::asr::resources-integration-pkg
+           use: [deps]
+      buildScript: |
+         rm -rf *
+         echo ${PACKAGE_VERSION} > cu_sds-asr-resources.version
+
+      packageScript: |
+         buildSwupImage --packageName "sds-asr-resources" \
+            --file $1/cu_sds-asr-resources.version

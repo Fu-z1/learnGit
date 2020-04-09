@@ -1,0 +1,71 @@
+inherit: [install, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only"
+   PKG_VERSION: "1.4.4"
+   #PKG_NAME: "conntrack-tools"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#   PKG_VERSION: "1.4.4"
+   PKG_NAME: "ext.conntrack-tools"
+
+depends:
+  - connectivity::networking::ext-libmnl-dev
+  - connectivity::networking::ext-libnfnetlink-dev
+  - connectivity::networking::ext-libnetfilter-conntrack-dev
+  - connectivity::networking::ext-libnetfilter-cttimeout-dev
+  - connectivity::networking::ext-libnetfilter-cthelper-dev
+  - connectivity::networking::ext-libnetfilter-queue-dev
+  - use: []
+    depends:
+      # Runtime dependendies
+      - connectivity::networking::ext-libmnl-target
+      - connectivity::networking::ext-libnfnetlink-target
+      - connectivity::networking::ext-libnetfilter-conntrack-target
+      - connectivity::networking::ext-libnetfilter-cttimeout-target
+      - connectivity::networking::ext-libnetfilter-cthelper-target
+      - connectivity::networking::ext-libnetfilter-queue-target
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.conntrack.tools.git
+    dir: ${PKG_NAME}
+    tag: conntrack-tools-1.4.4_PCC_2
+
+privateEnvironment:
+   MAKE_JOBS: "1"
+
+buildVars: [PKG_NAME, AR, CC, LD]
+buildTools: [autotools]
+buildScript: |
+   # Definition of common stuff for building and installing the conntrack-tools package
+   CONF_OPTIONS=(
+      --disable-systemd
+      --sbindir=/usr/bin
+   )
+
+   # Preparing build process (cleanup, synching etc.)
+   rm -rf *
+   rsync -a --delete $1/${PKG_NAME}/ ${BOB_CWD}
+
+   # Building the conntrack-tools package
+   autotoolsBuild ${BOB_CWD} ${CONF_OPTIONS[@]}
+
+multiPackage:
+   dev:
+      packageScript: installPackageDev "$1/dist"
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         installPackageTarget $1/dist
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-conntrack-tools" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-conntrack-tools " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

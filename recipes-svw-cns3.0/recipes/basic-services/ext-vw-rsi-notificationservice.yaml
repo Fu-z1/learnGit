@@ -1,0 +1,87 @@
+inherit: [cmake, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_VERSION: "2.19.0"
+   PKG_NAME: "ViWi Notification Center"
+   PKG_PATCH_VERSION: "2.19.0"
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+environment:
+   PCC_ISSW_VARIANT: "$(getUniqueFeatureFromList,${VARIANTS},SW_CSW_ISSW)"
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden"
+
+depends:
+  - libs::ext-openssl-dev
+  - system::ext-poco-dev
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+      - system::ext-poco-target
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.notificationservice.git
+    dir: ext.vw.rsi.notificationservice
+    tag: SOP1_v2.32.5
+    branch: master_mqb_sop1_eu
+
+buildVars: [PCC_ISSW_VARIANT]
+buildScript: |
+   CMAKE_SRC_PATH="$1/ext.vw.rsi.notificationservice"
+   #POCO_STATIC="ON"
+   cmakeConfigure -DSHARED_LIBRARY_VERSION=00
+   makeParallel
+   cmakeInstall install
+
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+
+         # for debug there is a postfix
+         DbgPostFix=""
+         if [ "${CMAKE_BUILD_TYPE:-}" == "Debug" ]; then
+            DbgPostFix="d"
+         fi
+
+         rsync -a --delete $1/dist/ .
+         if [ "${LIBDIR:-}" != "lib" ]; then
+            mv ./usr/lib ./usr/${LIBDIR}
+         fi
+
+
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} \
+                  -l MIBSecurityLib${DbgPostFix}         \
+                  -l MIBServiceLib${DbgPostFix}          \
+                  -l MIBUtilLib${DbgPostFix}     \
+                  -l MIBNotificationCenterLib${DbgPostFix}     \
+                                ext.vw.rsi.notificationservice
+
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         # the following libs are already build with ServiceRegistry, CarService or NavSDClient, dont't distribute again
+         find ./usr/${LIBDIR}/ -name "*MIBSecurityLib*"       -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceLib*"        -delete
+         find ./usr/${LIBDIR}/ -name "*MIBUtilLib*"           -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceDataLib*"    -delete
+         find ./usr/${LIBDIR}/ -name "*MIBServiceDBLib*"      -delete
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-vw-rsi-notificationservice" \
+            -p "emmc.basic-svcs" \
+            -o "basic-services:ext-vw-rsi-notificationservice " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

@@ -1,0 +1,28 @@
+scmOverrides:
+
+# ---------------------------------------------------------------------------- #
+#                    normal audio modules
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.ampcontrol.mib3.git"
+      del: [commit, tag]
+      set:
+         tag: "1.2.9"
+# ---------------------------------------------------------------------------- #
+#                    normal radio modules
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.adaption.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "feature/adaptToNewUdsApi"
+# -----------------------------------------------------------------------------#
+#                   navi
+
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.diagnosis.proxy.git"
+      del: [commit, tag]
+      set:
+         branch: "fix/DEFECT-11855"
+

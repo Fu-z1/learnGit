@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.api.mib3.mqb.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/ethernetDatadefinitionApi"
+        commit: "d9fa33095378bd370e54b15e81e440a51b3b7b1c"

@@ -1,0 +1,136 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Base Functions"
+
+depends:
+  - audio::audiorouter::tsd-audio-audiorouter-client-api-dev
+  - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-dev
+  - system::tsd-common-dev
+  - radio::tsd-common-timer-dev
+  - system::tsd-drivers-dev
+  - libs::ext-libxml2-dev
+  - communication::tsd-communication-dev
+  - carcom::tsd-peripheral-controller-api-dev
+  - basic-services::systeminfo::tsd-systeminformation-hardware-dev
+  - basic-services::systeminfo::tsd-systeminformation-features-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - radio::tsd-common-timer-target
+      - system::tsd-drivers-target
+      - audio::audiorouter::tsd-audio-audiorouter-client-api-target
+      - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-target
+      - libs::ext-libxml2-target
+      - communication::tsd-communication-target
+      - carcom::tsd-peripheral-controller-api-target
+      - basic-services::systeminfo::tsd-systeminformation-hardware-target
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.amfm.mib3.git
+    dir: tsd.radio.middleware.amfm.mib3
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.api.git
+    dir: tsd.radio.middleware.api
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.common.git
+    dir: tsd.radio.middleware.common
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.dab.git
+    dir: tsd.radio.middleware.dab
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.engineeringapi.git
+    dir: tsd.radio.middleware.engineeringapi
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.externtypes.git
+    dir: tsd.radio.middleware.externtypes
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.fmdiversity.git
+    dir: tsd.radio.middleware.fmdiversity
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.iboc.mib3.git
+    dir: tsd.radio.middleware.iboc.mib3
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.linking.git
+    dir: tsd.radio.middleware.linking
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.mgnt.git
+    dir: tsd.radio.middleware.mgnt
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.tunermw.git
+    dir: tsd.radio.middleware.tunermw
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.vicsmw.git
+    dir: tsd.radio.middleware.vicsmw
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.antenna.git
+    dir: tsd.radio.middleware.antenna
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.dab.concealment.git
+    dir: tsd.radio.middleware.dab.concealment
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.audioprocessing.git
+    dir: tsd.radio.middleware.audioprocessing
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.systeminformation.git
+    dir: tsd.radio.middleware.systeminformation
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.dab.mrc.git
+    dir: tsd.radio.middleware.dab.mrc
+    branch: cns_mqb_sop1
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "radio-middleware" \
+            -p "emmc.radio" \
+            -o "radio:tsd-radio-middleware " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   swittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestTargets tsd.radio.middleware.amfm.mib3.test.ModuleSwitSuite
+         tsd.radio.middleware.dab.test.ModuleSwitSuite
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

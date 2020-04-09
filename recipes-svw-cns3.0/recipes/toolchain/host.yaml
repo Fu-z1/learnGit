@@ -1,0 +1,46 @@
+shared: True
+
+privateEnvironment:
+   # The host toolchain depends on the actual system that we're running on.  In
+   # the sandbox this is always a x86_64 compiler. This is also the default for
+   # the host (see default.yaml - AUTOCONF_BUILD). If the user overrides that
+   # from the command line we adapt accordingly.
+   ARCH: "$(if-then-else,$(is-sandbox-enabled),x86_64,$(if-then-else,$(match,${AUTOCONF_BUILD},'^x86_64'),x86_64,i586))"
+
+packageScript: |
+   # If we are in a sandbox then the accompanying toolchain is in /toolchain.
+   # Otherwise there is (hopefully) nothing in this location and the other
+   # elements of $PATH (/usr/bin) will take precedence.
+   ln -sf /toolchain/gcc-6.4.0/bin bin
+
+provideVars:
+   # architecture
+   ARCH: "${ARCH}"
+   AUTOCONF_HOST:   "${AUTOCONF_BUILD}"
+   AUTOCONF_TARGET: "${AUTOCONF_BUILD}"
+   TARGET_TYPE: "host"
+
+   # compiler settings
+   CXXFLAGS: "-g -std=c++11"
+   CFLAGS: "-g"
+   LDFLAGS: ""
+   LIBDIR: "$(if-then-else,$(eq,${ARCH},x86_64),lib64,lib)"
+   SYSROOT: ""
+
+   # tools
+   AR: "ar"
+   AS: "as"
+   CC: "gcc"
+   CPP: "cpp"
+   CXX: "g++"
+   GDB: "gdb"
+   LD: "ld"
+   NM: "nm"
+   OBJCPY: "objcopy"
+   OBJDMP: "objdump"
+   RANLIB: "ranlib"
+   STRIP:  "strip"
+
+provideTools:
+   host-toolchain: "bin"
+   toolchain: "bin"

@@ -1,0 +1,55 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   PKG_VERSION: "KOR_1B05_F1711_C1711_KOR_2.5.2_05B"
+   PKG_HASH: "60c2dba503290a45bb231f9617747c0bd6d86b65"
+
+   MAP_LOCATION: "maps"
+
+checkoutSCM:
+  - if: $(eq,${mapupdate:-0},0)
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}${MAP_LOCATION}/${PKG_VERSION}.tgz
+    digestSHA1: ${PKG_HASH}
+    extract: no
+
+buildScript: |
+   rm -rf *
+   ln -sf $1/*tgz
+packageVars: [PKG_VERSION]
+multiPackage:
+   pkg:
+      inherit: [packing-module]
+      packageScript: |
+         mkdir -p tmp/var/lib/nav/map
+         tar xzf $1/*.tgz -C tmp/var/lib/nav/map
+         echo ${PKG_VERSION} > tmp/var/lib/nav/map/map.version
+         buildSwupModule -n 'map' -p "emmc.maps" -o 'map::ext-autonavi-map-kr-livecache' -f tmp \
+            -m 'display,display,0775,/var/lib/nav/map/SDS$'   \
+            -m 'display,display,0775,/var/lib/nav/map/SDS/.*' \
+            -m 'display,display,0775,/var/lib/nav/map/[^/]+/SDS$'   \
+            -m 'display,display,0775,/var/lib/nav/map/[^/]+/SDS/.*' \
+            -m 'display,display,0771,/var/lib/nav$'           \
+            -m 'display,display,0771,/var/lib/nav/.*' --      \
+            --requiredBy '{"Packages":[{"PackageName":"prescripts.map-delete","Flags":"Selected"},{"PackageName":"prescripts.updatemanager-delete","Flags":"Selected"}]}' \
+            -U "Partition=rootfs_ro" \
+            -U "Optional=True"
+
+         rm -rf tmp
+
+   target:
+      packageScript: |
+         mkdir -p var/lib/nav/map
+         pushd var/lib/nav/map
+         echo ${PKG_VERSION} > map.version
+         tar xzf $1/*tgz
+
+   cloud:
+      packageScript: |
+         mkdir -p usr/bin/map
+         pushd usr/bin/map
+         tar xzf $1/*tgz
+
+provideVars:
+   TRAIN_PKG_VERSION: ${PKG_VERSION}

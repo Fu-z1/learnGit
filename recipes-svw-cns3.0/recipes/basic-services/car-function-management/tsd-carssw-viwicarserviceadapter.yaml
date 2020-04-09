@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - basic-services::car-function-management::ext-vw-carssw-viwicarservice-dev
+  - basic-services::car-function-management::ext-vw-carssw-dev
+  - basic-services::car-function-management::tsd-carssw-api-dev
+  - basic-services::car-function-management::tsd-carssw-generaladapters-dev
+  - basic-services::rsi-service-registry::tsd-rsi-serviceregistryadapter-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - basic-services::car-function-management::ext-vw-carssw-viwicarservice-target
+      - basic-services::car-function-management::ext-vw-carssw-target    # I think we do not need this
+      - basic-services::car-function-management::tsd-carssw-api-target
+      - basic-services::car-function-management::tsd-carssw-generaladapters-target
+      - basic-services::rsi-service-registry::tsd-rsi-serviceregistryadapter-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwicarserviceadapter.git
+    dir: tsd.carssw.viwicarserviceadapter
+    tag: mqb_sop1_eu-2.6.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+      buildScript: |
+         buildenvBuildAll
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "carssw-viwicarserviceadapter" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:tsd-carssw-viwicarserviceadapter " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+      buildScript: |
+         buildenvBuildAll
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

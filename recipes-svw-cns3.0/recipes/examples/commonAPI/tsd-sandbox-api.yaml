@@ -1,0 +1,30 @@
+inherit: [buildenv]
+
+depends:
+   - system::tsd-common-dev
+   - communication::ext-commonapi-runtime-dev
+   - communication::tsd-communication-binding-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:dirk.mueller/tsd.sandbox.api.git
+      dir: tsd.sandbox.api
+      branch: develop
+
+buildVars: [LIBDIR]
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev       
+      provideDeps:
+         - system::tsd-common-dev
+         - communication::ext-commonapi-runtime-dev
+         - communication::tsd-communication-binding-dev
+
+   target:
+      packageScript: |
+         buildenvPackageTarget

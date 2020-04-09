@@ -1,0 +1,22 @@
+inherit: [buildenv]
+
+depends:
+  - system::ext-jansson-dev
+  - system::tsd-common-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.rsi.generator.generic.git
+   dir: tsd.rsi.generator.generic
+   tag: mqb_sop1_eu-2.4.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+         cp -r $1/tsd.rsi.generator.generic/staticFiles dist/usr/bin/staticFiles/
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"

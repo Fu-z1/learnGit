@@ -1,0 +1,38 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-cppsqlite-nds-dev
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.rds.runtime.git
+   dir: tsd.rds.runtime
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_werror_sanitize]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: |
+           buildenvBuildAll
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+  doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

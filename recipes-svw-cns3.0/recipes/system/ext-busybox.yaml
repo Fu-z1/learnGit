@@ -1,0 +1,68 @@
+inherit: [autotools, make, packing-module, patch]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0"
+   PKG_VERSION: "1.26.2"
+   PKG_NAME: "busybox"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::tsd-config-buildcfg
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-busybox/busybox-${PKG_VERSION}.tar.bz2
+   digestSHA1: "0b3e3cd49d6d9e30f66e364bf842663348b23dc9"
+
+checkoutDeterministic: True
+checkoutVars: [PKG_VERSION]
+checkoutScript: |
+   cd busybox-${PKG_VERSION}
+   patchApplySeries $<<ext-busybox/*.diff>>
+
+buildVars: [CROSS_COMPILE]
+buildTools: [host-toolchain]
+buildScript: |
+   build () {
+      # prevent timestamps in configuration
+      export KCONFIG_NOTIMESTAMP=1
+
+      rm -rf dist
+      mkdir -p dist
+      if [[ ( ! -e .config ) || ( ${BOB_DEP_PATHS["system::tsd-config-buildcfg"]}/busybox_defconfig -nt .config ) ]] ; then
+         cp ${BOB_DEP_PATHS["system::tsd-config-buildcfg"]}/busybox_defconfig .config
+         make -C "$1/busybox-${PKG_VERSION}" O=$PWD oldconfig < /dev/null
+      fi
+
+      makeParallel -C "$1/busybox-${PKG_VERSION}" O=$PWD SKIP_STRIP=y busybox
+      make CONFIG_PREFIX="${PWD}/dist" install
+      rm -f "${PWD}/dist/linuxrc"
+   }
+
+packageScript: |
+   autotoolsPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-busybox" \
+      -p "emmc.system" \
+      -o "system:ext-busybox " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+multiPackage:
+   "":
+      buildScript: |
+         build $1
+   pam:
+      depends:
+         - system::ext-libpam-dev
+         - use: []
+           depends:
+            - system::ext-libpam-target
+
+      buildScript: |
+         export CFLAGS="${CFLAGS} -I${BOB_DEP_PATHS[system::ext-libpam-dev]}/usr/include"
+         export LDFLAGS="${LDFLAGS} -L${BOB_DEP_PATHS[system::ext-libpam-dev]}/usr/${LIBDIR}"
+         build $1
+
+      provideDeps: [ '*-target' ]

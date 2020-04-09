@@ -1,0 +1,56 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - basic-services::car-function-management::ext-vw-carssw-viwinavsdclient-dev
+  - basic-services::car-function-management::tsd-carssw-api-dev
+  - basic-services::car-function-management::tsd-carssw-generaladapters-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::car-function-management::ext-vw-carssw-viwinavsdclient-target
+      - basic-services::car-function-management::tsd-carssw-api-target
+      - basic-services::car-function-management::tsd-carssw-generaladapters-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwinavsdclientadapter.git
+    dir: tsd.carssw.viwinavsdclientadapter
+    tag: mqb_sop1_eu-1.7.0
+    branch: master_mqb_sop1_eu
+
+
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+      buildScript: |
+         buildenvBuildAll
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "carssw-viwinavsdclientadapter" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:tsd-carssw-viwinavsdclientadapter " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+      buildScript: |
+         buildenvBuildAll
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

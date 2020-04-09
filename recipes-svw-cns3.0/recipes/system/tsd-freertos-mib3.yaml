@@ -1,0 +1,74 @@
+inherit: [buildenv, make, patch, werror, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later WITH freertos-exception-2.0)"
+   PKG_VERSION: "8.2.3"
+   PKG_NAME: "freertos"
+   PKG_PATCH_VERSION: "0001"
+   PKG_RESPONSIBLE: "System-System"
+
+environment:
+   TRACE_RECORDER_LIBRARY_VERSION: "3.1.2"
+
+checkoutSCM:
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/tsd-freertos-mib3/FreeRTOSV${PKG_VERSION}.zip
+    digestSHA1: "75ede5d24af1d7f30d2fc4cbf52ba0746115912e"
+    dir: freertos/FreeRTOS
+
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/tsd-freertos-mib3/TraceRecorder-${TRACE_RECORDER_LIBRARY_VERSION}.zip
+    digestSHA1: "d0692011c6f8bbb927487f64203248b0aa3f941e"
+    dir: freertos/TraceRecorder
+
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.freertos.mib3.git
+    dir: tsd.freertos.mib3
+    tag: mqb_sop1_eu-1.28.0
+    branch: master_mqb_sop1_eu
+
+checkoutVars: [PKG_VERSION]
+checkoutDeterministic: true
+checkoutScript: |
+   pushd freertos
+
+   # Symlink the FreeRTOS folder because tsd.freertos.mib3 expects it at this
+   # location. Remove whatever specific version is there to keep incremental
+   # updates working.
+   rm -rf FreeRTOSV* || true
+   ln -sf FreeRTOS/FreeRTOSV${PKG_VERSION} FreeRTOSV${PKG_VERSION}
+
+   pushd FreeRTOS/FreeRTOSV${PKG_VERSION}
+   patchApplySeries -p1 $<<freertos/FreeRTOSV8.2.3/*.patch>>
+   popd
+
+   pushd TraceRecorder
+   patchApplySeries -p1 $<<freertos/TraceRecorder/*.patch>>
+   popd
+
+   popd
+
+buildTools: [buildenv]
+buildVars: [CMAKE_TARGET_FILE]
+buildScript: |
+   mkdir -p build install
+
+   pushd build
+   buildenvConfigure
+   makeParallel
+   make install DESTDIR=${PWD}/../install
+   popd
+
+   pushd install
+   tsd-buildenv-create-shim.sh -p usr -I include -f "-Wl,--whole-archive" -l ext.freertos -f "-Wl,--no-whole-archive" ext.freertos
+   popd
+
+packageScript: |
+   cp -a $1/install/* .
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "freertos-mib3" \
+      -p "emmc.system" \
+      -o "system:tsd-freertos-mib3 " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

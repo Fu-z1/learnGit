@@ -1,0 +1,57 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+
+depends:
+  - navigation::tsd-rds-runtime-dev
+  - system::tsd-common-dev
+  - system::tsd-cppsqlite-nds-dev
+
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.codec.nds.cpp.${PKG_VERSION}.git
+   dir: tsd.nav.codec.nds.cpp.${PKG_VERSION}
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildVars: [TARGET_TYPE, NDS_VERSION]
+buildScript: |
+   MAKE_JOBS=2
+   case "${TARGET_TYPE}" in
+      host)
+         buildenvBuildAll -DTSD_NAV_CODEC_NDS_CPP_${NDS_VERSION}_USE_MASTERBUILD=On \
+            -DTSD_NAV_CODEC_NDS_CPP_${NDS_VERSION}_USE_SPLITED_MASTERBUILD=On
+         ;;
+      embedded)
+         buildenvBuildAll -DTSD_NAV_CODEC_NDS_CPP_${NDS_VERSION}_USE_MASTERBUILD=On \
+            -DTSD_NAV_CODEC_NDS_CPP_${NDS_VERSION}_USE_SPLITED_MASTERBUILD=On
+         ;;
+   esac
+
+multiPackage:
+   "2_5_3":
+       privateEnvironment:
+         PKG_VERSION: "2.5.3"
+         NDS_VERSION: "2_5_3"
+       inherit: [navi_compflags_werror_sanitize]
+       #inherit: [navi_compflags_sanitize]
+       multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ['*-dev']
+
+   "2_5_2":
+       privateEnvironment:
+         PKG_VERSION: "2.5.2"
+         NDS_VERSION: "2_5_2"
+       inherit: [navi_compflags_werror_sanitize]
+       #inherit: [navi_compflags_sanitize]
+       multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ['*-dev']

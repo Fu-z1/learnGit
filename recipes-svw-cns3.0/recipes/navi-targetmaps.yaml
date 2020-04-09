@@ -1,0 +1,30 @@
+inherit: [root, rootfs,devdrop]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+   
+multiPackage:
+      DACHCZ:
+         depends:
+            - maps::ext-here-map-dachcz-livecache-target
+      EU1:
+         depends:
+            - maps::ext-here-map-eu1-livecache-target
+      EU2:
+         depends:
+            - maps::ext-here-map-eu2-livecache-target
+      RDW1:
+         depends:
+            - maps::ext-here-map-rdw1-livecache-target
+      RDW2:
+         depends:
+            - maps::ext-here-map-rdw2-livecache-target
+      RDW2-Indien:
+         depends:
+            - maps::ext-here-map-rdw2-indien-livecache-target
+      JP:
+         depends:
+            - maps::ext-autonavi-map-jp-livecache-target
+      KR:
+         depends:
+            - maps::ext-autonavi-map-kr-livecache-target

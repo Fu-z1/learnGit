@@ -1,0 +1,45 @@
+inherit: [packing-module, buildenv]
+
+depends:
+  - libs::ext-pixman-dev
+  - system::bsp::ext-gbm-dev
+  - system::bsp::ext-weston-dev
+  - system::ext-wayland-dev
+  - system::ext-libdrm-dev
+  - system::ext-libxkbcommon-dev
+  - use: []
+    depends:
+      - libs::ext-pixman-target
+      - system::bsp::ext-gbm-target
+      - system::bsp::ext-weston-target
+      - system::ext-libdrm-target
+      - system::ext-wayland-target
+      - system::ext-libxkbcommon-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.ivi.hmi.controller.git
+   dir: tsd.ivi.shell
+   #tag: mqb_sop1_eu-1.5.0
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1480_dev
+
+buildTools: [wayland-scanner]
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         buildenvPackageDev
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ivi-shell" \
+            -p "emmc.system" \
+            -o "system:tsd-ivi-shell" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

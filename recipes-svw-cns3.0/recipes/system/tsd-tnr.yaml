@@ -1,0 +1,22 @@
+inherit: [packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+   PKG_ARTEFACT_TYPE: "Data"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tnrref.git
+   #tag: mqb_sop1_eu-1.1.0
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1480_dev
+
+multiPackage:
+   pkg:
+      buildScript: |
+         mkdir -p dist/etc/swup/tnr
+         rsync -a --delete $1/tnrref.csv dist/etc/swup/tnr
+
+      packageScript: |
+         buildSwupModule -n TNR -p "emmc.system" -o 'tsd-tnr' -f $1/dist --\
+            -U "Partition=rootfs_ro"

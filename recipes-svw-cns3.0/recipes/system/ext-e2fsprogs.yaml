@@ -1,0 +1,40 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0 AND BSD-3-Clause AND MIT-advertising)"
+   PKG_VERSION: "1.43.4"
+   PKG_NAME: "e2fsprogs"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-e2fsprogs/e2fsprogs-${PKG_VERSION}.tar.xz
+   digestSHA1: 3073dfe3d67075d3ae68e41e78120f14a18ac9ba
+
+buildVars: [PKG_VERSION, LDFLAGS]
+buildTools: [toolchain, host-toolchain] # tools in utils are compiled for host
+buildScript: |
+   autotoolsBuild $1/e2fsprogs-${PKG_VERSION}
+
+multiPackage:
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-e2fsprogs" \
+            -p "emmc.system" \
+            -o "system:ext-e2fsprogs" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   static:
+      environment:
+         LDFLAGS: "--static"
+      packageScript: |
+         autotoolsPackageTarget
+
+   rescue:
+      packageScript: |
+         autotoolsPackageTarget
+         find . -type f -not -name "mkfs.ext4" -exec rm -rf {} +

@@ -1,0 +1,7 @@
+#scmOverrides:
+#   -
+#      match:
+#         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.vw.rsi.viwi.server.git"
+#      del: [commit, tag]
+#      set:
+#         branch: "feature/RSI_21.3"

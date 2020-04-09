@@ -1,0 +1,58 @@
+inherit: [install, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only"
+   PKG_VERSION: "1.0.0"
+   #PKG_NAME: "libnetfilter_cttimeout"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#    PKG_VERSION: "libnetfilter_cttimeout-1.0.0"
+   PKG_NAME: "ext.libnetfilter-cttimeout"
+
+depends:
+  - connectivity::networking::ext-libmnl-dev
+  - use: []
+    depends:
+      # runtime dependencies
+      - connectivity::networking::ext-libmnl-target
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.libnetfilter.cttimeout.git
+    dir: ${PKG_NAME}
+    tag: libnetfilter_cttimeout-1.0.0
+
+buildVars: [PKG_NAME, AR, CC, LD]
+buildTools: [autotools]
+buildScript: |
+   # Preparing build process (cleanup, synching etc.)
+   rm -rf *
+   rsync -a --delete $1/${PKG_NAME}/ ${BOB_CWD}
+
+   # Generating and configuration pre-requisites for building the libnetfilter_cttimeout library
+   aclocal
+   autoreconf --install
+   automake --add-missing
+   autoconf
+
+   # Building the libnetfilter_cttimeout library
+   autotoolsBuild ${BOB_CWD}
+
+multiPackage:
+   dev:
+      packageScript: installPackageDev "$1/dist"
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         installPackageTarget $1/dist
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libnetftr-cttimeout" \
+            -p "emmc.connectivity.netwg" \
+            -o "connectivity.networking:ext-libnetfilter-cttimeout " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

@@ -1,0 +1,132 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "1.11.0"
+   PKG_NAME: "weston"
+   PKG_PATCH_VERSION: "0001"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-libinput-dev
+  - system::ext-wayland-dev
+  - system::ext-wayland-protocols-dev
+  - system::ext-systemd-dev
+  - libs::ext-cairo-dev
+  - libs::ext-pixman-dev
+  - hmi::ext-pango-dev
+  - libs::ext-glib2-dev
+  - use: []
+    depends:
+      - system::ext-libinput-target
+      - system::ext-wayland-target
+      - system::ext-wayland-protocols-target
+      - system::ext-systemd-target
+      - libs::ext-cairo-target
+      - libs::ext-pixman-target
+      - hmi::ext-pango-target
+      - libs::ext-glib2-target
+  - if: "$(eq,${TARGET_TYPE},embedded)"
+    depends:
+      - system::bsp::ext-gbm-dev
+      - system::bsp::ext-wayland-egl-dev
+      - system::ext-mtdev-dev
+      - system::ext-libxkbcommon-dev
+      - use: []
+        depends:
+          - system::bsp::ext-gbm-target
+          - system::bsp::ext-wayland-egl-target
+          - system::ext-mtdev-target
+          - system::ext-libxkbcommon-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.weston.git
+   #tag: 2000.10.40
+   #branch: "2.0.0+renesas-gl-fallback+git95d0e2e9+pcc"
+   branch: main/svw_cns3.0_1480_dev+yocto_3_15
+
+buildVars: [AUTOCONF_HOST]
+buildTools: [wayland-scanner]
+buildScript: |
+   rsync -a --delete $1/ ${PWD}
+   autoreconf -i
+
+   export WESTON_NATIVE_BACKEND="drm-backend.so"
+   export WESTON_SHELL_CLIENT="ivi-shell"
+
+   OPTIONS=(
+      --libdir=/usr/${LIBDIR}
+      --disable-colord
+      --disable-dbus
+      --disable-headless-compositor
+      --disable-junit-xml
+      --disable-lcms
+      --disable-libunwind
+      --disable-rdp-compositor
+      --disable-rpi-compositor
+      --disable-simple-clients
+      --disable-simple-egl-clients
+      --disable-vaapi-recorder
+      --disable-wcap-tools
+      --disable-webp
+      --enable-weston-launch
+      --disable-x11-compositor
+      --disable-xkbcommon
+      --disable-xwayland
+      --disable-xwayland-test
+      --enable-clients
+      --disable-desktop-shell
+      --enable-drm-compositor
+      --enable-egl
+      --enable-fbdev-compositor
+      --enable-fullscreen-shell
+      --enable-gbm
+      --enable-ivi-shell
+      --disable-setuid-install
+      --disable-wayland-compositor
+      --with-cairo=image
+      --enable-systemd-notify
+      --disable-systemd-login
+      --disable-v4l2
+   )
+
+   case $AUTOCONF_HOST in
+      x86_64*-linux*)
+         OPTIONS+=(
+            --enable-x11-compositor
+            --enable-xkbcommon
+            --enable-xwayland
+         )
+         ;;
+   esac
+
+   autotoolsBuild ${PWD} "${OPTIONS[@]}"
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         mkdir -p usr/${LIBDIR}
+         cp -au $1/protocol/*.h usr/include/weston
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l wayland-ivi-application -I include -I include/weston -I include/libweston-2  ext.weston
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l wayland-hmi-controller -I include ext.weston.hmi
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         rm -f usr/lib/weston/desktop-shell.*
+         rm -f usr/libexec/weston-desktop-shell usr/libexec/weston-screenshooter usr/libexec/weston-simple-im
+         find usr/bin     -type f   -name "weston-info*"     -exec rm {} \;
+         find usr/bin     -type f   -name "weston-terminal*" -exec rm {} \;
+         find usr/libexec -type f   -name "weston-keyboard*" -exec rm {} \;
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-weston" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-weston " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

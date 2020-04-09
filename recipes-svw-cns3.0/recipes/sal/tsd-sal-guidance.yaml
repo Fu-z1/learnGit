@@ -1,0 +1,39 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "None"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.sal.guidance.git
+    dir: tsd.sal.guidance
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   ? ""
+   :  buildVars: [AUTOCONF_HOST]
+      buildScript: buildenvBuildAll
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "sal-guidance" \
+                  -p "emmc.sal" \
+                  -o "sal:tsd-sal-guidance " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

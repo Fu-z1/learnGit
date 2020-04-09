@@ -1,0 +1,41 @@
+inherit: [install, make, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0"
+   PKG_VERSION: "1.5.2"
+   PKG_NAME: "mtd-utils"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-acl-dev
+  - system::ext-lzo
+  - system::ext-util-linux-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/mtd-utils.git
+   tag: mqb_sop1_eu-1.2.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [CROSS_COMPILE, LIBDIR]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   for i in "${@:2}" ; do
+      CPPFLAGS+=" -I$i/usr/include"
+      LDFLAGS+=" -L$i/usr/${LIBDIR}"
+   done
+   export CPPFLAGS
+   makeParallel CROSS=$CROSS_COMPILE LDFLAGS="$LDFLAGS"
+
+packageScript: |
+   mkdir -p usr/bin
+   cp -au $1/*/misc-utils/flashcp usr/bin
+   installStripAll ${PWD}
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-mtd-utils" \
+      -p "emmc.system" \
+      -o "system:ext-mtd-utils " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

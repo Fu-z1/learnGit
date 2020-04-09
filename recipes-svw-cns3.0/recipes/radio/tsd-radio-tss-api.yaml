@@ -1,0 +1,52 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Application and Services"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-binding-dev
+  - communication::ext-commonapi-runtime-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-binding-target
+      - communication::ext-commonapi-runtime-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.tss.api.git
+    dir: tsd.radio.tss.api
+    branch: cns_mqb_sop1
+
+checkoutDeterministic: True
+checkoutScript: |
+   # Several subfolders are used in this module and this requires an specific way to generate the CommonAPI code
+   pushd tsd.radio.tss.api
+   CreateAPIModule.py -svn idl/tsd/radio/tss/api/*.fidl idl/tsd/radio/tss/api/am/*.fidl idl/tsd/radio/tss/api/dab/*.fidl \
+                           idl/tsd/radio/tss/api/fm/*.fidl idl/tsd/radio/tss/api/linking/*.fidl idl/tsd/radio/tss/api/stationdb/*.fidl  \
+                           idl/tsd/radio/tss/api/tuner/*.fidl idl/tsd/radio/tss/api/types/*.fidl idl/tsd/radio/tss/api/general/*.fidl
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "radio-tss-api" \
+            -p "emmc.radio" \
+            -o "radio:tsd-radio-tss-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

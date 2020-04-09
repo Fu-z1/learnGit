@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-daemon-dev
+  - system::tsd-common-dev
+  - system::tsd-common-guid-dev
+  - system::tsd-swupdate-rsihmiserver-api-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - system::tsd-swupdate-rsihmiserver-api-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-server-target
+
+checkoutSCM:
+   scm: git
+#  url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.platformmonitor.git
+#  url: git@${DEFAULT_PCC_GIT_SERVER}:thomas.schwarz/tsd.rsi.swupdate.service.git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.rsihmiserver.git
+   dir: tsd.swupdate.rsihmiserver
+   tag: mqb_sop1_eu-3.8.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+         mkdir -p dist/etc/swup/rsihmiserver
+         rsync -a --delete $1/tsd.swupdate.rsihmiserver/etc/swup/rsihmiserver/ dist/etc/swup/rsihmiserver/
+
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-rsihmiserver" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-rsihmiserver " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

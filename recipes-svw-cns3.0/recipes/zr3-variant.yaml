@@ -1,0 +1,931 @@
+inherit: [packing-device, packing-release, packing-rootfs, update-container-utils]
+
+depends:
+  - keys::devkeys::devkeys-updatecontainer
+  - name: system::tsd-pwc-mib3-updater-updater
+    environment:
+       TSD_PWC_MIB3_UPDATER_PREFIX: "misc"
+
+  - system::tsd-pwc-mib3-updater-firmware-pkg
+
+
+   # 64bit binaries
+  - name: toolchain::aarch64-linux-gnu
+    use: [tools, environment]
+    forward: true
+  - system::ext-gdb
+  - system::tsd-config-pkg
+  - system::tsd-config-emmc-layout
+  - system::tsd-tcpprocinfo-pkg
+  - system::tsd-tnr-pkg
+  - basic-services::common-base::common-base-servers
+  - basic-services::common-base::common-base-dev
+  - project::proto-api-cns3.0
+  - if: "${CONFIG_NAV:-1}"
+    depends:
+      - MXNavi::ext-MXNavi-target
+     # - MXNavi::ext-MXNavi-map-target
+
+     # -
+     # name: basic-services::persistence::tsd-persistence-client-mib3-initPersApp-pkg
+     # environment:
+     #    TSD_PERSISTENCE_BUILD_APPS: "1"
+
+  - if: "${CONFIG_AUDIO:-1}"
+    depends:
+      - audio::audiorouter::ext-alsa-utils-target
+      - audio::audiorouter::ext-pulseaudio-target
+      - audio::amplifiercontroller::tsd-audio-ampcontrol-mib3-target
+      - audio::audiomanager::tsd-audio-audiomgr-app-mib3-target
+      - audio::microphoneprocessing::tsd-audio-miccontrol-mib3-target
+
+  - if: "${CONFIG_CARCOM:-1}"
+    depends:
+      - basic-services::car-function-management::tsd-carssw-mib3-target
+      - basic-services::car-function-management::tsd-carssw-viwicarservice-mib3-target
+      - basic-services::car-function-management::tsd-carssw-viwinavsdclient-mib3-target
+      - basic-services::car-function-management::tsd-carssw-viwiusermanagementservice-mib3-target
+      - basic-services::car-function-management::tsd-carssw-viwipsodataexchangeservice-mib3-target
+      - basic-services::car-function-management::tsd-carssw-viwionlineremoteupdateclient-mib3-target
+      - vehicle-connectivity::automotive-ethernet::ext-avbstack-cetitec-target
+      - vehicle-connectivity::automotive-ethernet::tsd-aeth-base-target
+      - vehicle-connectivity::automotive-ethernet::tsd-ethernet-middleware-target
+      - carcom::tsd-carcom-proxy-mib3-target
+
+  - if: "${CONFIG_COMMUNICATION:-1}"
+    depends:
+      - basic-services::rsi-service-registry::tsd-rsi-serviceregistry-target
+
+  - if: "${CONFIG_CONNECTIVITY:-1}"
+    depends:
+      - name: connectivity::networking::ext-cypress-utils-dhd
+        if: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+      - connectivity::networking::ext-cypress-utils-wl
+      - connectivity::networking::ext-iproute2-target
+      - connectivity::networking::ext-iptables-target
+      - connectivity::networking::ext-ipset-target
+      - connectivity::networking::tsd-networking-mib3-target
+      - connectivity::networking::ext-dhd-cypress
+      - connectivity::nfc::tsd-nfc-mib3-target
+      - connectivity::usb::tsd-usb-mib3-target
+      - sal::tsd-sal-app-target
+      - sal::tsd-sal-config-mib3-target
+      - sal::viwiproxy::tsd-sal-viwiproxy-target
+
+  - if: "${CONFIG_HMI:-1}"
+    depends:
+      - hmi::pcc-hmiwatchdog-target
+      - hmi::tsd-notificationservice-mib3-target
+      - hmi::tsd-anim-interpreter-target
+      - hmi::tsd-i18n-mib3-target
+      - hmi::ext-pango-target
+      - hmi::ext-oracle-mcfobjectreader
+      - hmi::ext-oracle-objectswapper
+      - hmi::ext-oracle-xiploader
+      - hmi::ext-zulu-target
+      - hmi::ext-vw-extlibs
+      - hmi::tsd-common-log-java
+      - hmi::tsd-dsi-cpp-target
+      - hmi::tsd-dsi-java
+      - if: "$(flagIsSet,${VARIANTS},SW_HMI_BRAND,vw)"
+        name: hmi::tsd-dsi-native-vw-pkg
+      - if: "$(flagIsSet,${VARIANTS},SW_HMI_BRAND,sk)"
+        name: hmi::tsd-dsi-native-skoda-pkg
+      - hmi::tsd-gesture-service-target
+      - if: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,MQB)"
+        name: hmi::tsd-keypanel-target
+      - if: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W)"
+        name: hmi::tsd-keypanel-37w-target
+#       - hmi::tsd-opengl-jsr231-java
+      - hmi::tsd-ime-target
+      - hmi::tsd-rvc-mib3
+      - hmi::tsd-hmi-language-service-mib3-target
+      - name: hmi::pcc-hmi-integration
+        use: [deps]
+
+  - if: "${CONFIG_MEDIA:-1}"
+    depends:
+      - media::mediaapplication::tsd-media-mib3-target
+      - media::mountingservice::tsd-media-mount-status-service-mib3-target
+      - media::pictureserver::tsd-media-picserver-mib3-target
+      - media::mountingservice::ext-tuxera-filesystems
+      - media::waveplayer::tsd-media-waveplayer-mib3-target
+      - name: media::mediaapplication::tsd-media-mib3-resources-low-pkg
+        if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,800480)"
+      - name: media::mediaapplication::tsd-media-mib3-resources-high-pkg
+        if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1280640)"
+#      -
+#        name: media::mediaapplication::tsd-media-mib3-resources-high-pkg
+#        if: "$(flagIsSet,${VARIANTS},HW_DISPLAY_VARIANT,1560700)"
+      - name: media::waveplayer::tsd-media-waveplayer-mib3-resources-vw-pkg
+        if: "$(flagIsSet,${VARIANTS},SW_HMI_BRAND,vw)"
+      - name: media::waveplayer::tsd-media-waveplayer-mib3-resources-sk-pkg
+        if: "$(flagIsSet,${VARIANTS},SW_HMI_BRAND,sk)"
+
+  - if: "${CONFIG_NAV:-1}"
+    depends:
+      # Navi-Src
+      #- navigation::tsd-nav-mainapp-mib3-target
+      # Config and resource files
+      #- navigation::tsd-nav-configdata-variant-embedded-target
+      # Navi-Proxy
+      - navigation::tsd-nav-vehiclestatus-proxy-target
+      - navigation::tsd-gnss-ublox
+      - navigation::tsd-gnss-ocu
+      - navigation::tsd-pos-sensors-mib3
+      - navigation::tsd-pos-sensors-cache-target
+      - navigation::tsd-gps-clock-feeder-target
+      - navigation::tsd-nav-diagnosis-proxy-target
+      - navigation::tsd-nav-pos-sensors-api-target
+      - navigation::tsd-nav-pos-gps-api-target
+      - if: "$(flagIsSet,${VARIANTS},SW_HMI_REGION,jp)"
+        depends:
+          - navigation::tsd-nav-vms-app-target
+          - navigation::tsd-nav-traffic-vics-fonts-target
+
+  - if: "${CONFIG_ONLINE:-1}"
+    depends:
+      - onlineservices::ext-3proxy
+          # - onlineservices::ext-preloaded-webapps
+      - onlineservices::ext-nodejs
+      - onlineservices::ext-npm-sqlite
+          #- onlineservices::tsd-onlineservices-framework-target
+      - onlineservices::tsd-onlineservices-remoteupdate-target
+          # - onlineservices::tsd-onlineservices-webapp-management-target
+          # - onlineservices::tsd-onlineservices-webapp-management-pkg
+          #- onlineservices::tsd-onlineservices-web-engine-target
+          #- onlineservices::tsd-onlineservices-web-engine-dsi-dummy-target
+          #- onlineservices::tsd-onlineservices-webserver-target
+          #- onlineservices::tsd-onlineservices-common-target
+          #- onlineservices::tsd-onlineservices-diagnosis-target
+      - onlineservices::tsd-onlineservices-vkms-update-target
+      - onlineservices::tsd-onlineservices-tpfs-target
+        #tsd-onlineservices-truststoreupdater no longer used in cns project
+        #- onlineservices::tsd-onlineservices-truststoreupdater-target
+      - onlineservices::cns-applications-target
+      - onlineservices::tsd-onlineservices-mosquitto-target
+      - onlineservices::jpcc-online-coreservices-target
+      # key storage for dm-integrity backed fs
+      - system::tsd-authentic-fs-vssl
+
+  - if: "${CONFIG_PHONE:-1}"
+    depends:
+      - phone::bt-phone::tsd-bt-phone-mib3-target
+      - phone::phonemanager::tsd-phonemanager-target
+
+  - if: "${CONFIG_RADIO:-1}"
+    depends:
+      - radio::tsd-radio-target
+      - radio::tsd-radio-middleware-flasher-target
+      - radio::tsd-stationdb-app-target
+      - radio::ext-stationdb-sqlitedb-dynamic-target
+      - radio::ext-stationdb-sqlitedb-base-target
+      - radio::ext-tuner-firmware-target
+
+  - if: "${CONFIG_SDS:-1}"
+    depends:
+      - sds::sds-engine
+
+  - if: "${CONFIG_SYSTEM_CORE:-1}"
+    depends:
+      - system::tsd-clock-service-mib3-linux-pkg
+
+  - if: "${CONFIG_SYSTEM_CORE:-1}"
+    depends:
+      - system::ext-busybox-pam
+      - system::ext-cryptsetup
+      - system::ext-dropbear
+      - system::ext-e2fsprogs-target
+      - system::ext-memtool
+      - system::ext-systemd-target
+      - system::tsd-minijournald
+      - system::tsd-waitfor
+      - system::ext-util-linux-target
+      - system::ext-strace
+        #- system::bsp::ext-u-boot-env
+      - system::tsd-root-mib3
+      - system::tsd-dspwatchdog
+      - name: system::tsd-tools-debug
+        if: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+      - system::tsd-config-gpio
+      - system::tsd-pam
+      - system::tsd-system-displaymanager-mib3-target
+        # standalone window
+        #   - system::tsd-system-displaymanager-target
+
+        # kernel modules
+      - system::ext-kmod-adsp
+      - name: system::bsp::ext-busmoni
+        if: "$(flagIsSet,${VARIANTS},SW_BUS_MONITOR,1)"
+      - system::bsp::ext-kmod-glx
+      - system::bsp::ext-kmod-mmngr-target
+      - system::bsp::ext-kmod-uvcs-target
+      - system::bsp::ext-kmod-vsp2-target
+      - system::bsp::ext-kmod-vspm-target
+      - system::bsp::ext-kmod-vspmif-target
+      - system::bsp::ext-renesas-pvrdebug
+      - system::ext-kmod-lttng-modules
+      - system::ext-lttng-tools
+
+        # utilities that are GPLv3 or depend on such library
+      - if: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+        depends:
+          - system::bsp::ext-linux-perf
+          - system::ext-htop
+          - system::ext-rsync
+          - system::ext-mtd-utils
+      - if: "$(flagIsSet,${VARIANTS},SW_PING,1)"
+        depends:
+          - system::ext-iputils-ping
+          - system::ext-iputils-arping
+      - system::ext-iputils-traceroute
+      - system::bsp::ext-linux-firmware
+      - system::ext-minicoredumper-target
+      - system::ext-bootchart2
+      - system::ext-nfs-utils-target
+
+  - if: "${CONFIG_HYPERVISOR:-1}"
+    depends:
+      - system::bsp::ext-kmod-vnet
+      - system::bsp::ext-kmod-vchar-target
+      - system::bsp::ext-kmod-coqoshv-guest-driver
+
+  - if: "${CONFIG_SYSTEM_EXTRA:-0}"
+    depends:
+      - name: system::ext-mc
+        if: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+      - system::ext-valgrind
+      - system::ext-sysstat
+      - system::ext-kmod-adsp-probes
+
+
+  - if: "${CONFIG_SYSTEM_BASIS:-1}"
+    depends:
+        #- system::ext-optee::client-target
+        #- system::ext-optee::test
+      - engineering::gem::tsd-gem-esd-target
+      - engineering::gem::tsd-gem-service-target
+      - system::tsd-infotainmentrecorder-target
+      - system::tsd-logging-mib3-target
+      - basic-services::persistence::tsd-persistence-service-mib3-target
+      - basic-services::persistence::tsd-persistence-eeprom-target
+      - basic-services::persistence::tsd-persistence-dsi-service-target
+      - basic-services::personalization::tsd-personalization-psomaster-target
+      - basic-services::platform-monitor::tsd-platformmonitor-target
+      - basic-services::persistence::tsd-persistence-client-mib3-initPersApp-pkg
+      - system::tsd-swupdate-target
+      - system::tsd-swupdate-rsihmiserver-target
+      - system::tsd-swupdate-client-pwc-target
+      - system::tsd-swupdate-client-flash-target
+      - engineering::testmanager::tsd-testmanager-target
+      - system::tsd-activation-baseserv
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+      - basic-services::systeminfo::tsd-systeminformation-hardware-target
+      - system::ext-vkms-target
+      - system::tsd-vkms-target
+      - navigation::tsd-nav-secure-fs-target
+      - system::ext-fodslave-target
+      - system::ext-tcptrace
+      - system::tsd-tee-cpstate-target
+      - system::tsd-emmcrefresh
+      - system::tsd-update-scripts-preloadFilesHmi-pkg
+      - system::tsd-update-certificates-android-auto-clientCert
+      - system::tsd-update-certificates-android-auto-rootCert
+      - system::tsd-update-certificates-android-auto-privateKey
+
+      - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer)"
+        depends:
+          - system::tsd-swupdate-public-keys-developer-metainfo
+          - system::tsd-swupdate-public-keys-developer-fec
+          - system::tsd-swupdate-public-keys-developer-data
+
+      - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Customer)"
+        depends:
+          - system::tsd-swupdate-public-keys-customer-metainfo
+          - system::tsd-swupdate-public-keys-customer-fec
+          - system::tsd-swupdate-public-keys-customer-data
+
+        # TODO System-Security: Replace variant SW_UPDATE_KEY with an own variant when available
+      - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer)"
+        depends:
+          - system::tsd-tee-cryptolib-testing-apps
+          - system::tsd-tee-cryptolib-swupdate-apps
+          - system::tsd-tee-cryptolib-media-apps
+          - system::tsd-tee-cryptolib-networking-apps
+          - system::tsd-tee-cpstate-apps-testmode
+          - system::tsd-tee-cpstate-apps-cpactive
+          - system::tsd-tee-cpstate-apps-cpprogrammed
+          - system::tsd-tee-cpstate-apps-test
+
+  - name: system::bsp::ext-linux-headers
+    use: [environment]
+  - system::bsp::ext-linux-modules
+
+  - images::boot-device
+  - images::rescue  # only for boardupdater. no package needed
+     #- TODO: move demo image to a seperate zr3-varinat-demo recipe
+     # if: "$(eq,${CONFIG_TARGET},demo)"
+     # name: images::demo
+  - images::rootfs
+  - images::swupdate-image
+  - system::tsd-update-scripts-nav-pkg
+  - system::tsd-update-scripts-hmi-pkg
+  - system::tsd-update-scripts-secure-pkg
+  - system::tsd-update-scripts-crash-pkg
+  - system::tsd-update-scripts-radio-pkg
+  - system::tsd-update-scripts-webapp-pkg
+#  - system::tsd-update-scripts-reset-webapps-pkg
+  - if: "$(eq,${CONFIG_ANDROID:-1},1)"
+    depends:
+    - system::bsp::ext-renesas-h3-android-full
+    - if: "$(eq,${CONFIG_INCREMENT:-0},1)"
+      depends:
+      - system::bsp::ext-renesas-h3-android-increment
+      #- system::ext-vds
+    - system::bsp::ext-opensynergy-virtio-blk-binary
+    - system::bsp::ext-opensynergy-virtio-gpu-binary
+    - system::ext-parted-target
+    #- system::jpcc-update-scripts-cns-gateway-pkg
+    - gateway::cns-gateway-target
+    - gateway::cns-android-powermanager-target
+
+  - if: "$(eq,${CONFIG_HYPERVISOR:-1},1)"
+    depends:
+     - system::bsp::ext-opensynergy-target
+  - if: "$(eq,${CONFIG_HYPERVISOR:-1},2)"
+    depends:
+     - system::bsp::ext-opensynergy-rootfs-coqoshv
+     - system::bsp::ext-opensynergy-rootfs-vendor
+   # DSP binary
+  - name: toolchain::xtensa::xtensa-xcc
+    use: [tools, environment]
+    forward: true
+  - name: audio::soundprocessing::tsd-audio-soundproc-mib3
+    environment:
+       CMAKE_BUILD_TYPE: "RelWithDebInfo"
+    if: "$(eq,${CONFIG_XTENSA:-0},1)"
+
+  - customerupdate-meta-sal
+  - customerupdate-meta-wlan
+  - customerupdate-meta-web-browser
+  - customerupdate-meta-stationdb
+  - customerupdate-meta-bt-phone
+  - customerupdate-meta-radio-tuner
+#  - customerupdate-meta-sds-asr-resources
+  - customerupdate-meta-media
+
+environment:
+   #SWUPDATE_VERSION: "2.33.0"
+   #PWC_VERSION: "1.22.14"
+   PWC_VERSION: "2.02.10"
+   DEVELOPMENT_FLAGS: "true"
+   CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-MinSizeRel}"
+   PACKAGE_VERSION: "${MAJOR}.${DELIVERY}.${BUILDREF}"
+   MODULE_VERSION: "${MAJOR}.${DELIVERY}.${BUILDREF}"
+
+privateEnvironment:
+   SANDBOX: "$(is-sandbox-enabled)"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-system/tsd.boardupdater.mib3.git
+    dir: tsd.boardupdater.mib3
+    #tag: 3.5.0
+    #branch: zr3
+    branch: main/svw_cns3.0_1480_dev
+
+
+buildVars:
+#   - SWUPDATE_VERSION
+  - PWC_VERSION
+  - CONFIG_NAV_MAP
+  - MU_VERSION
+  - TRAIN_NUMBER
+  - UPDATE_VARIANTS
+  - VARIANTS  #important to save in the audit-trail
+  - CONFIG_NO_SYMBOLS_TGZ
+  - CONFIG_TARGET
+  - CONFIG_ANDROID
+  - CONFIG_ALLUPDATE
+  - CONFIG_INCREMENT
+  - CONFIG_INCREMENTAL_FILE
+  - CONFIG_HYPERVISOR
+  - SIGNATURE
+  - SANDBOX
+  - DEVELOPMENT_FLAGS
+  - PLATFORM
+  - CONFIG_FDS
+
+buildVarsWeak: [MAJOR, DELIVERY, BUILDREF]
+buildScript: |
+   rm -rf *
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[system::tsd-config-emmc-layout]
+   unset tocopy[zr3-variant]
+   unset tocopy[packing::packing-scripts]
+   unset tocopy[keys::devkeys::devkeys-updatecontainer]
+
+   copy_and_check_modules() {
+      modules=""
+      for key in $@; do
+         if [ ${tocopy[$key]+isset} ]; then
+            modules="$modules --module ${tocopy[$key]}/_swupdata"
+            unset tocopy[$key]
+         else
+            echo "ERROR: while building device: $key not found in tocopy!"
+         fi
+      done
+   }
+
+   # create prescripts - device
+   prescriptModules="system::tsd-update-scripts-hmi-pkg \
+                     system::tsd-update-scripts-crash-pkg "
+                     #system::jpcc-update-scripts-cns-gateway-pkg
+                     #system::tsd-update-scripts-reset-webapps-pkg"
+
+   copy_and_check_modules $prescriptModules
+
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+      --packageType="device" --packageName="prescripts" \
+      --outputDir UpdateContainer \
+      --diagnosticAddress=0 \
+      --deviceType=MU \
+      $modules
+
+   # boot device from  images::boot
+   unset tocopy['images::boot-device']
+   cp ${BOB_DEP_PATHS['images::boot-device']}/UpdateContainer/* UpdateContainer -r
+
+   # create scripts device
+   scriptsModules="system::tsd-update-scripts-nav-pkg \
+                   system::tsd-update-scripts-preloadFilesHmi-pkg \
+                   system::tsd-update-scripts-secure-pkg \
+                   system::tsd-update-scripts-radio-pkg \
+                   system::tsd-update-scripts-webapp-pkg"
+                   # sds::tts::tsd-sds-tts-app-mib3-config-deleteHdrConfig"
+
+   copy_and_check_modules $scriptsModules
+
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+      --packageType="device" --packageName="scripts" \
+      --outputDir UpdateContainer \
+      --diagnosticAddress=0 \
+      --deviceType=MU \
+      $modules
+
+   # create customerupdates device
+   customerupdateModules="customerupdate-meta-sal \
+                          customerupdate-meta-wlan \
+                          customerupdate-meta-web-browser \
+                          customerupdate-meta-stationdb \
+                          customerupdate-meta-bt-phone \
+                          customerupdate-meta-radio-tuner \
+                          customerupdate-meta-media"
+                          #customerupdate-meta-sds-asr-resources"
+
+   copy_and_check_modules $customerupdateModules
+
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+      --packageType="device" --packageName="customerupdates" \
+      --outputDir UpdateContainer \
+      --diagnosticAddress=0 \
+      --deviceType=MU \
+      $modules
+
+   #create powercontroller device
+   buildSwupDevice --packageVersion ${PWC_VERSION} \
+      --packageType="device" --packageName="powercontroller" \
+      --outputDir UpdateContainer \
+      --diagnosticAddress=0 \
+      --deviceType=MU \
+      --module ${BOB_DEP_PATHS['system::tsd-pwc-mib3-updater-firmware-pkg']}/_swupdata
+   unset tocopy['system::tsd-pwc-mib3-updater-firmware-pkg']
+
+   #create swupdate device
+   swupdateModules="images::swupdate-image"
+
+   copy_and_check_modules $swupdateModules
+
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+      --packageType="device" --packageName="swupdate" \
+      --outputDir UpdateContainer \
+      --diagnosticAddress=0 \
+      --deviceType=MU \
+      $modules
+
+   # create publicKeys device
+   publicKeyModules=""
+   for key in "${!tocopy[@]}"; do
+      if [[ $key == *swupdate-public-keys* ]]; then
+         publicKeyModules="$publicKeyModules $key"
+      fi
+   done
+
+   copy_and_check_modules $publicKeyModules
+
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+      --packageType="device" --packageName="publickeys" \
+      --outputDir UpdateContainer \
+      --diagnosticAddress=0 \
+      --deviceType=MU \
+      $modules
+
+   #create android device
+   ANDROID_DEV=""
+   if [[ ${CONFIG_ANDROID:-1} == 1 ]]; then
+     #androidModules=""
+     #for key in "${!tocopy[@]}"; do
+     #  if [[ $key == *android-rootfs* ]]; then
+     #     androidModules="$androidModules $key"
+     #  fi
+     #done
+       androidModules="system::bsp::ext-renesas-h3-android-full"
+       copy_and_check_modules $androidModules
+
+       buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+         --packageType="device" --packageName="ota" \
+         --outputDir UpdateContainer \
+         --diagnosticAddress=0 \
+         --deviceType=MU \
+         $modules
+
+       ANDROID_DEV="--device ota"
+    fi
+
+   # modules processed by "tsd-swupdate-client-copy"
+   fileCopyModules="radio::ext-stationdb-sqlitedb-dynamic-target \
+                    radio::ext-stationdb-sqlitedb-base-target"
+
+   for key in "${!tocopy[@]}"; do
+      if [[ $key == *tsd-update-certificates* ]]; then
+         fileCopyModules="$fileCopyModules $key"
+      fi
+   done
+
+   copy_and_check_modules $fileCopyModules
+
+   # create fileCopy-device
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+    --packageType="device" --packageName="fileCopy" \
+    --outputDir UpdateContainer \
+    --diagnosticAddress=0 \
+    --deviceType=MU \
+    $modules
+
+
+   # create emmc-device using all remaining modules
+   emmc_modules() {
+      for key in "${!tocopy[@]}"; do
+         echo "--submodule ${key%::*}=${tocopy[$key]}/_swupdata"
+      done | sort
+   }
+   modules=$(emmc_modules)
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+        --packageType="device" --packageName="emmc" \
+        --outputDir UpdateContainer \
+        --diagnosticAddress=0 \
+        --deviceType=MU \
+        ${modules//::/.}
+
+   # set development flags for development software
+   _DEVFLAGS=""
+   if [ $DEVELOPMENT_FLAGS == true ]; then
+      _DEVFLAGS+=" --devFlag SkipCheckManifestChecksum=false"
+      _DEVFLAGS+=" --devFlag SkipCheckInstallerChecksum=false"
+      _DEVFLAGS+=" --devFlag SkipCheckVariant=false"
+   fi
+
+   RELASE_MANIFEST_NAME=""
+   SUPPORTED_TRAINS_STRING=""
+   if [[ "${PLATFORM}"  == "MQB" ]]; then
+      SUPPORTED_TRAINS_STRING="[\"*_?080*\",\"*_?081*\",\"*_?082*\",\"*_?083*\",\"*_?084*\",\"*_?085*\",\"*_?086*\",\"*_?087*\",\"*_?088*\",\"*_?089*\",\"*_?090*\",\"*_?091*\",\"*_?092*\",\"*_?093*\",\"*_?094*\",\"*_?095*\",\"*_?096*\",\"*_?097*\",\"*_?098*\",\"*_?099*\",\"*_?100*\",\"*_?101*\",\"*_?102*\",\"*_?103*\",\"*_?104*\",\"*_?106*\",\"*_?107*\",\"*_?108*\"]"
+   elif [[ "${PLATFORM}"  == "37W" ]]; then
+      SUPPORTED_TRAINS_STRING='["*_?100*","*_?104*","*_?108*","*_?110*","*_?112*","*_?116*"]'
+      RELASE_MANIFEST_NAME+=" --manifestFilename=auto"
+   fi
+
+   CHECK_ALL_UPDATES_FLAG=true;
+   if [[ ${CONFIG_ALLUPDATE:-0} == 0 ]]; then
+      CHECK_ALL_UPDATES_FLAG=false;
+   fi
+   # create release
+   # packageVersion will now be similar to MU-version, patch is rc
+   buildrelease(){
+   buildSwupRelease --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+    --packageType="main" --packageName=${TRAIN_NUMBER} \
+    --updateContainerDir $1 --release ${TRAIN_NUMBER} \
+    --muVersion ${MU_VERSION} --variant ${UPDATE_VARIANTS} \
+    --buildRef ${BUILDREF} \
+    --device prescripts \
+    --device powercontroller \
+    --device boot \
+    --device swupdate \
+    --device emmc \
+    --device fileCopy \
+    --device scripts \
+    $ANDROID_DEV \
+    --device publickeys \
+    --device customerupdates \
+    --updateOrder '{"Type":"parallel","Devices":[["powercontroller"],["swupdate"],["boot.bl2","boot.bootparam","boot.swupdate"]]}' \
+    --updateOrder '{"Type":"sequential","Devices":["prescripts"]}' \
+    --updateOrder '{"Type":"sequential","Devices":[["boot","emmc","ota","scripts"]]}' \
+    --updateOrder '{"Type":"sequential","Devices":["customerupdates","publickeys","fileCopy"]}' \
+    --flag SaveReleaseName=true \
+    --flag CheckAllUpdates=${CHECK_ALL_UPDATES_FLAG} \
+    --flag CheckIfNotEqual=true \
+    --supportedTrains ${SUPPORTED_TRAINS_STRING} \
+    --devKey ${BOB_DEP_PATHS['keys::devkeys::devkeys-updatecontainer']}/dev/MetainfoDevKey-MIB3/config_FDSProject_${CONFIG_FDS:0}_E/keys/FDSProject_${CONFIG_FDS:0}_E.p8 \
+    --sandboxEnabled ${SANDBOX} \
+    ${_DEVFLAGS} \
+    ${RELASE_MANIFEST_NAME}
+    }
+
+    buildrelease UpdateContainer
+
+    # workaround CNS-JPCC -> MQB-PC
+    #cp -rf UpdateContainer/Meta UpdateContainer/Meta-org
+    #sed -i "s/\"FM3-S-NWBY4-CN-VW-MQB-PC\"/\"FM3-S-NWBY4-CN-VW-CNS-JPC\",\n    \"FM3-S-NWBY4-CN-VW-MQB-PC\"/g" `grep -rnl FM3-S-NWBY4-CN UpdateContainer/Meta/`
+    #sed  -i "s/\"$UPDATE_VARIANTS\"/\"${UPDATE_VARIANTS%%MQ*}CNS-JPC\",\n    \"$UPDATE_VARIANTS\"/g" `grep -rnl $UPDATE_VARIANTS UpdateContainer/Meta/`
+    #mib3-packing checksum --manifestVersion 1.0.0 --type "release" -o UpdateContainer
+    # workaround CNS-JPCC -> MQB-PC  END
+
+    # remove wildcards if only one partnumber set
+    if [ $(echo ${VARIANTS} | tr ',' '\n' | grep -c ^) -eq 1 ]; then
+        resolve-wildcards UpdateContainer
+        # recalculate the checksums
+        mib3-packing checksum --manifestVersion 1.0.0 -o UpdateContainer --type "complete-uc"
+    fi
+
+    if [[ ${CONFIG_ANDROID:-1} == 1 ]]; then
+        if [[ ${CONFIG_INCREMENT:-0} == 1 ]]; then
+          while read SHA1NUM URL; do
+            filename=${URL%.*}
+            container=UpdateContainer_increment_$filename
+            cp -rf UpdateContainer $container
+            rm -rf $container/Meta/ota/
+            rm -rf $container/Data/ota.ota*
+            increment_modules="--module ${BOB_DEP_PATHS['system::bsp::ext-renesas-h3-android-increment']}/${filename}/_swupdata"
+            buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+               --packageType="device" --packageName="ota" \
+               --outputDir  $container \
+               --diagnosticAddress=0 \
+               --deviceType=MU \
+               $increment_modules
+
+            buildrelease $container
+
+          done < ${BOB_DEP_PATHS['system::bsp::ext-renesas-h3-android-increment']}/${CONFIG_INCREMENTAL_FILE}
+        fi
+    fi
+
+   # create flash container
+   mkdir -p FlashContainer
+   pushd FlashContainer
+   cp -anu $1/tsd.boardupdater.mib3/* .
+   # patch boardupdater version number by adding the latest commit id
+   pushd $1/tsd.boardupdater.mib3
+   VERSION=$(git rev-parse --short HEAD)
+   popd #boardupdater
+   sed -i "s/export VERSION=\"\(.*\)\"/export VERSION=\"\1-${VERSION}\"/" boardupdater
+
+   cp -anu ${BOB_DEP_PATHS['system::tsd-config-emmc-layout']}/etc/* .
+
+   cp -anu ${BOB_DEP_PATHS['images::rescue']}/* .
+   cp -anu ${BOB_DEP_PATHS['system::tsd-pwc-mib3-updater-updater']}/* .
+
+   # flashcontainer: copy files
+   cp -anu ${BOB_DEP_PATHS['images::boot-device']}/_flashcontainer/* .
+   cp -anu ${BOB_DEP_PATHS['images::swupdate-image']}/_flashcontainer/* .
+   cp -anu ${BOB_DEP_PATHS['system::tsd-pwc-mib3-updater-firmware-pkg']}/_flashcontainer/* .
+   popd #Flashcontainer
+
+   copy_symbols()
+   {
+      local DEST DIR RET=1
+
+      for DIR in $(cd $1; find . -type d -name ".debug") ; do
+         DEST="$2/$DIR"
+         mkdir -p $DEST
+         rsync -a $1/$DIR/ $DEST
+         RET=0
+      done
+
+      return $RET
+   }
+
+   # symbols
+   if [[ ${CONFIG_NO_SYMBOLS_TGZ:-0} == 0 ]]; then
+      mkdir Symbols
+      for key in ${!BOB_DEP_PATHS[@]}; do
+         symfile="Symbols/${key//::/_}.tgz"
+         if [[ -e ${BOB_DEP_PATHS[$key]}/symbols.tgz ]] ; then
+            cp ${BOB_DEP_PATHS[$key]}/symbols.tgz $symfile
+         else
+            symbolsTmp=$(mktemp -d)
+            if copy_symbols ${BOB_DEP_PATHS[$key]} $symbolsTmp ; then
+               tar -C $symbolsTmp -cvzf $symfile .
+            fi
+            rm -rf $symbolsTmp
+         fi
+      done
+   fi
+
+packageScript: |
+   rsync -a --delete $1/ .
+
+multiPackage:
+   # Variant package fragment generated by genVariants.py. Do not waste your
+   # time with editing. Re-generate variant data from and with pure::variants
+   # JSON export and genVariants.py.
+   #
+   # The lines below are intended to be used as multiPackage elements in
+   # zr3-variant.yaml.
+   SK_CHN:
+      environment:
+         MU_VERSION: "C${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_SKMQB_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "301005"
+         PLATFORM: "MQB"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-SK-MQB-PC"
+   SK_CHN_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_SKMQB_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "311005"
+         PLATFORM: "MQB"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-SK-MQB-PC"
+   SK_TW:
+      environment:
+         MU_VERSION: "T${MAJOR}"
+         TRAIN_NUMBER: "CNS3_TW_SKMQB_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "301004"
+         PLATFORM: "MQB"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-TW-SK-MQB-PC"
+   SK_TW_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_TW_SKMQB_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "311004"
+         PLATFORM: "MQB"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-TW-SK-MQB-PC"
+   VW_CHN:
+      environment:
+         MU_VERSION: "C${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_VWMQB_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "301001"
+         PLATFORM: "MQB"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-VW-MQB-PC"
+   VW_CHN_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_VWMQB_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "311001"
+         PLATFORM: "MQB"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-VW-MQB-PC"
+   VW_HM:
+      environment:
+         MU_VERSION: "H${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_VWMQB_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "301002"
+         PLATFORM: "MQB"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-HM-VW-MQB-PC"
+   VW_HM_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_VWMQB_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "311002"
+         PLATFORM: "MQB"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-HM-VW-MQB-PC"
+   VW_TW:
+      environment:
+         MU_VERSION: "T${MAJOR}"
+         TRAIN_NUMBER: "CNS3_TW_VWMQB_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "301003"
+         PLATFORM: "MQB"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-TW-VW-MQB-PC"
+   VW_TW_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_TW_VWMQB_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "311003"
+         PLATFORM: "MQB"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-TW-VW-MQB-PC"
+   # Variant package fragment generated by genVariants.py. Do not waste your
+   # time with editing. Re-generate variant data from and with pure::variants
+   # JSON export and genVariants.py.
+   #
+   # The lines below are intended to be used as multiPackage elements in
+   # zr3-variant.yaml.
+   37W-SK_CHN:
+      environment:
+         MU_VERSION: "C${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_SK37W_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "701004"
+         PLATFORM: "37W"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-SK-MQ2-PC"
+   37W-SK_CHN_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_SK37W_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "711004"
+         PLATFORM: "37W"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-SK-MQ2-PC"
+   37W-SK_TW:
+      environment:
+         MU_VERSION: "T${MAJOR}"
+         TRAIN_NUMBER: "CNS3_TW_SK37W_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "701005"
+         PLATFORM: "37W"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-TW-SK-MQ2-PC"
+   37W-SK_TW_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_TW_SK37W_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "711005"
+         PLATFORM: "37W"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-TW-SK-MQ2-PC"
+   37W-VW_CHN:
+      environment:
+         MU_VERSION: "C${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_VW37W_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "701001"
+         PLATFORM: "37W"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-VW-MQ2-PC"
+   37W-VW_CHN_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_VW37W_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "711001"
+         PLATFORM: "37W"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-CN-VW-MQ2-PC"
+   37W-VW_HM:
+      environment:
+         MU_VERSION: "H${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_VW37W_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "701002"
+         PLATFORM: "37W"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-HM-VW-MQ2-PC"
+   37W-VW_HM_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_CN_VW37W_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "711002"
+         PLATFORM: "37W"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-HM-VW-MQ2-PC"
+   37W-VW_TW:
+      environment:
+         MU_VERSION: "T${MAJOR}"
+         TRAIN_NUMBER: "CNS3_TW_VW37W_E${MAJOR}${DELIVERY}J"
+         VARIANTS: "701003"
+         PLATFORM: "37W"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-TW-VW-MQ2-PC"
+   37W-VW_TW_sec:
+      environment:
+         MU_VERSION: "0${MAJOR}"
+         TRAIN_NUMBER: "CNS3_TW_VW37W_P${MAJOR}${DELIVERY}J"
+         VARIANTS: "711003"
+         PLATFORM: "37W"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "FM3-S-NWBY4-TW-VW-MQ2-PC"

@@ -1,0 +1,23 @@
+inherit: [autotools]
+
+shared: True
+
+checkoutDeterministic: True
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.protobuf.git
+   tag: '3.0.0'
+
+buildTools: [host-toolchain]
+buildScript: |
+   rsync -a --delete $1/ ${PWD}
+   #./autogen.sh
+   autotoolsBuild ${PWD} --enable-static --disable-shared
+
+
+packageScript: |
+   autotoolsPackageDev $1
+
+provideTools:
+   protoc:
+      path: "usr/bin"

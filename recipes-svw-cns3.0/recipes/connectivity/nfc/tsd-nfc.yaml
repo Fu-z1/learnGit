@@ -1,0 +1,53 @@
+inherit: [buildenv, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - system::tsd-common-dev
+ - system::tsd-common-daemon-dev
+ - communication::tsd-communication-dev
+ - system::tsd-threadmessages-dev
+
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - system::tsd-common-daemon-target
+    - communication::tsd-communication-target
+    - system::tsd-threadmessages-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.nfc.git
+   dir: tsd.nfc
+   tag: mqb_sop1_eu-1.59.3
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+
+         mkdir -p dist/etc/tsd.nfc.mib3
+
+      packageScript: buildenvPackageTarget
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+
+

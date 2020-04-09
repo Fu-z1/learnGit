@@ -1,0 +1,53 @@
+inherit: [install, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only"
+   PKG_VERSION: "1.0.7_PCC"
+   #PKG_NAME: "libnetfilter_conntrack"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#   PKG_VERSION: "libnetfilter_conntrack-1.0.7_PCC"
+   PKG_NAME: "ext.libnetfilter-conntrack"
+
+depends:
+  - connectivity::networking::ext-libnfnetlink-dev
+  - connectivity::networking::ext-libmnl-dev
+  - use: []
+    depends:
+          # Runtime dependendies
+      - connectivity::networking::ext-libmnl-target
+      - connectivity::networking::ext-libnfnetlink-target
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.libnetfilter.conntrack.git
+    dir: ${PKG_NAME}
+    tag: libnetfilter_conntrack-1.0.7_PCC
+
+buildVars: [PKG_NAME, AR, CC, LD]
+buildTools: [autotools]
+buildScript: |
+   # Preparing build process (cleanup, synching etc.)
+   rm -rf *
+   rsync -a --delete $1/${PKG_NAME}/ ${BOB_CWD}
+
+   # Configuring and building the libnetfilter-conntrack package
+   autotoolsBuild ${BOB_CWD}
+
+multiPackage:
+   dev:
+      packageScript: installPackageDev "$1/dist"
+      provideDeps: ["*-dev"]
+   target:
+      packageScript: |
+         installPackageTarget $1/dist
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libnetfilter-conntrk" \
+            -p "emmc.connectivity.netwg" \
+            -o "connectivity.networking:ext-libnetfilter-conntrack " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

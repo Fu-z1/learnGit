@@ -1,0 +1,63 @@
+# Disabled by default
+#root: True
+
+environment:
+   TARGET_OS: "linux"
+   CONFIG_BOARD: salvator-x
+   CONFIG_TARGET: "normal"
+   MINIMON_BRANCH: salvator-x-m3
+   UBOOT_BRANCH: tsd-mib3-rcar-3.2.2
+   UBOOT_BOARD: r8a7796_salvator-x
+   KERNEL_BRANCH: tsd-mib3-rcar-3.2.2
+   KERNEL_BOARD: salvator-x-m3
+   KERNEL_DTB: "renesas/r8a7796-salvator-x"
+   SOC_FAMILY: r8a7796
+   SOC_NAME: M3
+
+depends:
+   # sandbox and toolchain setup
+   -
+      name: sandbox::debian-jessie-x86_64
+      use: [sandbox]
+      forward: True
+   -
+      name: system::bsp::ext-u-boot-tools
+      use: [tools]
+      forward: True
+   -
+      name: system::tsd-buildenv
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::cmake
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::dtc
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::host
+      use: [tools]
+      forward: True
+
+   # packages that are built
+   - images::boot
+   - images::min
+   - images::rescue
+   - images::rootfs
+   - system::tsd-config-flashcontainer
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.boardupdater.mib3.git
+   branch: salvator-x
+
+buildScript: |
+   rm -rf *
+   for dep in "${@}" ; do
+      cp -au $dep/* .
+   done
+
+packageScript: |
+   rsync -a --delete $1/ .

@@ -1,0 +1,32 @@
+inherit: [autotools, packing-module]
+
+checkoutSCM:
+   -
+      scm: url
+      url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-pvrscope/PVRScopeDeveloper-2017_R2.tar.gz
+      digestSHA1: "29430452c3acef35cb5079baf53b8ecdb34a84ce"
+      extract: True
+
+buildScript: |
+   mkdir -p dist/usr/${LIBDIR} dist/usr/include
+   cp $1/PVRScopeDeveloper/Linux_armv8_64/Include/* dist/usr/include
+   cp $1/PVRScopeDeveloper/Linux_armv8_64/Dynamic/* dist/usr/${LIBDIR}
+   cp $1/PVRScopeDeveloper/Linux_armv8_64/Static/* dist/usr/${LIBDIR}
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l PVRScopeDeveloper -I include ext.pvrscope
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-pvrscope" \
+                         -p "emmc.system" \
+                         -o "system:ext-pvrscope" -f $d -- \
+                         -U "Partition=rootfs_ro"
+         rm -rf $d
+

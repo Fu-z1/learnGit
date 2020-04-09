@@ -1,0 +1,62 @@
+inherit: [buildenv, packing-module, werror]
+depends:
+   - project::proto-api-cns3.0
+   - basic-services::common-base::common-base-dev
+   - system::tsd-common-dev
+   - communication::tsd-communication-dev
+   - basic-services::persistence::tsd-persistence-client-mib3-dev
+   - system::system-lifecycle::tsd-systemstate-manager-api-dev
+   - system::ext-parted-dev
+   - system::tsd-common-daemon-dev
+   - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer)"
+     depends:
+       - system::tsd-swupdate-common-developer-dev
+
+   - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Customer)"
+     depends:
+       - system::tsd-swupdate-common-customer-dev
+   - use: []
+     depends:
+     - system::tsd-common-target
+     - communication::tsd-communication-target
+     - basic-services::persistence::tsd-persistence-client-mib3-target
+     - system::system-lifecycle::tsd-systemstate-manager-api-target
+     - system::ext-parted-target
+     - system::tsd-common-daemon-target
+     - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer)"
+       depends:
+         - system::tsd-swupdate-common-developer-target
+
+     - if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Customer)"
+       depends:
+         - system::tsd-swupdate-common-customer-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:architecture/cns_android_powermanager.git
+   dir: server
+   branch: main/svw_cns3.0_dev
+
+buildScript: |
+   buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/tsd
+   mkdir -p dist/etc/android
+   cp -au $1/server/ini/pingmonitor.sh dist/etc/android
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+         - '*-dev'
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "cns-android-powermanager" \
+            -p "emmc.gateway" \
+            -o "gateway:cns-android-powermanager" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

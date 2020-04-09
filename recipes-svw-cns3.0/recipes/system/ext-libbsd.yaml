@@ -1,0 +1,38 @@
+inherit: [autotools, patch, packing-module]
+
+environment:
+   PKG_VERSION: "0.8.3"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libbsd/libbsd-${PKG_VERSION}.tar.xz
+   digestSHA1: "39fd9f427a202568f35622b754b547e1607419da"
+
+checkoutDeterministic: true
+checkoutScript: |
+   pushd libbsd-${PKG_VERSION}
+   patchApplySeries -p0 $<<ext-libbsd/*.patch>>
+   popd
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/libbsd-${PKG_VERSION}
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l bsd -I include ext.libbsd
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libbsd" \
+            -p "emmc.system" \
+            -o "system:ext-libbsd " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

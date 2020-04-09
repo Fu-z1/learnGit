@@ -1,0 +1,72 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zieleingabe"
+
+depends:
+  - navigation::tsd-nav-input-mib3-api-dev
+  - navigation::tsd-nav-mapdataservice-mib3-api-dev
+  - navigation::tsd-nav-sdk-input-dev
+  - navigation::tsd-nav-sdk-poi-api-dev
+  - navigation::tsd-nav-sdk-pathfinder-api-dev
+  - navigation::tsd-nav-sdk-pathfinder-dev
+  - navigation::tsd-nav-pathfinder-mib3-api-dev
+  - navigation::tsd-nav-utils-dev
+  - navigation::tsd-nav-sdk-input-mapcode-dev
+  - libs::ext-sqlite-nds-dev
+  - libs::ext-protobuf-dev
+  - navigation::tsd-nav-rsi-viwi-dev
+  - hmi::tsd-i18n-mib3-dev
+  - navigation::tsd-nav-imageservices-mib3-dev
+  - navigation::tsd-nav-rsi-services-mib3-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.input.mib3.git
+   dir: tsd.nav.input.mib3
+   tag: mqb_sop1_eu-152.0.4       #navi-src (src of the navigation)
+
+
+multiPackage:
+  ? ""
+  :
+    #inherit: [navi_compflags_werror_sanitize]
+    inherit: [navi_compflags_sanitize]
+    multiPackage:
+      dev:
+        buildTools: [protoc]
+        buildScript: |
+           buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  swittests:
+      depends:
+         - navigation::tsd-nav-middleware-interface-dev
+         - navigation::tsd-nav-sdk-mapdataservice-api-dev
+         - navigation::tsd-nav-mapdataservice-mib3-dev
+         - navigation::tsd-nav-cloud-comm-client-api-dev
+         - navigation::tsd-nav-cloud-comm-client-dev
+         - navigation::tsd-nav-middleware-nds-2_5_2-dev
+      environment:
+         TSD_NAV_DISABLE_UPDATE_MANAGER: "true"
+      privateEnvironment:
+         #TODO replace with werror? Add sanitizer? Durch sanitize_werror ersetzen, sonst gibts keine artifakte
+         CXXFLAGS: "${CXXFLAGS:-} -fdiagnostics-color=always ${SUPPRES_WARNINGS:-}"
+      buildVars: [TSD_BUILDENV_IS_SWITTEST]
+      buildTools: [protoc]
+      buildScript: |
+         cp -au ${BOB_DEP_PATHS["navigation::tsd-nav-middleware-nds-2_5_2-dev"]}/usr/lib* "${PWD}/"
+         buildenvTestAll -DTSD_NAV_INPUT_SWITS_ENABLED=${TSD_BUILDENV_IS_SWITTEST}
+      packageScript: |
+         mkdir -p usr/bin
+         rsync -a $1/lib* usr/bin/
+         buildenvPackageTests
+
+  unittests:
+      buildTools: [protoc]
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

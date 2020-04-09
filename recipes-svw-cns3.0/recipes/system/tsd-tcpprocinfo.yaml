@@ -1,0 +1,43 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.tcpprocinfo.git
+    dir: tsd.tcpprocinfo
+    #tag: mqb_sop1_eu-1.6.0
+    #branch: master_mqb_sop1_eu
+    branch: feature/test_CNSDEFKPM-7294
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   pkg:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+
+         mkdir -p pkg
+         mv usr/bin/.debug .
+         mv usr pkg
+
+         buildSwupModule -n tcpprocinfo -p "emmc.system" -o 'tsd-tcpprocinfo' -f pkg \
+         -m 'root,root,4755,/usr/bin/tsd.tcpprocinfo.app$' -- \
+         -U "Partition=rootfs_ro"
+
+         rm -rf pkg
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

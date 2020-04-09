@@ -1,0 +1,59 @@
+inherit: [buildenv]
+
+depends:
+  - system::ext-boost-atomic-dev
+  - system::ext-boost-chrono-dev
+  - system::ext-boost-date-time-dev
+  - system::ext-boost-filesystem-dev
+  - system::ext-boost-program-options-dev
+  - system::ext-boost-log-dev
+  - system::ext-boost-regex-dev
+  - system::ext-boost-system-dev
+  - system::ext-boost-thread-dev
+  - communication::ext-mstch-dev
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-communication/tsd.communication.generator.git
+    dir: tsd.communication.generator
+    tag: mqb_sop1_eu-3.4.0
+    branch: master_mqb_sop1_eu
+
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-python-libs/jinja-2.8.tar.gz
+    dir: jinja2
+    digestSHA1: 0736002664e720d183806d09e2b50bdcce045fa2
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-python-libs/markupsafe-1.0.tar.gz
+    dir: markupsafe
+    digestSHA1: 57bc9a7dd347ef066f9ecfd2b291a965b085b273
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-python-libs/pathlib-1.0.1.tar.gz
+    dir: pathlib
+    digestSHA1: e90b903d11929b1bf6130b02362bf60550424108
+
+checkoutDeterministic: true
+checkoutScript: |
+   # Some extra python depencies have to be copied.
+   cp -a jinja2/jinja-*/jinja2 tsd.communication.generator/script
+   cp -a markupsafe/markupsafe-*/markupsafe tsd.communication.generator/script
+   cp -a pathlib/pathlib-*/pathlib.py tsd.communication.generator/script
+
+buildScript: |
+   buildenvBuildAll
+   # Some libraries from boost are needed to execute the binary produced in here, so just copy them.
+   mkdir -p dist/usr/lib
+   mkdir -p dist/usr/lib64
+   for i in $*; do
+      cp -aR ${i}/usr/lib/* dist/usr/lib 2>/dev/null || true
+      cp -aR ${i}/usr/lib64/* dist/usr/lib64 2>/dev/null || true
+   done
+
+packageScript: buildenvPackageDev
+
+provideTools:
+   capi-commgr-binding-scripts:
+      path: "usr/bin/script"
+   capi-commgr-binding-generator:
+      path: "usr/bin"
+      libs: ["usr/lib64"]

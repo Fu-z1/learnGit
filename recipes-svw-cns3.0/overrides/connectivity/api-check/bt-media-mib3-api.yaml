@@ -1,0 +1,37 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.api.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/BrElementAttr"
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.blueware.bluego.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/BrElementAttr"
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.blueware.api.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/BrElementAttr"
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.bt.media.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/BrElementAttr"
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/BrElementAttr"
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mib3.git"
+     del: [commit, tag]
+     set:
+        branch: "feature_BtApiRefactoring"

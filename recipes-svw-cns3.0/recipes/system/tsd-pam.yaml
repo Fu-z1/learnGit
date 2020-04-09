@@ -1,0 +1,37 @@
+inherit: [packing-module]
+
+depends:
+  - system::ext-libpam-dev
+  - libs::ext-openssl-dev
+  - use: []
+    depends:
+      - libs::ext-openssl-target
+      - system::ext-libpam-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.pam.git
+   #tag: 1.0.0
+   branch: main/svw_cns3.0_1520_dev
+
+buildTools: [toolchain]
+buildVars: [CC, LD, LIBDIR]
+buildScript: |
+   ${CC} -fPIC \
+      -I${BOB_DEP_PATHS['system::ext-libpam-dev']}/usr/include \
+      -I${BOB_DEP_PATHS['libs::ext-openssl-dev']}/usr/include \
+      -c $1/src/pam_pcc.c
+   ${LD} -x --shared -L${BOB_DEP_PATHS['libs::ext-openssl-dev']}/usr/${LIBDIR} -lssl -o pam_pcc.so pam_pcc.o
+
+provideDeps: ['*-target']
+packageScript: |
+   mkdir -p lib/security
+   cp $1/pam_pcc.so lib/security
+
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "pam" \
+        -p "emmc.system" \
+        -o "system:tsd-pam" -f $d -- \
+        -U "Partition=rootfs_ro"
+   rm -rf $d

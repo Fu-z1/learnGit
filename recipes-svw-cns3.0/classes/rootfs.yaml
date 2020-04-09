@@ -1,0 +1,188 @@
+buildVars: [SYSROOT, AUTOCONF_HOST, TARGET_TYPE]
+buildTools: [toolchain]
+buildScript: |
+   export ROOTFS_COPY_SYSROOT="${BOB_TOOL_PATHS[toolchain]}/$SYSROOT"
+
+   # $1: text file
+   # $2: destination directory
+   copyFromFile()
+   {
+      DEBUG=0
+      if [ ! -f "$1" ]; then
+         exit 1
+      fi
+      if [ ! -d "$2" ]; then
+         exit 1
+      fi
+      while read LINE; do
+         # remove comments
+         SRC=${LINE%\#*}
+         if [ -z "$SRC" ]; then
+            continue
+         fi
+
+         # grep additional arguments
+         read -a ARGS <<< $SRC
+         SRC=${ARGS[0]}
+         ARG=""
+         if [[ ${#ARGS[@]} > 1 ]]; then
+            ARG=${ARGS[1]}
+         fi
+
+         # copy binary
+         FILE=$ROOTFS_COPY_SYSROOT/$SRC
+
+         if [[ "$ARG" == "-f" ]]; then
+            if ! ls $FILE 1> /dev/null 2>&1; then
+               continue
+            fi
+         fi
+
+         mkdir -p "$2/${SRC%/*}"
+         cp -au  ${FILE} "$(dirname $2/${SRC})" 1>&2
+
+         # copy symbol if available
+         SYMBOL="$ROOTFS_COPY_SYSROOT/${SRC%/*}/.debug/${SRC##*/}"
+         if [ -f $SYMBOL ]; then
+            mkdir -p "$2/${SRC%/*}/.debug"
+            cp -au $SYMBOL "$2/${SRC%/*}/.debug/"
+         fi
+      done < $1
+   }
+
+   # $1: source directory
+   # $2: destination directory
+   move_symbols()
+   {
+      for i in $(find $1 -type d -name ".debug") ; do
+         DIR="${i%/.debug*}"
+         DEST="$2/$DIR"
+         mkdir -p $DEST
+         mv $i $DEST
+      done
+   }
+
+   # $1: target sysroot
+   checkSharedLibraries()
+   {
+      local FILE FTYPE i
+      declare -A SHARED_LIBS=( )
+      declare -A MISSING_LIBS=( )
+
+      # disable debug tracing
+      local debug=0
+      if [[ "$-" == *x* ]]; then
+         set +x
+         echo "Disabling debug mode"
+         debug=1
+      fi
+
+      # create index of all shared libraries
+      while IFS= read FILE ; do
+         if [[ "$(file -Lb "$FILE")" == *"shared object"* ]] ; then
+            SHARED_LIBS[${FILE##*/}]=1
+         fi
+      done < <(find $1 -type f -o -type l)
+
+      # check all executables for their dependencies
+      while IFS= read FILE ; do
+         # get file type
+         FTYPE="$(file -b "$FILE")"
+
+         # check if ELF binary
+         if [[ "$FTYPE" != *"ELF "??"-bit LSB"* ]]; then
+            continue
+         fi
+
+         # check if stripped
+         if [ "$FTYPE" == *"not stripped"* ]; then
+            echo "WARNING: file ${FILE##*/} not stripped" 1>&2
+         fi
+
+         # search dependent libraries
+         for i in $(readelf -d "$FILE" | awk '/NEEDED/{ gsub(/[\[\]]/, ""); print $5 }'); do
+            if [[ -z "${SHARED_LIBS[$i]+found}" ]] ; then
+               MISSING_LIBS[$i]+="$FILE "
+            fi
+         done
+      done < <(find $1 -type f -executable)
+
+      {
+         if [[ ${#MISSING_LIBS[*]} -gt 0 ]] ; then
+            echo "===== MISSING LIBRARIES SUMMARY ====="
+            for i in "${!MISSING_LIBS[@]}" ; do
+               echo "$i needed by ${MISSING_LIBS[$i]}"
+            done
+            echo "ERROR: some shared libraries are missing. Stopping build!"
+            exit 1
+         fi
+      } >&2
+
+      if [ $debug -eq 1 ]; then
+         set -x
+      fi
+   }
+
+   # $1: destination directory
+   createUntarScript()
+   {
+
+
+
+      if [[ "${TARGET_TYPE}" == embedded ]]; then
+
+   cat << EOF > $1/untar.sh
+   #!/bin/bash
+   DIR="rootfs"
+   mkdir \$DIR
+   tar -zxvf flash/rootfs.tgz -C \$DIR
+   tar -zxvf symbols.tgz -C \$DIR
+
+   # search GDB
+   for i in \$(which ${AUTOCONF_HOST}-gdb) \
+            /opt/poky/1.8.1/sysroots/x86_64-pokysdk-linux/usr/bin/${AUTOCONF_HOST}/${AUTOCONF_HOST}-gdb \
+            \$HOME/toolchains/poky/1.8.1/sysroots/x86_64-pokysdk-linux/usr/bin/${AUTOCONF_HOST}/${AUTOCONF_HOST}-gdb; do
+      [ -e \$i ] && GDB=\$i && break;
+   done
+
+   # replace GDB path
+   if [ ! -z \$GDB ]; then
+      for i in \$DIR/gdb.sh \$DIR/ddd.sh; do
+         sed -i "s@\(GDB=\).*@GDB=\$GDB@g" \$i
+      done
+   fi
+   EOF
+
+      fi
+
+
+
+
+      if [[ "${TARGET_TYPE}" == host ]]; then
+
+   cat << EOF > $1/untar.sh
+   #!/bin/bash
+   DIR="rootfs"
+   mkdir \$DIR
+   tar -zxvf flash/rootfs.tgz -C \$DIR
+   tar -zxvf symbols.tgz -C \$DIR
+
+   # search GDB
+   for i in \$(which ${AUTOCONF_HOST}-gdb); do
+      [ -e \$i ] && GDB=\$i && break;
+   done
+
+   # replace GDB path
+   if [ ! -z \$GDB ]; then
+      for i in \$DIR/gdb.sh \$DIR/ddd.sh; do
+         sed -i "s@\(GDB=\).*@GDB=\$GDB@g" \$i
+      done
+   fi
+   EOF
+
+      fi
+
+
+
+      chmod a+x $1/untar.sh
+   }

@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.rsi.server.git"
+     del: [commit, tag]
+     set:
+        branch: "develop"
+        commit: "fcb22fcf8d93c53f2f5b9993be47e1beae01589a"

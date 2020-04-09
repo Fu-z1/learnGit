@@ -1,0 +1,482 @@
+scmOverrides:
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.api.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.api.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/ext.vw.rsi.serviceregistry.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.common.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.carssw.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.rsi.serviceregistry.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.database.vwmib.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.hid.vwmib.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.isotp.vw.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd.carcom.image.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.caninterface.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.carfunctionsadapter.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.common.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.peripheral.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.api.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.api.mib3.mqb.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.peripheral.controller.api.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.manager.api.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:tip-communication/tsd.communication.runtime.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/ext.avbstack.cetitec.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd.carcom.proxy.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.peripheral.controller.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.manager.app.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.manager.core.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.manager.base.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.manager.proxy.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.api.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.api.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.testability.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.mib3.mqb.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.common.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.carcom.datapool.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.carcom.datapool.api.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.pwc-proxy.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.pwc-proxy.api.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.ethernet.middleware.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.nm.api.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.nm.vw.mib.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.carssw.viwicarservice.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwicarserviceadapter.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwicarservice.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.peripheral.controller.proxy.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd.carcom.config.api.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.guard.api.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.guard.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.psd.proxy.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.psd.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.rsi.serviceregistryadapter.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwinavsdclientadapter.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.carssw.viwinavsdclient.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwinavsdclient.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.tcpprocinfo.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.manager.adapt.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwiusermanagementservice.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwiusermanagementservice.adapter.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwipsodataexchangeservice.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwipsodataexchangeservice.adapter.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.psodataexchange.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.usermanagement.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.mib3.proxy.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd.carcom.api.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwionlineremoteupdateclient.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.onlineremoteupdate.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.notificationservice.adapter.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.notificationservice.mib3.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwionlineremoteupdateclient.adapter.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.notificationservice.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.generaladapters.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.uds.vw.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.poco.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.aeth.base.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.aeth.core.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.aeth.interface.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.aeth.testability.git
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+

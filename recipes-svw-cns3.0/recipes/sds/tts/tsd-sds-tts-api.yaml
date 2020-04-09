@@ -1,0 +1,60 @@
+inherit: [buildenv, packing-module, capigen, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-TTS"
+
+depends:
+  - system::tsd-common-dev
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+   # target shared library dependencies
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.tts.api.git
+    dir: tsd.sds.tts.api
+    tag: mqb_sop1_eu-4.0.1
+
+  - if: "${CONFIG_CAPI_MOCKS:-0}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.tts.client.git
+    dir: tsd.sds.tts.client
+    branch: master_mqb_sop1_eu
+
+  - if: "${CONFIG_CAPI_MOCKS:-0}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.tts.service.git
+    dir: tsd.sds.tts.service
+    branch: master_mqb_sop1_eu
+
+checkoutDeterministic: True
+checkoutScript: CapiGenProcessFIDLFiles tsd.sds.tts.api
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "sds-tts-api" \
+            -p "emmc.sds.tts" \
+            -o "sds.tts:tsd-sds-tts-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

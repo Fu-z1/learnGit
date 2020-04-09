@@ -1,0 +1,120 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(LGPL-2.1-or-later AND GPL-2.0-or-later)"
+   PKG_VERSION: "232"
+   PKG_NAME: "systemd"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-libcap-dev
+  - system::ext-util-linux-dev
+  - system::ext-kmod-dev
+  - use: []
+    depends:
+      - system::ext-libcap-target
+      - system::ext-util-linux-target
+      - system::ext-kmod-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.systemd.git
+   tag: v232.17
+   branch: "v${PKG_VERSION}+pcc"
+
+buildVars: [LIBDIR]
+buildScript: |
+   rsync -a --delete $1/ $PWD
+   ./autogen.sh
+
+   # We have to disable lto, otherwise we get no debug symbols.
+   autotoolsBuild ${PWD} \
+         --disable-lto \
+         --disable-silent-rules \
+         --disable-dependency-tracking \
+         --enable-split-usr \
+         --without-python \
+         --disable-timesyncd \
+         --enable-nls \
+         --disable-audit \
+         --disable-libcryptsetup \
+         --disable-elfutils \
+         --disable-dbus \
+         --disable-efi \
+         --disable-firstboot \
+         --disable-gcrypt \
+         --disable-libiptc \
+         --disable-libcurl \
+         --enable-ldconfig \
+         --disable-libidn \
+         --disable-manpages \
+         --disable-microhttpd \
+         --disable-networkd \
+         --disable-pam \
+         --disable-resolved \
+         --disable-selinux \
+         --disable-xkbcommon \
+         --disable-xz \
+         --disable-tests
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l systemd -I include ext.systemd
+      provideDeps: ['*-dev']
+
+   target:
+      packageVars: [PKG_VERSION]
+      packageScript: |
+         mkdir -p etc/udev
+         cp -a -t etc/udev $1/dist/etc/udev/udev.conf
+
+         mkdir -p usr/bin
+         cp -a -t usr/bin $1/dist/usr/bin/journalctl \
+                          $1/dist/usr/bin/systemctl \
+                          $1/dist/usr/bin/systemd-analyze \
+                          $1/dist/usr/bin/systemd-cgls \
+                          $1/dist/usr/bin/systemd-cgtop \
+                          $1/dist/usr/bin/systemd-stdio-bridge \
+                          $1/dist/usr/bin/systemd-tmpfiles \
+                          $1/dist/usr/bin/udevadm
+
+         mkdir -p usr/${LIBDIR}
+         cp -a -t usr/${LIBDIR} $1/dist/usr/${LIBDIR}/libnss_myhostname.so.2 \
+                          $1/dist/usr/${LIBDIR}/libnss_mymachines.so.2 \
+                          $1/dist/usr/${LIBDIR}/libnss_systemd.so.2 \
+                          $1/dist/usr/${LIBDIR}/libsystemd.so \
+                          $1/dist/usr/${LIBDIR}/libsystemd.so.0 \
+                          $1/dist/usr/${LIBDIR}/libsystemd.so.0.17.0 \
+                          $1/dist/usr/${LIBDIR}/libudev.so \
+                          $1/dist/usr/${LIBDIR}/libudev.so.1 \
+                          $1/dist/usr/${LIBDIR}/libudev.so.1.6.5
+
+         mkdir -p usr/${LIBDIR}/systemd
+         cp -a -t usr/${LIBDIR}/systemd/ $1/dist/usr/lib/systemd/libsystemd-shared-${PKG_VERSION}.so \
+                                   $1/dist/usr/lib/systemd/libsystemd-shared.so \
+                                   $1/dist/usr/lib/systemd/systemd \
+                                   $1/dist/usr/lib/systemd/systemd-journald \
+                                   $1/dist/usr/lib/systemd/systemd-modules-load \
+                                   $1/dist/usr/lib/systemd/systemd-shutdown \
+                                   $1/dist/usr/lib/systemd/systemd-udevd
+
+         mkdir -p var/lib/systemd
+         mkdir -p var/log/journal
+
+         # Add etc/machine-id.
+         mkdir -p etc
+         echo "00112233445566778899aabbccddeeff" > etc/machine-id
+
+         installStripAll .
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-systemd" \
+            -p "emmc.system" \
+            -o "system:ext-systemd " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+      provideDeps: ['*-target']

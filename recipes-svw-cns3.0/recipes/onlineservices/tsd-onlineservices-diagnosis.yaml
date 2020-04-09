@@ -1,0 +1,99 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - communication::tsd-communication-dev
+ - communication::ext-commonapi-runtime-dev
+ - communication::tsd-communication-binding-dev
+ - system::tsd-common-dev
+ - system::tsd-common-daemon-dev
+ - onlineservices::tsd-onlineservices-common-dev
+ - onlineservices::tsd-onlineservices-diagnosis-api-dev
+ - basic-services::rsi-library::tsd-rsi-client-dev
+ - basic-services::rsi-library::tsd-rsi-server-dev
+ - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+ - use: []
+   depends:
+    - communication::tsd-communication-target
+    - communication::ext-commonapi-runtime-target
+    - communication::tsd-communication-binding-target
+    - system::tsd-common-target
+    - system::tsd-common-daemon-target
+    - onlineservices::tsd-onlineservices-common-target
+    - onlineservices::tsd-onlineservices-diagnosis-api-target
+    - basic-services::rsi-library::tsd-rsi-client-target
+    - basic-services::rsi-library::tsd-rsi-server-target
+    - engineering::diagnostic-management::tsd-uds-api-mib3-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.diagnosis.git
+   dir: tsd.onlineservices.diagnosis
+   tag: mqb_sop1_eu-1.100.9
+buildVars: [AUTOCONF_HOST]
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+
+         SRC_WORKSPACE=$BUILDENV_SRC_PATH
+         BUILD_WORKSPACE=$BOB_CWD
+         mkdir $BUILD_WORKSPACE/dist/etc
+         mkdir $BUILD_WORKSPACE/dist/etc/tsd.onlineservices.diagnosis
+         cp $SRC_WORKSPACE/tsd.onlineservices.diagnosis/ini/* $BUILD_WORKSPACE/dist/etc/tsd.onlineservices.diagnosis/
+         mkdir $BUILD_WORKSPACE/dist/var
+         mkdir $BUILD_WORKSPACE/dist/var/lib
+         mkdir $BUILD_WORKSPACE/dist/var/lib/tsd.onlineservices.diagnosis
+         touch $BUILD_WORKSPACE/dist/var/lib/tsd.onlineservices.diagnosis/OnlineDiagnosisData.bin
+
+      packageScript: buildenvPackageDev install
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+
+         SRC_WORKSPACE=$BUILDENV_SRC_PATH
+         BUILD_WORKSPACE=$BOB_CWD
+         mkdir $BUILD_WORKSPACE/dist/etc
+         mkdir $BUILD_WORKSPACE/dist/etc/tsd.onlineservices.diagnosis
+         cp $SRC_WORKSPACE/tsd.onlineservices.diagnosis/ini/* $BUILD_WORKSPACE/dist/etc/tsd.onlineservices.diagnosis/
+         mkdir $BUILD_WORKSPACE/dist/var
+         mkdir $BUILD_WORKSPACE/dist/var/lib
+         mkdir $BUILD_WORKSPACE/dist/var/lib/tsd.onlineservices.diagnosis
+         touch $BUILD_WORKSPACE/dist/var/lib/tsd.onlineservices.diagnosis/OnlineDiagnosisData.bin
+
+      packageScript: |
+         buildenvPackageTarget install
+         mkdir -p var/lib/tsd.onlineservices.diagnosis
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-diagnosis" \
+           -p "emmc.onlineservices" \
+           -m 'onlinediag,onlinediag,0770,/var/lib/tsd.onlineservices.diagnosis$'    \
+           -m 'onlinediag,onlinediag,0770,/var/lib/tsd.onlineservices.diagnosis/.*'  \
+           -o "onlineservices:tsd-onlineservices-diagnosis" -f $d -- \
+           -U "Partition=rootfs_ro"
+           rm -rf $d
+      provideDeps: ["*-target"]
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.onlineservices.diagnosis.app
+      packageScript: buildenvPackageTarget
+      provideDeps: ['*-dev']
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

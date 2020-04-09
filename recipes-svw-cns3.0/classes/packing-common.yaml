@@ -1,0 +1,83 @@
+packageScript: |
+   # returns the value of the requiredBy flag
+   # arg: key-value-list
+   #    - e.g.: -U Partition=rootfs_ro --requiredBy {"Packages":[{"PackageName":"scripts.set-hmi-files","Flags":"Selected"}]}
+   __getRequiredBy() {
+      REQUIREDBY=""
+      FOUND=-1
+      for i in "$@"; do
+         if [[ ${FOUND} == 0 ]]; then
+            REQUIREDBY=${i}
+            break
+         fi
+         if [[ ${i} == "--requiredBy" ]]; then
+            FOUND=0
+         fi
+      done
+      REQUIREDBY=$(echo "$REQUIREDBY" | sed "s/ //g") # remove whitespace
+      echo "$REQUIREDBY"
+   }
+
+   # removes requiredBy
+   # arg: key-value-list
+   #    - e.g.: -U Partition=rootfs_ro --requiredBy {"Packages":[{"PackageName":"scripts.set-hmi-files","Flags":"Selected"}]}
+   __removeRequiredBy() {
+      NEWLIST=""
+      COUNT=0
+      for i in "$@"; do
+         if [[ ${i} == "--requiredBy" ]] || [[ $((${COUNT}%2)) -eq 1 ]]; then
+            COUNT=$((COUNT+1))
+         else
+            NEWLIST=${NEWLIST}${i}" "
+            COUNT=0
+         fi
+      done
+      echo "${NEWLIST}"
+   }
+
+   # arg: requiredBy list
+   #    - e.g.: {"Packages":[{"PackageName":"scripts.set-hmi-files","Flags":"Selected"}]}
+   __getModifiedRequiredBy() {
+      REQUIREDBY=$1
+      REQUIREDBY=$(echo "${REQUIREDBY}" | sed "s/PackageName/ /g")
+      NEW=""
+      IFS=' ' read -ra VALUES <<< "$REQUIREDBY"
+      for i in "${VALUES[@]}"; do
+         # set '_'
+         # the first and second item should be separated by '.'
+         i=$(__restrictModuleDepth ${i})
+         NEW=$NEW$i"PackageName"
+      done
+      NEW=$(echo ${NEW} | sed 's/\(.*\)PackageName$/\1\ /') # remove last seperator
+      echo ${NEW}
+   }
+
+   # a max of three items per module is allowed
+   # e.g.: x.y.z.a.b.c --> x.y.z_a_b_c
+   # e.g.: x.* --> x.*
+   # e.g.: x.y.* --> x.y.*
+   # e.g.: x.y.z.* --> x.y.z*
+   __restrictModuleDepth() {
+      # the first and second item should be separated by '.'
+      i=$(echo ${1} | sed "s/\./_/g" | sed "s/_/\./1" | sed "s/_/\./1")
+      echo ${i}
+   }
+
+   # a max number of items per module is allowed
+   # arg:
+   #     - complete parameter list
+   __restrictModuleDepthInRequiredBy() {
+      PARAMS="$@"
+      # get requiredBy values
+      REQUIREDBY=$(__getRequiredBy "$@")
+
+      if [[ ${REQUIREDBY} != "" ]]; then
+         # modified requiredBy -> e.g. a.b.c.d -> a.b.c_d (modul depth is 3)
+         REQUIREDBY=$(__getModifiedRequiredBy "${REQUIREDBY}")
+
+         # set new requiredBy
+         PARAMS=$(__removeRequiredBy "${@}")" --requiredBy $REQUIREDBY"
+      fi
+
+      echo ${PARAMS}
+   }

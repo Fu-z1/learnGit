@@ -1,0 +1,6 @@
+archive:
+   -
+     backend: http
+#     url: "http://artefact_vi.preintegration.technisat-digital"
+     url: "http://viconnectivity1.local"
+     flags: [download, upload]

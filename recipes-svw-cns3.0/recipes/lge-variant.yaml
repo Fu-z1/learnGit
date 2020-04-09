@@ -1,0 +1,207 @@
+#inherit: [root]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   CONFIG_TARGET: "${CONFIG_TARGET:-normal}"
+   CHECKSUM: "true"
+   TARGET_OS: "linux"
+   CONFIG_BOARD: lg
+   TARGET_ENVIRONMENT: "lg"
+depends:
+   -
+      name: system::ext-liblz4-tool
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::lg::aarch64-poky-agl
+      use: [tools, environment]
+      forward: True
+   - navigation::tsd-nav-configdata-variant-embedded-target
+buildTools: [toolchain]
+buildScript: |
+   rm -rf *
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[zr3-variant]
+   unset tocopy[packing::packing-scripts]
+   unset tocopy[keys::devkeys::devkeys-updatecontainer]
+   move_symbols()
+   {
+      for i in $(find $1 -type d -name ".debug") ; do
+         DIR="${i%/.debug*}"
+         DEST="$2/$DIR"
+         mkdir -p $DEST
+         mv $i $DEST
+      done
+   }
+
+   for dep in ${tocopy[@]} ; do
+      cp -au ${dep}/* "${PWD}/"
+   done
+
+   # symbols
+   if [[ ${CONFIG_NO_SYMBOLS_TGZ:-0} == 0 ]]; then
+      # move symbols
+      mkdir -p symbols
+      move_symbols "${PWD}" symbols
+      if [[ $(command -v pigz) ]]; then
+         tar -cf - symbols  |pigz > symbols.tgz
+      else
+         tar -zcf symbols.tgz -C symbols .
+      fi
+      rm -rf symbols
+   fi
+
+packageScript: |
+   rsync -a --delete $1/ .
+   env
+
+multiPackage:
+   VW_EU_LG:
+      environment:
+         VARIANTS: "401014"
+   VW_EU_LG_37W:
+      environment:
+         VARIANTS: "501002"
+   VW_EU_LG_sec:
+      environment:
+         VARIANTS: "411014" # use eu variant for now
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+   VW_EU_LG_37W_sec:
+      environment:
+         VARIANTS: "511002"
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+   MQB2:
+      multiPackage:
+         delivery_1:
+            environment:
+               VARIANTS: "501002,501004" #,501020" disabled until available in configdata
+               PackageName: "5H0-035-820_5H0-035-832_5H0-035-820-A"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_2:
+            environment:
+               VARIANTS: "501003"
+               PackageName: "5H0-035-824"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_3:
+            environment:
+               VARIANTS: "501011,501012,501013" #,501021" disabled until available in configdata
+               PackageName: "5H0-035-816_5H0-035-874_5H0-035-876_5H0-035-816-A"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_4:
+            environment:
+               VARIANTS: "501016,501017,501018" #,501022" disabled until available in configdata
+               PackageName: "5FA-035-862_5FA-035-867_5FA-035-868_5FA-035-862-A"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+   MQB:
+      multiPackage:
+         delivery_1:
+            environment:
+               VARIANTS: "401003,401007" #,401024" disabled until available in configdata
+               PackageName: "3G5-035-820_3G5-035-832_3G5-035-820-A"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_2:
+            environment:
+               VARIANTS: "401004,401006"
+               PackageName: "6F0-035-820_6F0-035-824"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_3:
+            environment:
+               VARIANTS: "401005"
+               PackageName: "3G5-035-824"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_4:
+            environment:
+               VARIANTS: "401008" #,411025" disabled until available in configdata
+               PackageName: "6F0-035-832_6F0-035-820"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_5:
+            environment:
+               VARIANTS: "401014,401015,401016" #,401026" disabled until available in configdata
+               PackageName: "3G5-035-816_3G5-035-874_3G5-035-876_3G5-035-816"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_6:
+            environment:
+               VARIANTS: "401019,401020,401021" #,401027" disabled until available in configdata
+               PackageName: "575-035-862_575-035-867_575-035-868_575-035-862"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+   MQB2_sec:
+      multiPackage:
+         delivery_1:
+            environment:
+               VARIANTS: "511002,511004" #,511020" disabled until available in configdata
+               PackageName: "5H0-035-820_5H0-035-832_5H0-035-820-A"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_2:
+            environment:
+               VARIANTS: "511003"
+               PackageName: "5H0-035-824"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_3:
+            environment:
+               VARIANTS: "511011,511012,511013" #,511021" disabled until available in configdata
+               PackageName: "5H0-035-816_5H0-035-874_5H0-035-876_5H0-035-816-A"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_4:
+            environment:
+               VARIANTS: "511016,511017,511018" #,511022" disabled until available in configdata
+               PackageName: "5FA-035-862_5FA-035-867_5FA-035-868_5FA-035-862-A"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+   MQB_sec:
+      multiPackage:
+         delivery_1:
+            environment:
+               VARIANTS: "411003,411007" #,411024" disabled until available in configdata
+               PackageName: "3G5-035-820_3G5-035-832_3G5-035-820-A"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_2:
+            environment:
+               VARIANTS: "411004,411006"
+               PackageName: "6F0-035-820_6F0-035-824"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_3:
+            environment:
+               VARIANTS: "411005"
+               PackageName: "3G5-035-824"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_4:
+            environment:
+               VARIANTS: "411008" #,411025" disabled until available in configdata
+               PackageName: "6F0-035-832_6F0-035-820"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_5:
+            environment:
+               VARIANTS: "411014,411015,411016" #,411026" disabled until available in configdata
+               PackageName: "3G5-035-816_3G5-035-874_3G5-035-876_3G5-035-816"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+         delivery_6:
+            environment:
+               VARIANTS: "411019,411020,411021" #,411027" disabled until available in configdata
+               PackageName: "575-035-862_575-035-867_575-035-868_575-035-862"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"

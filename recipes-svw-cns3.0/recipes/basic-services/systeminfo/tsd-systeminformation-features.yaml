@@ -1,0 +1,82 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - basic-services::systeminfo::tsd-systeminformation-common-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::systeminfo::tsd-systeminformation-common-target
+
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.systeminformation.features.git
+   dir: tsd.systeminformation.features
+   #tag: mqb_sop1_eu-2.6.0
+   branch: cns3.0/develop
+
+
+buildScript: |
+   buildShared()
+   {
+      buildenvBuildAll -DTSD_SYSTEMINFORMATION_FEATURES_LINK_SHARED:BOOL=ON
+   }
+
+   buildStatic()
+   {
+      buildenvBuildAll -DTSD_SYSTEMINFORMATION_FEATURES_LINK_SHARED:BOOL=OFF
+   }
+
+
+multiPackage:
+   dev:
+      buildScript: buildShared
+      packageScript: buildenvPackageDev install
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: buildShared
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "systeminfo-features" \
+            -p "emmc.basic-svcs" \
+            -o "basic-services.systeminfo:tsd-systeminformation-features " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+
+   # Additional development target for special use-cases with benefit
+   # tremendously from static linking. For example software update which
+   # operates in library "twilight".
+   #
+   # Please think McFly! Think before using this and not the regular
+   # development package.
+   static-dev:
+      buildScript: buildStatic
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+
+   # Demo applications for the System Information Provider Features. Their
+   # dependency to this library seems to get handled automagically by Bob.
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.systeminformation.features.app.hello-sip
+
+      packageScript: buildenvPackageTarget
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

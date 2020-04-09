@@ -1,0 +1,57 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Base Functions"
+
+depends:
+  - radio::tsd-common-networksvr-dev
+  - radio::tsd-radio-eventqueue-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - radio::tsd-common-networksvr-target
+      - radio::tsd-radio-eventqueue-target
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.communication.modaptor.git
+    dir: tsd.communication.modaptor
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.communication.modaptor.eventqueueadapter.git
+    dir: tsd.communication.modaptor.eventqueueadapter
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.communication.modaptor.networkadapter.git
+    dir: tsd.communication.modaptor.networkadapter
+    branch: cns_mqb_sop1
+
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - radio::tsd-common-networksvr-dev
+        - radio::tsd-radio-eventqueue-dev
+        - system::tsd-common-dev
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "communication-modaptor" \
+            -p "emmc.radio" \
+            -o "radio:tsd-communication-modaptor " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

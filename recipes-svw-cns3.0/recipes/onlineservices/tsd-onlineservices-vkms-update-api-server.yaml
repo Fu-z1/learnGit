@@ -1,0 +1,34 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+   - system::tsd-common-dev
+   - system::tsd-vkms-api-dev
+   - communication::ext-commonapi-runtime-dev
+   - communication::tsd-communication-binding-dev
+   - onlineservices::tsd-onlineservices-vkms-update-api-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:joerg.albert/tsd.onlineservices.vkms.update.api.server.git
+      dir: tsd.onlineservices.vkms.update.api.server
+      branch: develop
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+         - system::tsd-common-dev
+         - communication::tsd-communication-binding-dev
+         - onlineservices::tsd-onlineservices-vkms-update-api-dev
+
+   target:
+      packageScript: |
+         buildenvPackageTarget

@@ -1,0 +1,104 @@
+inherit: [install, make]
+
+buildVars: [CFLAGS, CXXFLAGS, CMAKE_BUILD_TYPE, CMAKE_TOOLCHAIN_FILE, LIBDIR, LDFLAGS, TSD_BUILDENV_ENABLE_TEST_TARGETS]
+buildTools: [cmake, toolchain]
+buildScript: |
+   CMAKE_SRC_PATH="$1"
+   CMAKE_DEP_PATHS=( "${@:2}" )
+   if [[ ${CMAKE_TOOLCHAIN_FILE:+true} ]] ; then
+      CMAKE_TOOLCHAIN_FILE="${BOB_TOOL_PATHS[toolchain]}/${CMAKE_TOOLCHAIN_FILE}"
+   fi
+
+   # clean C(XX)FLAGS from -O2 et. al.
+   if [[ -n ${CFLAGS:+true} ]] ; then
+      while [[ $CFLAGS =~ (.*)-O[0-3](.*) ]] ; do
+         CFLAGS="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+      done
+      export ASMFLAGS="$CFLAGS"
+   fi
+   if [[ -n ${CXXFLAGS:+true} ]] ; then
+      while [[ $CXXFLAGS =~ (.*)-O[0-3](.*) ]] ; do
+         CXXFLAGS="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+      done
+   fi
+
+   cmakeConfigure()
+   {
+      # Wipe out build result if toolchain file has been updated.  It is not
+      # parsed again by a "make rebuild_cache" and even calling cmake again
+      # doesn't help.
+      if [[ -e CMakeCache.txt && ( "${CMAKE_TOOLCHAIN_FILE:-non-existent}" -nt CMakeCache.txt ) ]] ; then
+         rm -rf .cmake-done *
+      fi
+
+      # gather crucial paths of dependencies
+      if [ ${#CMAKE_DEP_PATHS[@]} -gt 0 ] ; then
+         local i
+         for i in "${CMAKE_DEP_PATHS[@]}"; do
+            CMAKE_FIND_ROOT_PATH="${CMAKE_FIND_ROOT_PATH:+${CMAKE_FIND_ROOT_PATH};}$i"
+            if [ -d "$i/usr/${LIBDIR}/pkgconfig" ] ; then
+               PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/${LIBDIR}/pkgconfig"
+            fi
+            if [ -d "$i/usr/share/pkgconfig" ] ; then
+               PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/share/pkgconfig"
+            fi
+            if [ -d "$i/usr/$LIBDIR" ] ; then
+               if [[ ${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0} != 0 ]]; then
+                  LDFLAGS+=" -Wl,-rpath-link=$i/usr/$LIBDIR,-rpath=$i/usr/$LIBDIR -Wl,--disable-new-dtags"
+               else
+                  LDFLAGS+=" -Wl,-rpath-link=$i/usr/$LIBDIR"
+               fi
+            fi
+         done
+      fi
+
+      [ -z "${PKG_CONFIG_PATH:+true}" ] || export PKG_CONFIG_PATH
+
+      # make a hash over the list of all available files to detect new
+      # files.
+      hash=$(find $CMAKE_SRC_PATH -type f | sort | sha1sum | cut -f1 -d ' ')
+      # run cmake
+      if [ ! -f ".cmake-done" ] ; then
+         cmake $CMAKE_SRC_PATH \
+                ${CMAKE_TOOLCHAIN_FILE:+-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}} \
+                -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-RelWithDebInfo} \
+                -DCMAKE_C_FLAGS_MINSIZEREL="-g -Os" \
+                -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g -O2" \
+                -DCMAKE_CXX_FLAGS_MINSIZEREL="-g -Os" \
+                -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-g -O2" \
+                ${CMAKE_FIND_ROOT_PATH:+-DCMAKE_FIND_ROOT_PATH="${CMAKE_FIND_ROOT_PATH}"} \
+                -DCMAKE_LIBRARY_PATH=/usr/${LIBDIR} \
+                -DCMAKE_INSTALL_LIBDIR:PATH=${LIBDIR} \
+                -DCMAKE_INSTALL_PREFIX=/usr \
+                ${LDFLAGS:+-DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS"} \
+                ${LDFLAGS:+-DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS"} \
+                "${@}"
+         touch ".cmake-done"
+      else
+         if [[ $(cat .src-hash 2> /dev/null) != $hash ]]; then
+            # Re-run cmake. Otherwise glob-patterns might not pick up new files.
+            make rebuild_cache
+         fi
+      fi
+      echo $hash > .src-hash
+   }
+
+   cmakeInstall()
+   {
+      rm -rf dist
+      mkdir -p dist
+      make DESTDIR="$PWD/dist" "$@"
+   }
+
+packageScript: |
+   CMAKE_BUILD_PATH="$1"
+
+   cmakePackageDev()
+   {
+      installPackageDev "$CMAKE_BUILD_PATH/dist"
+   }
+
+   cmakePackageTarget()
+   {
+      installPackageTarget "${CMAKE_BUILD_PATH}/dist" "$@"
+   }

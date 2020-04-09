@@ -1,0 +1,104 @@
+inherit: [buildenv]
+
+depends:
+   - hmi::tsd-dsi-cpp-dev
+   - swi::pcc-swi-btf-common-api-dev
+   - system::ext-cppunit-google-mock-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@git-repo.server.technisat-digital:swi-btf/pcc.swi.btf.common.dsi.git
+      dir: pcc.swi.btf.common.dsi
+      branch: master_mqb_sop1_eu
+      tag: "${PCC_SWI_BTF_COMMON_DSI_VERSION:-}"
+
+buildVars: [PCC_SWI_BTF_COMMON_DSI_VERSION, PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION, PCC_SWI_BTF_COMMON_DSI_DOMAINS]
+
+multiPackage:
+   "":
+      checkoutDeterministic: True
+      checkoutVars: [PCC_SWI_BTF_COMMON_DSI_VERSION, PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION, PCC_SWI_BTF_COMMON_DSI_DOMAINS]
+      checkoutScript: |
+          # TODO: If BOB_ALL_PATHS is implemented for checkoutScript uncoment the following lines
+          ## prepare some variables
+          #source ./pcc.swi.btf.common.dsi/src/scripts/pcc_swi_prepare_build_dir.sh
+          #
+          ## start generation of source code
+          #./pcc.swi.btf.common.dsi/src/scripts/pcc_swi_generate_dsi_files.sh \
+          #  --dsi-path "$path_to_dsi" \
+          #  --remove-output-dir-first \
+          #  --output-dir "$GEN_DIR" \
+          #  --only-domains "$PCC_SWI_BTF_COMMON_DSI_DOMAINS" \
+          #  --name-addition "$PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION"
+          echo "CheckoutScript only prepared. BOB_ALL_PATHS is still missing."
+
+      buildScript: |
+         # prepare some variables
+         source $1/pcc.swi.btf.common.dsi/src/scripts/pcc_swi_prepare_build_dir_use_hack.sh
+         # TODO: If BOB_ALL_PATHS is implemented for checkoutScript use pcc_swi_prepare_build_dir.sh here!
+
+         # build lib
+         buildenvBuildAll -DGIT_VERSION=$GIT_VERSION
+
+      packageScript: |
+         buildenvPackageDev
+
+      multiPackage:
+         amb:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION: "amb"
+               PCC_SWI_BTF_COMMON_DSI_DOMAINS: "audio,media,radio,radiodata,sdars,waveplayer,upnp"
+         asia:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION: "asia"
+               PCC_SWI_BTF_COMMON_DSI_DOMAINS: "asiainput,asiatrafficinfomenu"
+         car:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION: "car"
+               PCC_SWI_BTF_COMMON_DSI_DOMAINS: "bap,caraircondition,carauxheatercooler,carcomfort,cardriverassistance,cardrivingcharacteristics,careco,carhybrid,carkombi,carlife,carlight,carparkingsystem,carseat,carspecialfunctions,carstatistics,carstopwatch,cartimeunitslanguage,carvehiclestates,communication,connectedradio,generalvehiclestates,kombifastlist,kombipictureserver,kombisync2"
+         nav:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION: "nav"
+               PCC_SWI_BTF_COMMON_DSI_DOMAINS: "map,nav,navfleetservices,navigation,navservicesapi,tmc,tollcollect,tpegservices,trafficregulation,predictivenavigation"
+         online:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION: "online"
+               PCC_SWI_BTF_COMMON_DSI_DOMAINS: "browser,exlap,modelapi,online,networking"
+         phone:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION: "phone"
+               PCC_SWI_BTF_COMMON_DSI_DOMAINS: "addressbook,androidauto2,bluetooth,carplay,carplay2,phonemanager,smartphoneintegration,telephone,telephoneng,messaging,mirrorlink,organizer"
+
+         swdl:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION: "swdl"
+               PCC_SWI_BTF_COMMON_DSI_DOMAINS: "swdldeviceinfo,swdllogging,swdlprogress,swdlselection"
+         system:
+            privateEnvironment:
+               PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION: "system"
+               PCC_SWI_BTF_COMMON_DSI_DOMAINS: "base,diagnose,displaycontroller,displaymanagement,exboxm,filebrowser,genericmetadata,global,has,iconhandling,infotainmentrecorder,input,keypanel,komogfxstreamsink,komonavinfo,komoview,nfc,persistence,personalization,phonetic,picturestore,powermanagement,search,sfa,softwareupdate,speechrec,sse,startup,startupanimation,swap,system,tpegservices,travelguide,travellink,tts,uota,wirelesscharging,zfas"
+
+   unittests:
+      privateEnvironment:
+         PCC_SWI_BTF_COMMON_DSI_NAME_ADDITION: "amb"
+         PCC_SWI_BTF_COMMON_DSI_DOMAINS: "audio,media,radio,radiodata,sdars,waveplayer,upnp"
+ 
+      buildScript:  |
+         # prepare the build dir
+         source $1/pcc.swi.btf.common.dsi/src/scripts/pcc_swi_prepare_build_dir_use_hack.sh
+         # TODO: If BOB_ALL_PATHS is implemented for checkoutScript use pcc_swi_prepare_build_dir.sh here!
+
+         buildenvTestAll -DGIT_VERSION=$GIT_VERSION
+
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+provideDeps:
+   - hmi::tsd-dsi-cpp-dev
+

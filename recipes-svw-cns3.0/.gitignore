@@ -1,0 +1,27 @@
+# FILES by endings
+*~
+*.swp
+*.orig
+*.json
+
+# folder names in any subfolder
+__pycache__/
+
+# specific folders/files by name
+/dev
+/work
+/projects
+/graph
+/.bob-*
+/user.yaml
+/.kwps
+/.kwlp
+/clockwork.txt
+/results.csv
+/SDS.sh
+/hmi.sh
+/onlinesvc.sh
+/result.csv
+/result.txt
+config.warnings
+/contrib/libs/*.pyc

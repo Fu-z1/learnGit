@@ -1,0 +1,62 @@
+inherit: [make, strip, packing-module]
+
+depends:
+  - system::bsp::ext-renesas-h3-bsp
+  - name: system::bsp::ext-linux-headers
+    use: [result, environment]
+  - if: "${CONFIG_HYPERVISOR:-0}"
+    depends:
+       - system::bsp::ext-kmod-vchar-dev
+
+checkoutSCM:
+   -
+      scm: url
+      url: "${DEFAULT_DOWNLOAD_SCM_JPCC_URL}tools/opensyn_hv_yocto3.15/opsy_jpcc_patches.tar.bz2"
+      digestSHA1: "7be65c26f20a98ba3010b62f9dbeee25fc701f94"
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP, CONFIG_HYPERVISOR]
+buildTools: [toolchain, host-toolchain]
+buildScript: |
+   rm -rf *
+   tar --strip-components=1 -xjf ${BOB_DEP_PATHS['system::bsp::ext-renesas-h3-bsp']}/GSX_KM_H3.tar.bz2
+   mkdir -p binary_r8a7795_linux_release/target_aarch64/kbuild/
+   export PVR_BUILD_DIR="r8a7795_linux"
+   export KBUILD_DIR_r8a7795="build/linux/r8a7795_linux"
+   export KBUILD_OUTDIR_r8a7795="binary_r8a7795_linux_release/target_aarch64/kbuild/"
+
+
+   if [[ ${CONFIG_HYPERVISOR:-0} == 0 ]]; then
+      # normal build without Hypervisor
+      makeParallel KERNELDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build PVRSRV_VZ_NUM_OSID=1
+   else
+      patch -p1 -i $1/opsy_jpcc_patches/linux/rogue_km/*.patch
+
+      # build with hypervisor
+      makeParallel \
+         VCHAR_SRC_DIR=${BOB_DEP_PATHS["system::bsp::ext-kmod-vchar-dev"]} \
+         PVRSRV_VZ_NUM_OSID=2 \
+         PVRSRV_APPHINT_DRIVERMODE=0x80000000 \
+         PVRSRV_NEED_PVR_DPF=1 \
+         PVRSRV_NEED_PVR_TRACE=1 \
+         VMM_TYPE=coqoshv \
+         PVR_DIRTY_BYTES_FLUSH_THRESHOLD=0xFFFFFFFF \
+         BUILDDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build \
+         KERNELDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build
+   fi
+
+
+packageVars: [STRIP, KERNEL_VERSION]
+packageScript: |
+   DIR="lib/modules/${KERNEL_VERSION}/extra"
+   mkdir -p "${DIR}"
+   cp -f $1/binary_r8a7795_linux_release/target_aarch64/kbuild/*.ko ${DIR}
+   stripAllKernelModules "${DIR}" "${STRIP}"
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-kmod-glx" \
+      -p "emmc.system.bsp" \
+      -o "system.bsp:ext-kmod-glx " -f $d -- \
+      -U Depmod=${KERNEL_VERSION} \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+

@@ -1,0 +1,35 @@
+inherit: [autotools, packing-module]
+
+environment:
+   PKG_VERSION: "3130000"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-sqlite/sqlite-autoconf-${PKG_VERSION}.tar.gz
+   digestSHA1: "f6f76e310389e3f510b23826f805850449ae8653"
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden -DSQLITE_API=\\\"__attribute__((visibility(\\\\\\\"default\\\\\\\")))\\\""
+   CFLAGS:   "${CFLAGS} -fvisibility=hidden   -DSQLITE_API=\\\"__attribute__((visibility(\\\\\\\"default\\\\\\\")))\\\""
+buildScript: |
+   autotoolsBuild $1/sqlite-autoconf-${PKG_VERSION} --includedir=/usr/include/sqlite --enable-fts5
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageVars: [LIBDIR]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l sqlite3 ext.sqlite
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-sqlite" \
+            -p "emmc.system" \
+            -o "system:ext-sqlite " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - system::ext-boost-dev
+   # runtime dependecies
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.common.git
+    dir: tsd.audio.common
+#    tag: 1.4.5
+    branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - '*-dev'
+
+   unittests:
+      buildScript: |
+         buildenvTestTargets tsd.audio.common.test
+      packageScript: |
+         buildenvPackageTests
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "audio-common" \
+            -p "emmc.audio.audiomgr" \
+            -o "audio.audiomanager:tsd-audio-common " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - '*-target'
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,124 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-types-dev
+  - system::tsd-drivers-dev
+  - system::tsd-logging-r7-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - vehicle-connectivity::network-management::tsd-nm-vw-mib-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - system::system-lifecycle::tsd-pwc-proxy-api-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - system::system-lifecycle::tsd-systemstate-guard-mib3-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-types-target
+      - system::tsd-drivers-target
+      - system::tsd-logging-r7-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - vehicle-connectivity::network-management::tsd-nm-vw-mib-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - system::system-lifecycle::tsd-pwc-proxy-api-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - system::system-lifecycle::tsd-systemstate-guard-mib3-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.common.git
+    dir: tsd.canstack.common
+    tag: mqb_sop1_eu-3.3.1
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.git
+    dir: tsd.canstack
+    tag: mqb_sop1_eu-3.6.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.isotp.vw.git
+    dir: tsd.canstack.isotp.vw
+    tag: mqb_sop1_eu-3.0.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.uds.vw.git
+    dir: tsd.canstack.uds.vw
+    tag: mqb_sop1_eu-1.2.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.hid.vwmib.git
+    dir: tsd.canstack.hid.vwmib
+    #tag: mqb_sop1_eu-2.3.0
+    #branch: master_mqb_sop1_eu
+    branch: main/svw_cns3.0_1480_dev
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.database.vwmib.git
+    dir: tsd.canstack.database.vwmib
+    tag: mqb_sop1_eu-2.5.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.psd.git
+    dir: tsd.canstack.psd
+    tag: mqb_sop1_eu-2.1.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack.mib3.git
+    dir: tsd.canstack.mib3
+    #tag: mqb_sop1_eu-7.7.1
+    #branch: master_mqb_sop1_eu
+    branch: main/svw_cns3.0_1480_dev
+
+environment:
+   TSD_NM_VW_MIB_CONFIG: "TSD_NM_VW_MIB_CONFIG_CAN"
+
+buildVars: [SW_CAN_PLATFORM]
+buildScript: |
+   build()
+   {
+      buildenvBuildAll -DSW_CAN_PLATFORM=${SW_CAN_PLATFORM}
+   }
+
+multiPackage:
+   dev:
+      buildScript: build $1
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: build $1
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "canstack-mib3" \
+            -p "emmc.vehicle-connectivity.canstack" \
+            -o "vehicle-connectivity.canstack:tsd-canstack-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.canstack.mib3.app.networkthread
+      packageScript: buildenvPackageDev

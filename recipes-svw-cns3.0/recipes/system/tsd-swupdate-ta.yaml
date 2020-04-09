@@ -1,0 +1,68 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - if: "$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+    depends:
+      - system::ext-optee::client-dev
+      - system::ext-optee::os-dev
+  - if: "$(eq,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},1)"
+    depends:
+      - system::ext-cppunit-google-mock-dev
+
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - system::ext-optee::client-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.swupdate.ta.git
+   dir: tsd.swupdate.ta
+   tag: mqb_sop1_eu-2.1.0
+   branch: master_mqb_sop1_eu
+
+
+multiPackage:
+   dev: # do we want to rename this dev target because TAs are only testable with qemu?
+      buildVars: [ARCH, CC, CROSS_COMPILE]
+      buildTools: [toolchain]
+      buildScript: |
+         export TA_DEV_KIT_DIR=${BOB_DEP_PATHS["system::ext-optee::os-dev"]}
+         export OPTEE_CLIENT_EXPORT=${BOB_DEP_PATHS["system::ext-optee::client-dev"]}
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildVars: [ARCH, CC, CROSS_COMPILE]
+      buildTools: [toolchain]
+      buildScript: |
+         export TA_DEV_KIT_DIR=${BOB_DEP_PATHS["system::ext-optee::os-dev"]}
+         export OPTEE_CLIENT_EXPORT=${BOB_DEP_PATHS["system::ext-optee::client-dev"]}
+         buildenvBuildAll
+      packageScript: |
+         mkdir -p lib/optee_armtz
+         find $1/tsd.swupdate.ta/ -name "*.ta" -print0 -exec cp {} lib/optee_armtz/ \;
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-ta" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-ta " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"
+
+   stub:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev install
+      provideDeps: ["*-dev"]
+

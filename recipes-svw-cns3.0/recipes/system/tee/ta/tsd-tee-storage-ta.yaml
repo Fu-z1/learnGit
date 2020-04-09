@@ -1,0 +1,146 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::ext-optee::os-dev
+  - system::ext-optee::client-dev
+  - use: []
+    depends:
+      - system::ext-optee::client-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.tee.storage.ta.git
+   dir: tsd.tee.storage.ta
+   tag: mqb_sop1_eu-1.3.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [ARCH, CC, CROSS_COMPILE, TA_UUID]
+buildTools: [toolchain]
+buildScript: |
+   export TA_DEV_KIT_DIR=${BOB_DEP_PATHS["system::ext-optee::os-dev"]}
+
+   buildenvBuildAll
+
+packageScript: |
+   function buildSwupModuleStorageTa()
+   {
+      mkdir -p lib/optee_armtz
+      find $2/tsd.tee.storage.ta/ -name "*.ta" -type f -exec cp {} lib/optee_armtz/ \;
+      buildenvPackageTarget
+      d=$(mktemp -d)
+      rsync -a --delete --exclude ".debug" ./ $d
+      buildSwupModule -n "tee-storage-ta-$1" \
+         -p "emmc.system.tee.ta" \
+         -o "system.tee.ta:tsd-tee-storage-ta-$1 " -f $d -- \
+         -U "Partition=rootfs_ro"
+      rm -rf $d
+   }
+
+multiPackage:
+    nav:
+      privateEnvironment:
+         TA_UUID: 7921bd30-0009-418c-b5b4-fa35b27662dc
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildSwupModuleStorageTa nav $1
+            provideDeps: ["*-target"]
+
+    sal:
+      privateEnvironment:
+         TA_UUID: c5fa782f-59b3-4b1b-ae72-d95539818ff3
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildSwupModuleStorageTa sal $1
+            provideDeps: ["*-target"]
+ 
+    iaa:
+      privateEnvironment:
+         TA_UUID: e2d28608-10a1-4838-ae0d-8f8a096ffc52
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildSwupModuleStorageTa iaa $1
+            provideDeps: ["*-target"]
+
+
+    cs:
+      privateEnvironment:
+         TA_UUID: 6da83e69-9810-4c19-997a-8fa616d5ba9a
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildSwupModuleStorageTa cs $1
+            provideDeps: ["*-target"]
+
+    tpfs:
+      privateEnvironment:
+         TA_UUID: c58f4a4c-3cac-439c-860a-068d4537fdda
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildSwupModuleStorageTa tpfs $1
+            provideDeps: ["*-target"]
+
+    vssl:
+      privateEnvironment:
+         TA_UUID: 6f5fc323-be5a-41b9-aac0-9ef33063f8d8
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildSwupModuleStorageTa vssl $1
+            provideDeps: ["*-target"]
+
+    test:
+      privateEnvironment:
+         TA_UUID: b69bcb17-c073-4e36-9fcf-93ad79b3a8ae
+
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               mkdir -p lib/optee_armtz
+               find $1/tsd.tee.storage.ta/ -name "*.ta" -type f -exec cp {} lib/optee_armtz/ \;
+               buildenvPackageTarget
+            provideDeps: ["*-target"]

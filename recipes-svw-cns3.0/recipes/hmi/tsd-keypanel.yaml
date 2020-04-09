@@ -1,0 +1,69 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - communication::tsd-communication-dev
+  - hmi::tsd-dsi-cpp-dev
+  - hmi::tsd-keypanel-api-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - name: basic-services::rsi-library::tsd-rsi-client-dev
+    if: "$(eq,${SW_SWUP_MAINUNIT_UPDATE:-0},0)"
+  - use: []
+    depends:
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - communication::tsd-communication-target
+      - hmi::tsd-dsi-cpp-target
+      - hmi::tsd-keypanel-api-target
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - basic-services::rsi-library::tsd-rsi-server-target
+      - name: basic-services::rsi-library::tsd-rsi-client-target
+        if: "$(eq,${SW_SWUP_MAINUNIT_UPDATE:-0},0)"
+
+buildVars: [SW_SWUP_MAINUNIT_UPDATE]
+
+buildScript: |
+   buildenvBuildAll -DCMAKE_INSTALL_PREFIX=/tsd \
+      -DSW_SWUP_MAINUNIT_UPDATE=${SW_SWUP_MAINUNIT_UPDATE:-0}
+
+packageScript: |
+   buildenvPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" --exclude "tsd.keypanel.app" ./ $d
+   buildSwupModule -n "keypanel" \
+      -p "emmc.hmi" \
+      -o "hmi:tsd-keypanel " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+multiPackage:
+   target:
+      checkoutSCM:
+          - scm: git
+            url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-hmi/tsd.keypanel.git
+            dir: tsd.keypanel
+            branch: main/svw_cns3.0_1413_dev
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      provideDeps: ['*-target']
+
+   37w-target:
+      checkoutSCM:
+          - scm: git
+            url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.keypanel.37w.git
+            dir: tsd.keypanel
+            tag: '1.9.0'
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

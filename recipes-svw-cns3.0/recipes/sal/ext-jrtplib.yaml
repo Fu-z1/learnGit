@@ -1,0 +1,43 @@
+inherit: [cmake, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "3.10.0"
+   PKG_NAME: "JRTPlib"
+   PKG_PATCH_VERSION: ""
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "SharedLib, StaticLib"
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/ext.jrtplib.git
+   dir: ext.jrtplib
+   tag: mqb_sop1_eu-1.145.2
+
+buildVars: [LIBDIR]
+buildTools: [cmake, toolchain, buildenv]
+
+buildScript: |
+   rsync -a --delete $1/ext.jrtplib ${PWD}
+   CMAKE_SRC_PATH="${PWD}/ext.jrtplib"
+   cmakeConfigure -DJTHREAD_ENABLED=0 -DJRTPLIB_USE_BIGENDIAN=OFF -DLIBRARY_INSTALL_DIR=/usr/lib
+   makeParallel
+   cmakeInstall install
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+         tsd-buildenv-create-shim.sh -p usr -L lib -l jrtp -I include -I include/jrtplib3 ext.libjrtp
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-jrtplib" \
+            -p "emmc.sal" \
+            -o "sal:ext-jrtplib " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

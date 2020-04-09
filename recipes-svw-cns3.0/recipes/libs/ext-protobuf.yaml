@@ -1,0 +1,76 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "BSD-3-Clause-Clear"
+   PKG_VERSION: "3.4.1"
+   PKG_NAME: "protocol-buffers"
+   PKG_PATCH_VERSION: ""
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "StaticLib, Library"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.protobuf.git
+   tag: '3.0.0'
+   dir: ext.protobuf
+
+
+multiPackage:
+   "":
+      buildTools: [protoc]
+      buildScript: |
+         rsync -a --delete $1/ext.protobuf/ ${PWD}
+         ./autogen.sh
+         autotoolsBuild ${PWD} --with-protoc=protoc
+      multiPackage:
+         dev:
+            packageTools: [buildenv]
+            packageScript: |
+               autotoolsPackageDev
+               tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l protoc -l protobuf ext.protobuf
+               rm -rf usr/bin
+
+         target:
+            packageScript: |
+               autotoolsPackageTarget
+               rm -rf usr/bin
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-protobuf" \
+                  -p "emmc.libs" \
+                  -o "libs:ext-protobuf " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+
+   python:
+      checkoutSCM:
+         -  scm: url
+            url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-protobuf/ext.protobuf-python-3.0.0.tgz
+            dir: python
+            digestSHA1: "ff5965fe8a8d28053b0bb3eae387929e066daf0e"
+         -  scm: url
+            url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-six/six-1.11.0.tar.gz
+            dir: six
+            digestSHA1: "3647372a0e104e7b53bd477762392024e1083ac0"
+      buildScript: |
+         if [[ $(git -C $1/ext.protobuf describe --tags) != "3.0.0" ]]; then
+            echo "error: updated protobuf sources! please regenerate python package!"
+            exit 1
+         fi
+         rsync -a --delete $1/python/ .
+         cp $1/six/six-*/six.py usr/local/lib/python3.5/dist-packages/
+         pushd usr/local/lib/
+         ln -s python-3.5 python-3.6
+         popd
+      packageScript: |
+         rsync -a --delete $1/ .
+#       buildScript: |
+#          rsync -a --delete $1/ ${PWD}
+#          which protoc
+#          pushd python
+#          python3 setup.py build
+#          python3 setup.py install --root ../dist
+#          popd
+#
+#       packageScript: |
+#         installPackageTarget "$1/dist"

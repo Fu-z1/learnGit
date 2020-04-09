@@ -1,0 +1,56 @@
+inherit: [autotools,packing-module]
+
+environment:
+   PKG_VERSION: "2.3.1"
+
+depends:                                                                                                                                                                                                    
+   -  system::ext-rpcbind-dev
+   -  system::ext-libtirpc-dev
+   - use: []
+     depends:
+      -  system::ext-rpcbind-target
+      -  system::ext-libtirpc-target
+
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}/external/nfs-utils-${PKG_VERSION}.tar.bz2
+   digestSHA1: "c4ec255e858cbca4f3a51cfe59433fe6523829eb"
+   extract: no
+
+#buildVars: [CC]
+buildTools: [toolchain, host-toolchain]
+buildVars: [AUTOCONF_HOST]
+buildScript: |
+   tar --strip-components=1 -xjf $1/nfs-utils-${PKG_VERSION}.tar.bz2
+    # without autotools due to unknnown option '--build'
+    #   export LDFLAGS=-L${BOB_DEP_PATHS["system::ext-libevent-dev"]}/usr/lib
+    export CC_FOR_BUILD=${AUTOCONF_HOST}-gcc
+    HOST=`uname -m`
+    export LDFLAGS="-L${BOB_DEP_PATHS["system::ext-libtirpc-dev"]}/usr/lib"
+    ./configure --prefix=/usr --libdir=/usr/${LIBDIR} --build=${HOST} ${AUTOCONF_HOST:+--host=${AUTOCONF_HOST}} --disable-gss --with-tcp-wrappers=no --disable-nfsv4 --disable-nfsv41 --disable-uuid --with-tirpcinclude=${BOB_DEP_PATHS["system::ext-libtirpc-dev"]}/usr/include/tirpc/
+   autotoolsBuildOnly
+   mkdir -p dist/etc/
+   cp $<<ext-nfs-utils/nfs.conf>> dist/etc/nfs.conf
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+      provideDeps: [ "*-dev" ]
+         #tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l z ext.zlib
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-nfs-utils" \
+             -p "emmc.system" \
+             -m "root,root,0644,/usr/lib/systemd/system/*" \
+             -o "system:ext-nfs-utils " -f $d -- \
+             -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: [ "*-target" ]

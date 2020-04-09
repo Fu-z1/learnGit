@@ -1,0 +1,73 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - system::tsd-common-dev
+ - basic-services::rsi-library::tsd-rsi-client-dev
+ - connectivity::networking::tsd-networking-api-dev
+ - onlineservices::tsd-onlineservices-backendcomcore-dev
+ - onlineservices::tsd-onlineservices-common-dev
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - basic-services::rsi-library::tsd-rsi-client-target
+    - connectivity::networking::tsd-networking-api-target
+    - onlineservices::tsd-onlineservices-backendcomcore-target
+    - onlineservices::tsd-onlineservices-common-target
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.framework.git
+   dir: tsd.onlineservices.framework
+   branch: fix/CNSDEFECT-15733
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+         # -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+         rsync -a $1/tsd.onlineservices.framework/depl ${PWD}
+
+      packageScript: |
+         buildenvPackageDev
+         mkdir -p etc/tsd.onlineservices.framework/
+         rsync -a --delete $1/depl/ etc/tsd.onlineservices.framework/
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+         rsync -a $1/tsd.onlineservices.framework/depl ${PWD}
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p etc/tsd.onlineservices.framework/
+         rsync -a --delete $1/depl/* etc/tsd.onlineservices.framework/ 
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-framework" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-framework " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.onlineservices.framework.app.FrameworkTest \
+            tsd.onlineservices.framework.app.NetworkingServiceMock \
+            tsd.onlineservices.framework.app.OCUTestApp \
+      packageScript: buildenvPackageTarget
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

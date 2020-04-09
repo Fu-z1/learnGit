@@ -1,0 +1,22 @@
+include:
+   - cloud-client
+   - dataservices
+   - guide
+   - input
+   - junctionview
+   - mapdisplay
+   - middleware
+   - positioning
+   - prednav
+   - psd
+   - sdk
+   - system
+   - traffic
+
+#scmOverrides:
+#   -
+#      match:
+#         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.rsi.server.git"
+#      del: [commit, tag]
+#      set:
+#         tag: "3.7.3"

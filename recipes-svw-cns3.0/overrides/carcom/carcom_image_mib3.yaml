@@ -1,0 +1,67 @@
+scmOverrides:
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.canstack*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/*.carssw*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd.carcom*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.peripheral*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.pwc*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.pwc*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-communication/tsd.communication.runtime.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.nm*.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-libs/tsd.drivers.git"
+   del: [commit, tag]
+   set:
+      branch: "develop"

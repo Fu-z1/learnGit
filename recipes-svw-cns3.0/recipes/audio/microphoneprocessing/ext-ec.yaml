@@ -1,0 +1,92 @@
+inherit: [packing-module]
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+multiPackage:
+   environment:
+      multiPackage:
+         speakerlocalization:
+            provideVars:
+               PKG_DATE: "2018-03-27"
+               PKG_VERSION: "4_1_2_PCC_VW_MIB3_MQB37w"
+               DATASET: "2018-07-27-SSE4_VOCON_HANDSFREE_DATASETS"
+               DELIVERY_LIBDIR: "armv8"
+               DATASET_FILE_EXTENSION: "scd"
+               SEPARATOR: "_"
+               DIGEST_HASH_LIB: "ca182e32705a27c65f8df06b8210eb209eff4c4e"
+               DIGEST_HASH_DATASET: "5644973b7de53e07a66f6dff534b85157fd83f25"
+
+         normal:
+            provideVars:
+               PKG_DATE: "2018-01-19"
+               PKG_VERSION: "3.22.2_FinalPorting"
+               DATASET: "2018-03-02_SSE_BSD_24kHz_VOCON_FIXED"
+               DELIVERY_LIBDIR: "target/dynamic"
+               DATASET_FILE_EXTENSION: "bsd"
+               SEPARATOR: "-"
+               DIGEST_HASH_LIB: "4e6cd8447cd2caeb59706426fac5bf7de61d16bd"
+               DIGEST_HASH_DATASET: "4151d22d83e6de2507d6e077585f5ef424635b27"
+
+   "":
+      depends:
+         - name: audio::microphoneprocessing::ext-ec-environment-speakerlocalization
+           use: [environment]
+           if: $(flagIsSet,${VARIANTS},SW_SPEAKER_LOCALIZATION,1)
+         - name: audio::microphoneprocessing::ext-ec-environment-normal
+           use: [environment]
+           if: $(not,$(flagIsSet,${VARIANTS},SW_SPEAKER_LOCALIZATION,1))
+      checkoutSCM:
+        -
+           scm: url
+           url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-nuance/sse/${PKG_DATE}_SSE${SEPARATOR}${PKG_VERSION}.zip
+           digestSHA1: ${DIGEST_HASH_LIB}
+           dir: ${PKG_DATE}_SSE${SEPARATOR}${PKG_VERSION}
+
+        -
+           scm: url
+           url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-nuance/sse/${DATASET}.zip
+           digestSHA1: ${DIGEST_HASH_DATASET}
+           dir: ${DATASET}
+
+      buildVars: [PKG_DATE, PKG_VERSION, DATASET, SEPARATOR]
+      buildScript: |
+         rsync -a --delete $1/${PKG_DATE}_SSE${SEPARATOR}${PKG_VERSION}/${PKG_DATE}_SSE${SEPARATOR}${PKG_VERSION}/ .
+         rsync -a $1/${DATASET}/ ./parameter/
+
+
+      multiPackage:
+         dev:
+            packageVars: [DELIVERY_LIBDIR]
+            packageTools: [buildenv]
+            packageScript: |
+               mkdir -p ./usr/include
+               mkdir -p ./usr/lib
+               rsync -a --delete $1/header/ ./usr/include
+               rsync -a --delete $1/lib/${DELIVERY_LIBDIR}/ ./usr/lib
+               chmod og=rx,u=rwx ./usr/lib/*
+               tsd-buildenv-create-shim.sh -p usr -L lib -l sse -I include ext.ec
+
+         interface:
+            packageTools: [buildenv]
+            packageScript: |
+               mkdir -p ./usr/include
+               rsync -a --delete $1/header/ ./usr/include
+               tsd-buildenv-create-shim.sh -p usr -I include ext.ec.interface
+
+         target:
+            packageVars: [DELIVERY_LIBDIR, DATASET_FILE_EXTENSION]
+            packageScript: |
+               mkdir -p ./usr/lib
+               rsync -a --delete $1/lib/${DELIVERY_LIBDIR}/ ./usr/lib
+               chmod og=rx,u=rwx ./usr/lib/*
+               chmod og=rx,u=rwx ./usr/lib
+               mkdir -p ./usr/share/audio/ec
+               rsync -a --delete $1/parameter/*.${DATASET_FILE_EXTENSION} ./usr/share/audio/ec
+               chmod og=r,u=rw ./usr/share/audio/ec/*
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-ec" \
+                  -p "emmc.audio.micprg" \
+                  -o "audio.microphoneprocessing:ext-ec " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d

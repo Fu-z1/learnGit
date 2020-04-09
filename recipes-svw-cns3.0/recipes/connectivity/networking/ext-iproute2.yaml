@@ -1,0 +1,76 @@
+inherit: [install, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only"
+   PKG_VERSION: "4.9.0"
+   #PKG_NAME: "iproute2"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#    PKG_VERSION: "v4.9.0"
+   PKG_NAME: "ext.iproute2"
+
+depends:
+  - connectivity::networking::ext-iptables-dev
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/${PKG_NAME}.git
+    dir: ${PKG_NAME}
+    tag: v4.14.1_PCC
+
+buildVars: [PKG_NAME, AR, CC, LD, CPP, LIBDIR]
+buildTools: [toolchain, host-toolchain] #netem compiles a host helper tool called maketable
+buildScript: |
+   # Definition of common stuff for building and installing iproute2
+   TARGET_DIRS=(
+      dist/usr/bin
+      dist/usr/include
+      dist/etc
+      dist/etc/iproute2
+      dist/usr/${LIBDIR}
+   )
+
+   # Preparing build process (cleanup etc.)
+   rm -rf *
+   rsync -a --delete $1/${PKG_NAME}/* ${PWD}
+
+   # Configuring and building the iproute2 package
+   ./configure
+   make
+
+   # Copying binaries to dist directory
+   mkdir -p "${TARGET_DIRS[@]}"
+   find . -type f -executable \( -iname "*"              \
+                                 ! -iname "*.t"          \
+                                 ! -iname "configure"    \
+                                 ! -iname "paretonormal" \
+                                 ! -iname "pareto"       \
+                                 ! -iname "maketable"    \
+                                 ! -iname "normal"       \
+                              \) -exec cp '{}' dist/usr/bin \;
+   cp -R --parents etc/iproute2 dist/
+   cp -R PCC/Configs/etc/* dist/etc/
+
+   find . -name \*.a -o -name \*.so | rsync -a --files-from - --no-relative . ./dist/usr/${LIBDIR}
+   find ./include -name \*.h ! -path "*/linux/*" | rsync -a --files-from - . ./dist/usr/
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         installPackageDev "$1/dist"
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l netlink -l util -I include ext.iproute2
+
+   target:
+      packageScript: |
+         installPackageTarget "$1/dist"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-iproute2" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-iproute2 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

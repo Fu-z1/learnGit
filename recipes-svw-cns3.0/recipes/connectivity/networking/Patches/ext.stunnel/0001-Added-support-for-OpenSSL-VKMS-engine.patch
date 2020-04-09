@@ -1,0 +1,201 @@
+From 90bb0e8741426505fbcab11ecbf2586105c45565 Mon Sep 17 00:00:00 2001
+From: Karsten Heinze <karsten.heinze@preh.de>
+Date: Mon, 5 Feb 2018 10:51:51 +0100
+Subject: [PATCH 1/4] Added support for OpenSSL VKMS engine.
+
+To enable change stunnel.conf like this:
+
+    ; Load and init OpenSSL VKMS engine.
+    engine = openssl-vkms-engine
+    engineCtrl = INIT
+
+    ; Examples for server and client mode.
+    [server]
+    accept  = 8080
+    connect = 8800
+    PSKsecrets = /path/to/psk_secrets.txt
+    TIMEOUTclose = 0
+
+    [client]
+    client  = yes
+    accept  = 8090
+    connect = 8900
+    PSKsecrets = /path/to/psk_secrets.txt
+    TIMEOUTclose = 0
+
+Just use the VKMS key id(s) in the PSK secrets file.
+By now there are two configured ids: OCU and FPK.
+
+    ocu_psk_identity:OCU
+    fpk_psk_identity:FPK
+    other_psk_identity:my_absolute_secret_passphrase
+
+If the OpenSSL VKMS engine is not available the key ids (OCU and FPK)
+are handled as keys but will be rejected as they are too short.
+---
+ src/ctx.c     | 80 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ src/options.c | 14 +++++++----
+ 2 files changed, 89 insertions(+), 5 deletions(-)
+
+diff --git a/src/ctx.c b/src/ctx.c
+index 3d5497e..fc1befb 100644
+--- a/src/ctx.c
++++ b/src/ctx.c
+@@ -38,6 +38,14 @@
+ #include "common.h"
+ #include "prototypes.h"
+ 
++#ifndef OPENSSL_NO_PSK
++#define PSK_MIN_LEN 16
++#ifndef OPENSSL_NO_ENGINE
++#include <tsd/openssl/vkms/engine.h>
++extern ENGINE* vkms_engine;
++#endif
++#endif
++
+ #ifndef OPENSSL_NO_DH
+ DH *dh_params=NULL;
+ int dh_needed=0;
+@@ -66,6 +74,7 @@ NOEXPORT int conf_init(SERVICE_OPTIONS *section);
+ /* authentication */
+ NOEXPORT int auth_init(SERVICE_OPTIONS *);
+ #ifndef OPENSSL_NO_PSK
++NOEXPORT int psk_equal_party(const unsigned char*, size_t, const char*, size_t);
+ NOEXPORT unsigned psk_client_callback(SSL *, const char *,
+     char *, unsigned, unsigned char *, unsigned);
+ NOEXPORT unsigned psk_server_callback(SSL *, const char *,
+@@ -516,6 +525,25 @@ NOEXPORT int auth_init(SERVICE_OPTIONS *section) {
+ }
+ 
+ #ifndef OPENSSL_NO_PSK
++NOEXPORT int psk_equal_party(const unsigned char* psk,
++    size_t psk_len, const char* party, size_t party_len) {
++    if (psk_len < party_len) {
++       return 0;
++    }
++
++    if (0 != strncmp((const char*)psk, party, party_len)) {
++       return 0;
++    }
++
++    // Check if other bytes of psk are zero.
++    for (size_t i = party_len; i < psk_len; ++i) {
++       if (psk[i] != 0u) {
++          return 0;
++       }
++    }
++
++    return 1;
++}
+ 
+ NOEXPORT unsigned psk_client_callback(SSL *ssl, const char *hint,
+     char *identity, unsigned max_identity_len,
+@@ -546,6 +574,33 @@ NOEXPORT unsigned psk_client_callback(SSL *ssl, const char *hint,
+     strcpy(identity, c->opt->psk_selected->identity);
+     memcpy(psk, c->opt->psk_selected->key_val, c->opt->psk_selected->key_len);
+     s_log(LOG_INFO, "PSK client configured for identity \"%s\"", identity);
++
++#ifndef OPENSSL_NO_ENGINE
++    if (vkms_engine) {
++        // OCU
++        if (psk_equal_party(psk, c->opt->psk_selected->key_len,
++            vkms_party_ocu, strlen(vkms_party_ocu)))
++        {
++            s_log(LOG_INFO, "VKMS PSK for %s detected", vkms_party_ocu);
++            return (unsigned)strlen(vkms_party_ocu);
++        }
++
++        // FPK
++        if (psk_equal_party(psk, c->opt->psk_selected->key_len,
++            vkms_party_fpk, strlen(vkms_party_fpk)))
++        {
++            s_log(LOG_INFO, "VKMS PSK for %s detected", vkms_party_fpk);
++            return (unsigned)strlen(vkms_party_fpk);
++        }
++    }
++#endif
++    // Either OpenSSL supports no engines or VKMS engine wasn't loaded.
++    // Reject keys shorter than PSK_MIN_LEN.
++    if (c->opt->psk_selected->key_len < PSK_MIN_LEN) {
++        s_log(LOG_ERR, "Rejecting PSK as it is too short");
++        return 0;
++    }
++
+     return (unsigned)(c->opt->psk_selected->key_len);
+ }
+ 
+@@ -571,6 +626,31 @@ NOEXPORT unsigned psk_server_callback(SSL *ssl, const char *identity,
+     if(len) {
+         memcpy(psk, found->key_val, len);
+         s_log(LOG_NOTICE, "Key configured for PSK identity \"%s\"", identity);
++
++#ifndef OPENSSL_NO_ENGINE
++        if (vkms_engine) {
++            // OCU
++            if (psk_equal_party(psk, len, vkms_party_ocu,
++                strlen(vkms_party_ocu)))
++            {
++                s_log(LOG_NOTICE, "VKMS PSK for %s detected", vkms_party_ocu);
++                return (unsigned)strlen(vkms_party_ocu);
++            }
++
++            // FPK
++            if (psk_equal_party(psk, len, vkms_party_fpk,
++                strlen(vkms_party_fpk))) {
++                s_log(LOG_NOTICE, "VKMS PSK for %s detected", vkms_party_fpk);
++                return (unsigned)strlen(vkms_party_fpk);
++            }
++        }
++#endif
++        // Either OpenSSL supports no engines or VKMS engine wasn't loaded.
++        // Reject keys shorter than PSK_MIN_LEN.
++        if (len < PSK_MIN_LEN) {
++            s_log(LOG_ERR, "Rejecting PSK as it is too short");
++            return 0;
++        }
+     } else { /* block identity probes if possible */
+         if(max_psk_len>=32 && RAND_bytes(psk, 32)>0) {
+             len=32; /* 256 random bits */
+diff --git a/src/options.c b/src/options.c
+index 5881486..6a85290 100644
+--- a/src/options.c
++++ b/src/options.c
+@@ -3237,12 +3237,9 @@ NOEXPORT PSK_KEYS *psk_read(char *key_file) {
+         }
+         if(key_len<20) {
+             /* shorter keys are unlikely to have sufficient entropy */
+-            s_log(LOG_ERR,
+-                "PSKsecrets line %d: Key shorter than 20 characters",
++            s_log(LOG_WARNING,
++                "PSKsecrets line %d: Key shorter than 20 characters, will be rejected if no VKMS key identifier",
+                 line_number);
+-            file_close(df);
+-            psk_free(head);
+-            return NULL;
+         }
+         curr=str_alloc(sizeof(PSK_KEYS));
+         curr->identity=str_dup(line);
+@@ -3554,6 +3551,8 @@ NOEXPORT unsigned long parse_ocsp_flag(char *arg) {
+ /**************************************** engine */
+ 
+ #ifndef OPENSSL_NO_ENGINE
++#include <tsd/openssl/vkms/engine.h>
++ENGINE* vkms_engine = NULL;
+ 
+ #define MAX_ENGINES 256
+ static ENGINE *engines[MAX_ENGINES]; /* table of engines for config parser */
+@@ -3649,6 +3648,11 @@ NOEXPORT char *engine_init(void) {
+     s_log(LOG_INFO, "Engine #%d (%s) initialized",
+         current_engine+1, ENGINE_get_id(engines[current_engine]));
+     engine_initialized=1;
++
++    if (0 == strcmp(vkms_engine_id, ENGINE_get_id(engines[current_engine]))) {
++        vkms_engine = engines[current_engine];
++    }
++
+     return NULL; /* OK */
+ }
+ 
+-- 
+2.11.0
+

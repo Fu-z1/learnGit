@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::ext-libarchive-dev
+  - system::ext-pkg-dev
+  - system::tsd-common-dev
+  - system::tsd-swupdate-client-dev
+  - system::tsd-dataformats-dev
+  - use: []
+    depends:
+      - system::ext-libarchive-target
+      - system::ext-pkg-target
+      - system::tsd-common-target
+      - system::tsd-swupdate-client-target
+      - system::tsd-dataformats-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.client.pkg.git
+   dir: tsd.swupdate.client.pkg
+   #tag: mqb_sop1_eu-2.4.0
+   #branch: master_mqb_sop1_eu
+   #branch: main/svw_cns3.0_1480_dev
+   tag: 2.8.0
+
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+         mkdir -p dist/etc/swup
+         rsync -a --delete $1/tsd.swupdate.client.pkg/etc/swup/ dist/etc/swup/
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+         mkdir -p dist/etc/swup
+         rsync -a --delete $1/tsd.swupdate.client.pkg/etc/swup/ dist/etc/swup/
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-client-pkg" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-client-pkg " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

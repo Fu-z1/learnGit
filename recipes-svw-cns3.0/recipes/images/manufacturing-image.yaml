@@ -1,0 +1,358 @@
+inherit: [rootfs, gdb, packing-module]
+
+depends:
+   # dsp binaries
+  - name: toolchain::xtensa::xtensa-xcc
+    use: [tools, environment]
+    forward: true
+  - name: audio::soundprocessing::tsd-audio-soundproc-mib3
+    if: "$(eq,${CONFIG_XTENSA:-0},1)"
+
+   # 64bit binaries
+  - name: toolchain::aarch64-linux-gnu
+    use: [tools, environment]
+    forward: true
+
+   #- if: "${CONFIG_AUDIO:-1}"
+   #  depends:
+   #    - audio::audiorouter::ext-alsa-utils-target
+   #    - audio::audiorouter::ext-pulseaudio-target
+   #    - audio::amplifiercontroller::tsd-audio-ampcontrol-target
+   #    - audio::audiomanager::tsd-audio-audiomgr-app-mib3-target
+   #    - audio::microphoneprocessing::tsd-audio-miccontrol-mib3-target
+
+   #- if: "${CONFIG_CARCOM:-1}"
+   #  depends:
+   #    - basic-services::car-function-management::tsd-carssw-mib3-target
+   #    - basic-services::car-function-management::tsd-carssw-viwicarservice-mib3-target
+   #    - vehicle-connectivity::automotive-ethernet::tsd-ethernet-mib3-target
+   #    - carcom::tsd-carcom-proxy-mib3-target
+   #    -
+   #      name: vehicle-connectivity::automotive-ethernet::ext-avbstack-cetitec-target
+   #      if: "$(eq,${TARGET_TYPE},embedded)"
+
+   #- if: "${CONFIG_COMMUNICATION:-1}"
+   #  depends:
+   #    - basic-services::rsi-service-registry::tsd-rsi-serviceregistry-target
+
+   #- if: "${CONFIG_CONNECTIVITY:-1}"
+   #  depends:
+   #    - connectivity::networking::tsd-networking-mib3-target
+   #    - connectivity::networking::ext-dhcp-target
+   #    - connectivity::networking::ext-iproute2-target
+   #    - connectivity::networking::ext-iptables-target
+   #    - connectivity::networking::ext-dhd-cypress
+   #    - connectivity::networking::ext-wpasupplicant-cypress-target
+   #    - connectivity::networking::ext-iperf-target
+   #    - connectivity::networking::ext-ipset-target
+   #    - connectivity::usb::tsd-usb-mib3-target
+   #    - sal::tsd-sal-app-target
+
+   #- if: "${CONFIG_HMI:-1}"
+   #  depends:
+   #     -
+   #       name: hmi::pcc-hmi-vw-chn-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},chn),$(eq,${SW_HMI_BRAND:-},vw))"
+   #     -
+   #       name: hmi::pcc-hmi-skoda-chn-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},chn),$(eq,${SW_HMI_BRAND:-},sk))"
+   #     -
+   #       name: hmi::pcc-hmi-vw-eu-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},eu),$(eq,${SW_HMI_BRAND:-},vw))"
+   #     -
+   #       name: hmi::pcc-hmi-skoda-eu-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},eu),$(eq,${SW_HMI_BRAND:-},sk))"
+   #     -
+   #       name: hmi::pcc-hmi-vw-jp-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},jp),$(eq,${SW_HMI_BRAND:-},vw))"
+   #     -
+   #       name: hmi::pcc-hmi-vw-kor-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},kor),$(eq,${SW_HMI_BRAND:-},vw))"
+   #     -
+   #       name: hmi::pcc-hmi-skoda-kor-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},kor),$(eq,${SW_HMI_BRAND:-},sk))"
+   #     -
+   #       name: hmi::pcc-hmi-vw-twn-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},twn),$(eq,${SW_HMI_BRAND:-},vw))"
+   #     -
+   #       name: hmi::pcc-hmi-skoda-twn-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},twn),$(eq,${SW_HMI_BRAND:-},sk))"
+   #     -
+   #       name: hmi::pcc-hmi-vw-rdw-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},rdw),$(eq,${SW_HMI_BRAND:-},vw))"
+   #     -
+   #       name: hmi::pcc-hmi-skoda-rdw-integration
+   #       if: "$(and,$(eq,${SW_HMI_REGION:-},rdw),$(eq,${SW_HMI_BRAND:-},sk))"
+
+   #     - hmi::tsd-i18n-mib3-target
+   #     - hmi::ext-pango-target
+   #     - hmi::ext-oracle-mcfobjectreader
+   #     - hmi::ext-oracle-objectswapper
+   #     - hmi::ext-oracle-xiploader
+   #     - hmi::ext-zulu-target
+   #     - hmi::ext-vw-extlibs
+   #     - hmi::tsd-common-log-java
+   #     - hmi::tsd-dsi-cpp-target
+   #     - hmi::tsd-dsi-java
+   #     - hmi::tsd-dsi-native-target
+   #     - hmi::tsd-gesture-service-target
+   #     - hmi::tsd-keypanel-target
+#  #     - hmi::tsd-opengl-jsr231-java
+   #     - hmi::tsd-opengl-jsr231-target
+   #   #  - hmi::tsd-ime-target
+
+   #- if: "${CONFIG_MEDIA:-1}"
+   #  depends:
+   #   - media::mediaapplication::tsd-media-mib3-target
+   #   - media::mountingservice::tsd-media-mount-status-service-mib3-target
+   #   - media::pictureserver::tsd-media-picserver-mib3-target
+   #   - media::mountingservice::ext-tuxera-filesystems
+   #   - media::waveplayer::tsd-media-waveplayer-mib3-target
+
+   #- if: "${CONFIG_NAV:-1}"
+   #  depends:
+   #     - libs::ext-curl-target
+   #     - libs::ext-nghttp2-target
+   #     - libs::ext-openssl-target
+   #     - libs::ext-protobuf-target
+   #     - navigation::ext-freeimage-target
+   #     - libs::ext-sqlite-nds-target
+   #     - navigation::ext-vw-prednavcore-target
+   #     - navigation::tsd-nav-asr-api-target
+   #     - navigation::tsd-nav-configdata-target
+   #     - navigation::tsd-nav-crypto-target
+   #     - navigation::tsd-nav-itr-api-target
+   #     - navigation::tsd-nav-mainapp-mib3-target
+   #     - navigation::tsd-nav-configdata-variant-embedded-target
+   #     - navigation::tsd-nav-mapdisplay-mib3-target
+   #     - navigation::tsd-nav-middleware-interface-target
+   #     - navigation::tsd-nav-middleware-nds-2_5_1-target
+   #     - navigation::tsd-nav-psd-v15-api-target
+   #     - navigation::tsd-nav-testinterface-api-target
+
+   #- if: "${CONFIG_ONLINE:-1}"
+   #  depends:
+   #     - onlineservices::ext-nodejs
+   #     - onlineservices::tsd-onlineservices-framework-target
+   #     - onlineservices::tsd-onlineservices-remoteupdate-target
+
+   #- if: "${CONFIG_PHONE:-1}"
+   #  depends:
+   #     - phone::bt-phone::tsd-bt-phone-mib3-target
+   #     - phone::phonemanager::tsd-phonemanager-target
+   #     - phone::bt-mediacontroller::tsd-bt-media-client-target
+   #     - phone::bt-mediacontroller::tsd-bt-media-service-target
+   #     - phone::bt-organizer::tsd-organizer-mib3-client-target
+
+
+   #- if: "${CONFIG_RADIO:-1}"
+   #  depends:
+   #     - radio::tsd-radio-target
+   #     - radio::tsd-si47xxboot-target
+   #     - radio::tsd-stationdb-app-target
+
+   #- if: "${CONFIG_SDS:-1}"
+   #  depends:
+   #     - sds::asr::tsd-sds-asr-app-mib3-target
+   #     - sds::asr::vocon::ext-vocon-target
+   #     - sds::tts::tsd-sds-tts-app-mib3-target
+   #     - sds::tts::ve::ext-ve-libs-target
+   #     - if: "$(and,$(or,$(eq,${SW_HMI_REGION:-},eu),$(eq,${SW_HMI_REGION:-},rdw)),$(eq,${SW_HMI_BRAND:-},vw))"
+   #       depends:
+   #          - sds::asr::resource-deployment-eu_rdw-context
+   #          - sds::asr::resource-deployment-eu_rdw-engine
+   #          - sds::asr::resource-deployment-common
+# not ready yet - missing resources in HMI delivery
+#        - if: "$(eq,${SW_HMI_REGION:-},jp)"
+#          depends:
+#             - sds::asr::resource-deployment-jp-context
+#             - sds::asr::resource-deployment-jp-engine
+#             - sds::asr::resource-deployment-common
+#        - if: "$(eq,${SW_HMI_REGION:-},kor)"
+#          depends:
+#             - sds::asr::resource-deployment-kor-context
+#             - sds::asr::resource-deployment-kor-engine
+#             - sds::asr::resource-deployment-common
+
+  - if: "${CONFIG_SYSTEM_CORE:-1}"
+    depends:
+        #- system::ext-boost-target
+      - system::ext-busybox
+      - system::ext-coreutils
+      - system::ext-dropbear
+      - system::ext-e2fsprogs-target
+        #- system::ext-memtool
+      - system::ext-mtd-utils
+      - system::ext-systemd-target
+      - system::ext-util-linux-target
+        #- system::ext-strace
+      - system::bsp::ext-u-boot-env
+      - system::tsd-config-target
+      - system::tsd-root-mib3
+        #- system::tsd-tools-debug
+        #- system::tsd-config-gpio
+        #- system::tsd-config-dirs
+        #- system::tsd-system-displaymanager-mib3-target
+        # standalone window
+      - system::tsd-system-displaymanager-target
+
+        # kernel modules
+        #- system::ext-optee::linuxdriver
+        #- system::ext-kmod-adsp
+        #-
+        #    name: system::bsp::ext-busmoni
+        #    if: "${SW_BUS_MONITOR}"
+        #- system::bsp::ext-qos-tool
+      - system::bsp::ext-kmod-glx
+        #- system::bsp::ext-kmod-mmngr-target
+        #- system::bsp::ext-kmod-qos-target
+        #- system::bsp::ext-kmod-uvcs-target
+        #- system::bsp::ext-kmod-vsp2-target
+        #- system::bsp::ext-kmod-vspm-target
+        #- system::bsp::ext-kmod-vspmif-target
+        #- system::ext-kmod-lttng-modules
+        #- system::ext-lttng-tools
+        #- libs::ext-libxml2-target
+        #- libs::ext-liburcu-target
+        #- system::ext-htop
+        #- system::bsp::ext-linux-perf
+        #- system::bsp::ext-linux-firmware
+
+   #- if: "${CONFIG_SYSTEM_EXTRA:-0}"
+   #  depends:
+   #     - system::ext-mc
+   #     - system::ext-valgrind
+
+  - if: "${CONFIG_SYSTEM_BASIS:-1}"
+    depends:
+        #- system::ext-optee::client-target
+        #- system::ext-optee::test
+        #- engineering::gem::tsd-gem-esd-target
+        #- engineering::gem::tsd-gem-service-target
+        #- system::tsd-infotainmentrecorder-target
+      - system::tsd-logging-mib3-target
+      - basic-services::persistence::tsd-persistence-service-mib3-target
+        #- system::tsd-platformmonitor
+        #- system::tsd-pwc-mib3-updater-updater
+      - system::tsd-swupdate-target
+      - engineering::manufacturing::tsd-manufacturingapp-target
+        #- system::tsd-activation-baseserv-target
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+      - basic-services::systeminfo::tsd-systeminformation-hardware-target
+        #- system::tsd-vkms-target
+  - name: system::bsp::ext-linux-headers
+    use: [environment]
+  - system::bsp::ext-linux-modules
+
+  - system::tsd-config-buildcfg  # not copied to target. see buildScript
+
+  - environment:
+       CONFIG_TARGET: "normal"
+    depends:
+      - system::tsd-config-gpio
+buildVars: [KERNEL_VERSION]
+buildTools: [mkimage]
+buildScript: |
+   rm -rf *
+
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[system::tsd-config-buildcfg]
+   unset tocopy[system::bsp::ext-linux-headers]
+   unset tocopy[manufacturing]
+
+   rm -rf tmp flash symbols
+   mkdir -p tmp flash symbols
+
+   # copy rootfs from SDK
+   copyFromFile ${BOB_DEP_PATHS["system::tsd-config-buildcfg"]}/rootfs-arm64.txt tmp
+
+   # copy/overwrite target specific files
+   for dep in ${tocopy[@]} ; do
+      DUPLICATE="$(comm -12 <(cd ${dep} && find . ! -type d | sort) <(cd tmp && find . ! -type d | sort))"
+      if [[ -n ${DUPLICATE} ]] ; then
+         echo "ERROR: following files are duplicate in ${dep}" >&2
+         echo "${DUPLICATE}" >&2
+         exit 1
+      fi
+      rsync -a ${dep}/ tmp/
+   done
+
+   fakeroot bash <<EOF
+   # inherit shell settings and traps
+   $(set +o)
+   $(trap -p)
+
+   # add default directories and special files
+   pushd tmp
+   mkdir -p boot
+   mkdir -p dev/pts
+   mkdir -p etc/init.d
+   mkdir -p home/user
+   mkdir -p java # SWDL checks for the existence
+   mkdir -p lib
+   mkdir -p media
+   mkdir -p mnt/nfs
+   mkdir -p opt/bin
+   mkdir -p proc
+   mkdir -p root
+   mkdir -p run
+   mkdir -p sys
+   mkdir -p tmp
+   mkdir -p usr/lib
+   mkdir -p var/log
+   ln -s /run var/run
+   mkdir -p var/lib/nfs
+   mkdir -p var/lib/persistence
+   mkdir -p var/core
+   mknod dev/console c 5 1
+   popd
+
+   EOF
+
+   # configure kernel module dependencies
+   /sbin/depmod -b ${PWD}/tmp -C ${PWD}/tmp/etc/depmod.d ${KERNEL_VERSION}
+
+   createGdbEnvironment tmp 192.168.1.4
+   sed -i 's/ -@/_ -@/g'  tmp/sbin/gpio.sh
+   move_symbols tmp symbols
+
+   [ -f tmp/.gdbinit ] && mv tmp/.gdbinit symbols/tmp
+   [ -f tmp/gdb.sh   ] && mv tmp/gdb.sh   symbols/tmp
+   [ -f tmp/ddd.sh   ] && mv tmp/ddd.sh   symbols/tmp
+
+   pushd tmp
+   find . | cpio -H newc -o | gzip -9 -n > ../manufacturing.cpio
+   mkimage -A arm64 -T ramdisk -C gzip -d ../manufacturing.cpio ../flash/manufacturing.cpio
+   popd
+   rm -rf manufacturing.cpio
+
+   # find missing dependencies
+   checkSharedLibraries tmp
+
+   # create archive for symbols and rootfs in parallel
+   declare -a jobs
+   tar -zcf symbols.tgz -C symbols/tmp/ . && rm -rf symbols &
+   jobs+=($!)
+   tar -zcf flash/rootfs.tgz -C tmp/ . && rm -rf tmp &
+   jobs+=($!)
+
+   failed=0
+   for i in "${jobs[@]}" ; do
+      wait $i || failed=$?
+   done
+   [[ $failed -eq 0 ]] || exit $failed
+
+   createUntarScript $PWD
+
+packageScript: |
+   rsync -a --delete $1/ $PWD
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "manufacturing-image" \
+      -p "emmc.images" \
+      -o "images:manufacturing-image " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

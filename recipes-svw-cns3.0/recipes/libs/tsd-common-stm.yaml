@@ -1,0 +1,57 @@
+inherit: [buildenv, packing-module, werror]
+
+depends:
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.stm.git
+   dir: tsd.common.stm
+   tag: 2.6.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [TSD_COMMON_BUILD_APPS]
+buildScript: |
+   build()
+   {
+      buildenvBuildAll -DTSD_COMMON_LINK_SHARED:BOOL=ON \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=${TSD_COMMON_BUILD_APPS:-0} \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=${TSD_COMMON_BUILD_APPS:-0}
+   }
+
+multiPackage:
+   dev:
+      buildScript: build
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: build
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "common-stm" \
+            -p "emmc.libs" \
+            -o "libs:tsd-common-stm " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      depends:
+        - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildScript: |
+         buildenvBuildDocAll
+      packageScript: |
+         buildenvPackageDoc

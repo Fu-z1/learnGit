@@ -1,0 +1,54 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::ext-libarchive-dev
+  - system::tsd-common-dev
+  - system::tsd-swupdate-client-dev
+  - communication::tsd-communication-runtime-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-dev
+  - use: []
+    depends:
+      - system::ext-libarchive-target
+      - system::tsd-common-target
+      - system::tsd-swupdate-client-target
+      - communication::tsd-communication-runtime-target
+      - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.client.eth.git
+   dir: tsd.swupdate.client.eth
+   tag: mqb_sop1_eu-3.2.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [SW_SWUP_HMI]
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DSW_SWUP_HMI=${SW_SWUP_HMI:-1}
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll -DSW_SWUP_HMI=${SW_SWUP_HMI:-1}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-client-eth" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-client-eth " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+

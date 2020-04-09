@@ -1,0 +1,50 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-dataformats-dev
+  - libs::ext-openssl-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-dataformats-target
+      - libs::ext-openssl-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.rsi.common.git
+   dir: tsd.rsi.common
+   tag: mqb_sop1_eu-3.5.1
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   ? ""
+   :  buildScript: |
+         buildenvBuildAll -DTSD_RSI_COMMON_LINK_SHARED=1
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev install
+            provideDeps: ['*-dev']
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "rsi-common" \
+                  -p "emmc.basic-services.rsi-library" \
+                  -o "basic-services.rsi-library:tsd-rsi-common " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget

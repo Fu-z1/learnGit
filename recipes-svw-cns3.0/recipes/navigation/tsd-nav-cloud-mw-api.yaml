@@ -1,0 +1,30 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Service Cloud"
+
+depends:
+   - system::ext-boost-dev
+   - system::tsd-common-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.mw.api.git
+   dir: tsd.nav.cloud.mw.api
+   branch: snapshot
+
+buildScript: |
+   build(){
+      buildenvBuildAll
+   }
+multiPackage:
+   dev:
+      buildScript: build $@
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

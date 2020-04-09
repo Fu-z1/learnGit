@@ -1,0 +1,32 @@
+inherit: [autotools, packing-module]
+
+depends:
+  - libs::ext-elfutils-libelf-dev
+  - use: []
+    depends:
+      - libs::ext-elfutils-libelf-target
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/namhyung/uftrace.git
+
+buildVars: [CROSS_COMPILE]
+buildTools: [toolchain]
+buildScript: |
+   export ARCH=aarch64
+   autotoolsBuild $1 --with-elfutils=${BOB_DEP_PATHS[libs::ext-elfutils-libelf-dev]}/usr
+
+   #   rsync -a --delete $1/ .
+   #   ./configure    #   make
+   #   make install DESTDIR=dist
+
+provideDeps: ['*-target']
+packageScript: |
+   autotoolsPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-uftracer" \
+      -p "emmc.system" \
+      -o "system:ext-uftracer " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

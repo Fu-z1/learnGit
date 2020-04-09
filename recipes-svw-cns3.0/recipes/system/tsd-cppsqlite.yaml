@@ -1,0 +1,128 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+depends:
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.cppsqlite.git
+   dir: tsd.cppsqlite
+   tag: 2.3.1
+
+
+buildVars: [TSD_CPPSQLITE_BUILD_WITH_SQLITE_NDS]
+
+buildScript: |
+   build(){
+      buildenvBuildAll -DTSD_BUILDENV_MODULE_AVAILABLE_EXT.SQLITE=1 -DNO_SQLITE_SANITY_CHECK=1 -DTSD_CPPSQLITE_BUILD_WITH_SQLITE_NDS=${TSD_CPPSQLITE_BUILD_WITH_SQLITE_NDS}
+   }
+   buildTest(){
+      buildenvTestAll \
+         -DTSD_CPPSQLITE_BUILD_WITH_SQLITE_NDS=${TSD_CPPSQLITE_BUILD_WITH_SQLITE_NDS} \
+         -DTIP_LIBS_TSD_CPPSQLITE_ENABLE_MOBICA_UNITTESTS=${MOBICA_UNITTESTS} \
+         -DTIP_LIBS_TSD_CPPSQLITE_ENABLE_PCC_UNITTESTS=${PCC_UNITTESTS}
+   }
+
+multiPackage:
+   ? ""
+   :  depends:
+        - system::ext-sqlite-dev
+        - use: []
+          depends:
+            - system::ext-sqlite-target
+      privateEnvironment:
+         TSD_CPPSQLITE_BUILD_WITH_SQLITE_NDS: "0"
+      multiPackage:
+           ? ""
+           :
+             inherit: [navi_compflags_werror_sanitize]
+             multiPackage:
+               dev:
+                  buildScript: build $@
+                  packageScript: |
+                     buildenvPackageDev
+                  provideDeps:
+                    - "*-dev"
+               target:
+                  buildScript: build $@
+                  packageScript: |
+                     buildenvPackageTarget
+                     d=$(mktemp -d)
+                     rsync -a --delete --exclude ".debug" ./ $d
+                     buildSwupModule -n "cppsqlite" \
+                        -p "emmc.system" \
+                        -o "system:tsd-cppsqlite " -f $d -- \
+                        -U "Partition=rootfs_ro"
+                     rm -rf $d
+                  provideDeps: ['*-target']
+           unittests:
+              buildVars: [MOBICA_UNITTESTS, PCC_UNITTESTS]
+              packageScript: |
+                 buildenvPackageTests
+              multiPackage:
+                 ? ""
+                 :  depends:
+                      - system::tsd-cppsqlite-unittests-pcc
+                      - system::tsd-cppsqlite-unittests-mobica
+                 pcc:
+                    privateEnvironment:
+                       MOBICA_UNITTESTS: "Off"
+                       PCC_UNITTESTS: "On"
+                    buildScript: buildTest $@
+                 mobica:
+                    privateEnvironment:
+                       MOBICA_UNITTESTS: "On"
+                       PCC_UNITTESTS: "Off"
+                    buildScript: buildTest $@
+
+   nds:
+      depends:
+        - libs::ext-sqlite-nds-dev
+        - use: []
+          depends:
+            - libs::ext-sqlite-nds-target
+      privateEnvironment:
+         TSD_CPPSQLITE_BUILD_WITH_SQLITE_NDS: "1"
+      multiPackage:
+           ? ""
+           :
+             inherit: [navi_compflags_werror_sanitize]
+             multiPackage:
+               dev:
+                  buildScript: build $@
+                  packageScript: |
+                     buildenvPackageDev
+                  provideDeps:
+                    - "*-dev"
+               target:
+                  privateEnvironment:
+                     CXXFLAGS: "${CXXFLAGS:-} -Werror -Wno-error=deprecated-declarations ${SUPPRESS_WARNINGS:-}"
+                  buildScript: build $@
+                  packageScript: |
+                     buildenvPackageTarget
+                  provideDeps: ['*-target']
+           unittests:
+              buildVars: [MOBICA_UNITTESTS, PCC_UNITTESTS]
+              packageScript: |
+                 buildenvPackageTests
+              buildScript: buildTest $@
+              multiPackage:
+                 ? ""
+                 :  privateEnvironment:
+                       MOBICA_UNITTESTS: "On"
+                       PCC_UNITTESTS: "On"
+
+                 pcc:
+                    privateEnvironment:
+                       MOBICA_UNITTESTS: "Off"
+                       PCC_UNITTESTS: "On"
+                 mobica:
+                    privateEnvironment:
+                       MOBICA_UNITTESTS: "On"
+                       PCC_UNITTESTS: "Off"

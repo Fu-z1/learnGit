@@ -1,0 +1,43 @@
+inherit: [buildenv, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - engineering::testmanager::tsd-testmanager-communication-dev
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-testsupport/tsd.testmanager.common.git
+   dir: tsd.testmanager.common
+   tag: 1.6.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+      provideDeps:
+        - "*-target"
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget

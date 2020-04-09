@@ -1,0 +1,12 @@
+privateEnvironment:
+   CFLAGS: "${CFLAGS} \
+             -Wall \
+             -Wextra \
+             $(if-then-else,$(not,$(or,$(eq,${TARGET_TYPE},'host'),$(eq,${TARGET_ENVIRONMENT:-},lg))),-Werror,'') \
+             -Wno-error=deprecated-declarations"
+
+   CXXFLAGS: "${CXXFLAGS} \
+              -Wall \
+              -Wextra \
+              $(if-then-else,$(not,$(or,$(eq,${TARGET_TYPE},'host'),$(eq,${TARGET_ENVIRONMENT:-},lg))),-Werror,'') \
+              -Wno-error=deprecated-declarations"

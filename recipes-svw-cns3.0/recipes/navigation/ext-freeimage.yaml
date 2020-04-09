@@ -1,0 +1,52 @@
+inherit: [install, make, packing-module, patch]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only	OR GPL-3.0-only OR FIPL (Free Image Public License)"
+   PKG_NAME: "freeiamge"
+   PKG_VERSION: "3.17.0.1"
+   PKG_RESPONSIBLE: "Navigation-Kartendarstellung"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.freeimage.git
+   dir: ext.freeimage
+   tag: '3.17.0.1'
+
+checkoutDeterministic: True
+checkoutScript: |
+   pushd ext.freeimage
+   patchApplySeries $<<ext-freeimage/0003*.patch>>
+
+buildVars: [CC, CXX, AR, CFLAGS, CXXFLAGS, LIBDIR]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ext.freeimage/ ${PWD}
+   mkdir -p dist
+
+   export CFLAGS="${CFLAGS:-} -Wno-narrowing"
+   export CXXFLAGS="${CXXFLAGS} -Wno-narrowing" # TODO
+   export DESTDIR="${PWD}/dist"
+   export INCDIR="${DESTDIR}/usr/include"
+   export INSTALLDIR="${DESTDIR}/usr/${LIBDIR}"
+
+   makeParallel -f Makefile.gnu
+   make install
+
+packageVars: [LIBDIR]
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         installPackageDev $1/dist
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -I include -l freeimage -d ext.libpng ext.freeimage
+
+   target:
+      packageScript: |
+         installPackageTarget $1/dist
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-freeimage" \
+            -p "emmc.navigation" \
+            -o "navigation:ext-freeimage " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

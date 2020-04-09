@@ -1,0 +1,17 @@
+inherit: [buildenv]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:architecture/proto-api-cns3.0.git
+   dir: proto.api
+   branch: main/svw_cns3.0_8.1.0_r51_dev 
+
+buildTools: [protoc]
+buildScript: |
+         buildenvBuildModules \
+         proto.api \
+         build_proto_source
+
+packageScript: |
+   buildenvPackageDev
+   mkdir -p usr/include && cp -fr $1/proto.api/idl-gen usr/include

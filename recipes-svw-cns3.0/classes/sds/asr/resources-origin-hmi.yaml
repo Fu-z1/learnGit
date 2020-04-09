@@ -1,0 +1,40 @@
+checkoutVars: [SRGS_PKG_NAME, SRGS_PKG_VERSION, SRGS_PKG_DIGEST]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/hmi/speech/${SRGS_PKG_NAME}${SRGS_PKG_VERSION}.zip
+   dir: srgs
+   extract: false
+   digestSHA1: ${SRGS_PKG_DIGEST}
+
+buildVars: [SRGS_PKG_NAME,SRGS_PKG_VERSION,HMI_RES_VARIANT]
+buildScript: |
+
+   SRGS_ZIP=$1/srgs/${SRGS_PKG_NAME}${SRGS_PKG_VERSION}.zip
+
+   # param1 the HMI lang code e.g. "de_DE"
+   # param2 the engine lang code e.g. "ged"
+   copyContextResFromHMI()
+   {
+      LC=$1
+      TARGET=$1/context/srgs
+
+      echo "Gathering context resources - from SRGS - for ${LC} ${HMI_RES_VARIANT}"
+      unzip -jo ${SRGS_ZIP} */${HMI_RES_VARIANT}/var/speech/asr/lang/${LC}/* -d srgs_files
+
+      # test if any files have been extracted
+      [ "$(ls -A srgs_files)" ] || (echo "Error - SRGS: no files extracted!"; exit 1)
+
+      # make simple validity check
+      [ "$(find srgs_files -iname '*.bdf')" ] || (echo "Error - SRGS: bdf files missing!"; exit 1)
+      [ "$(find srgs_files -iname '*.fcf')" ] || (echo "Error - SRGS: fcf files missing!"; exit 1)
+
+      # TODO: should be removed at some point
+      # for lookup purposes we want to have the bnf/tdf file and the HMI version information also in resource folder
+      unzip -jo ${SRGS_ZIP} */${HMI_RES_VARIANT}/log/${LC}/grammar/* -d srgs_files
+      touch srgs_files/${SRGS_PKG_VERSION}
+
+      # copy to final destination
+      mkdir -p ${TARGET}
+      mv srgs_files/* ${TARGET}
+      rm -d srgs_files
+   }

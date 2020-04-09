@@ -1,0 +1,40 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0"
+   PKG_VERSION: "2.0.2"
+   PKG_NAME: "htop"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-ncurses-dev
+  - libs::ext-glib2-dev
+  - libs::ext-readline-dev
+  - use: []
+    depends:
+      - libs::ext-ncurses-target
+      - libs::ext-glib2-target
+      - libs::ext-readline-target
+
+provideDeps: ["*-target"]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-htop/htop-${PKG_VERSION}.tar.gz
+   digestSHA1: "201f793f13dce2448e36047079875b9bd5bba75a"
+
+buildVars: [CROSS_COMPILE, SYSROOT, CC, CPP, LIBDIR, AUTOCONF_HOST, TARGET_TYPE, PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -av $1/htop-${PKG_VERSION}/ .
+   LDFLAGS+=" -ltinfo"
+   autotoolsBuild . --disable-unicode
+
+packageScript: |
+   autotoolsPackageTarget --include-shared
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-htop" \
+      -p "emmc.system" \
+      -o "system:ext-htop " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

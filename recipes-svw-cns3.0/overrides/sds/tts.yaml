@@ -1,0 +1,11 @@
+scmOverrides:
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.tts.*
+     del: [commit,rev,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.utils.git
+     del: [commit,rev,tag]
+     set:
+        branch: develop_mqb_sop1_eu

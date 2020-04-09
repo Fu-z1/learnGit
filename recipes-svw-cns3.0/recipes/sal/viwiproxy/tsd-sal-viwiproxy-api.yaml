@@ -1,0 +1,60 @@
+inherit: [buildenv, packing-module, capigen, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+
+environment:
+   TARGET_OS: "linux"
+
+depends:
+   # build dependencies
+ - system::tsd-common-dev
+ - communication::ext-commonapi-runtime-dev
+ - communication::tsd-communication-binding-dev
+
+   # runtime dependencies
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - hmi::tsd-dsi-cpp-target
+    - sal::tsd-sal-common-target
+    - communication::ext-commonapi-runtime-target
+    - communication::tsd-communication-binding-target
+    - system::tsd-threadmessages-target
+    - system::tsd-common-daemon-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.sal.viwiproxy.api.git
+   dir: tsd.sal.viwiproxy.api
+   tag: mqb_sop1_eu-1.139.0-RC3
+
+checkoutScript: CapiGenProcessFIDLFiles tsd.sal.viwiproxy.api
+checkoutDeterministic: true
+
+multiPackage:
+   ? ""
+   :  buildVars: [AUTOCONF_HOST]
+      buildScript: buildenvBuildAll
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "sal-viwiproxy-api" \
+                  -p "emmc.sal.viwiproxy" \
+                  -o "sal.viwiproxy:tsd-sal-viwiproxy-api " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+

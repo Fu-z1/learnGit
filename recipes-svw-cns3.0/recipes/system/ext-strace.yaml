@@ -1,0 +1,27 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "BSD-3-Clause"
+   PKG_VERSION: "4.16"
+   PKG_NAME: "strace"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-strace/strace-${PKG_VERSION}.tar.xz
+   digestSHA1: b780a8cd2e60ea836cfd3468e0f81623a346d180
+
+buildVars: [PKG_VERSION]
+buildTools: [toolchain, host-toolchain]
+buildScript: |
+   autotoolsBuild $1/strace-${PKG_VERSION}
+
+packageScript: |
+   autotoolsPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-strace" \
+      -p "emmc.system" \
+      -o "system:ext-strace " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

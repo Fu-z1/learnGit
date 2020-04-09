@@ -1,0 +1,39 @@
+inherit: [buildenv, packing-module, werror]
+
+depends:
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - system::tsd-clock-mib3-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - use: []
+    depends:
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - system::tsd-clock-mib3-target
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.emmcrefreshtrigger.git
+   dir: tsd.tools.emmcrefresh
+   tag: mqb_sop1_eu-2.4.0
+   branch: master_mqb_sop1_eu
+
+
+buildScript: |
+   buildenvBuildAll
+
+packageScript: |
+   buildenvPackageTarget
+   mkdir -p var/lib/tsd.emmcrefresh
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "emmcrefresh" \
+      -p "emmc.system" \
+      -m 'nobody,emmc,0770,/var/lib/tsd.emmcrefresh$' \
+      -o "system:tsd-emmcrefresh " -f $d -- \
+      -U "Partition=rootfs_ro"
+      rm -rf $d
+
+provideDeps: ['*-target']
+

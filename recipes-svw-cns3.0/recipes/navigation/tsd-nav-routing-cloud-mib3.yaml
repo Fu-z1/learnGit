@@ -1,0 +1,33 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+depends:
+  - navigation::tsd-nav-sdk-pathfinder-dev
+  - navigation::tsd-nav-sdk-mapdataservice-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.routing.cloud.mib3.git
+   dir: tsd.nav.routing.cloud.mib3
+   tag: v4.0.0
+
+buildScript: |
+   build(){
+      buildenvBuildAll -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DTSD_BUILDENV_ENABLE_APP_TARGETS=1
+   }
+
+multiPackage:
+   ? ""
+   :
+      #inherit: [navi_compflags_werror_sanitize]
+      multiPackage:
+         dev:
+            buildScript: build $@
+            packageScript: buildenvPackageDev
+            provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

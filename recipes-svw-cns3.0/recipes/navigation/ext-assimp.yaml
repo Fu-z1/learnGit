@@ -1,0 +1,54 @@
+inherit: [cmake, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "BSD-3-Clause"
+   PKG_NAME: "Open Asset Import Library"
+   PKG_VERSION: "4.1.0"
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.assimp.git
+   dir: ext.assimp
+   tag: 'v4.1.0'
+
+buildVars: [CC, CXX, AR, CFLAGS, CXXFLAGS, LIBDIR]
+buildTools: [toolchain]
+buildScript: |
+   CMAKE_SRC_PATH="$1/ext.assimp"
+   cmakeConfigure -DASSIMP_BUILD_ASSIMP_TOOLS:BOOL=OFF -DASSIMP_BUILD_TESTS:BOOL=OFF
+   makeParallel
+   cmakeInstall install
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+
+         # for debug there is a postfix
+         DbgPostFix=""
+         if [ "${CMAKE_BUILD_TYPE:-}" == "Debug" ]; then
+            DbgPostFix="d"
+         fi
+
+         rsync -a --delete $1/dist/ .
+         if [ "${LIBDIR:-}" != "lib" ]; then
+            mv ./usr/lib ./usr/${LIBDIR}
+         fi
+
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l assimp${DbgPostFix} ext.assimp
+
+
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-assimp" \
+            -p "emmc.navigation" \
+            -o "emmc.navigation:ext-assimp " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

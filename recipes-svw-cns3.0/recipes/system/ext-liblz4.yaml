@@ -1,0 +1,26 @@
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.lz4.git
+   tag: v1.7.5
+
+buildVars: [CC, CXX, LD]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   make CFLAGS="-O3 -g -ffunction-sections -fdata-sections -fno-builtin"
+   make install DESTDIR=dist LIBDIR=/usr/lib
+
+multiPackage:
+   tool:
+      packageScript: |
+         mkdir -p bin
+         cp $1/programs/dist/usr/local/bin/* bin/
+
+      provideTools:
+         lz4:
+            path: "bin"
+
+   dev:
+      packageScript: |
+         rsync -a --delete $1/lib/dist/ .
+         rm usr/lib/*.so*

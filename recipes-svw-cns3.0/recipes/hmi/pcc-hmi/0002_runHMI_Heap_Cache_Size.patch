@@ -1,0 +1,19 @@
+--- tsd/hmi/runHMI.sh.old	2017-09-22 09:38:06.089306664 +0200
++++ tsd/hmi/runHMI.sh	2017-09-22 09:39:17.239303023 +0200
+@@ -223,13 +223,13 @@
+ 
+ 
+ # Set JVM heap limits
+-VMOPTIONS="$VMOPTIONS -Xms32m -Xmx64m"
++VMOPTIONS="$VMOPTIONS -Xms32m -Xmx256m"
+ VMOPTIONS="$VMOPTIONS -XX:MetaspaceSize=96m"
+ VMOPTIONS="$VMOPTIONS -XX:MaxMetaspaceSize=256m"
+ 
+ # Set JVM JIT parameters
+-VMOPTIONS="$VMOPTIONS -XX:InitialCodeCacheSize=8m"
+-VMOPTIONS="$VMOPTIONS -XX:ReservedCodeCacheSize=32m"
++VMOPTIONS="$VMOPTIONS -XX:InitialCodeCacheSize=32m"
++VMOPTIONS="$VMOPTIONS -XX:ReservedCodeCacheSize=128m"
+ 
+ # Set JVM GC parameters
+ 

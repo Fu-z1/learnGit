@@ -1,0 +1,22 @@
+shared: True
+
+environment:
+   PKG_VERSION: "1.23-1"
+   PKG_SHA1_SUM: "5466b600da86fb68472e1c7e03a021bcdae2d083"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-fakeroot/fakeroot_${PKG_VERSION}.tar.bz2
+   digestSHA1: ${PKG_SHA1_SUM}
+   extract: no
+
+buildScript: |
+   ln -sf $1/*.tar.bz2 .
+
+
+packageScript: |
+   tar -xjf $1/*.tar.bz2
+
+provideTools:
+   fakeroot:
+      path: "usr/bin"

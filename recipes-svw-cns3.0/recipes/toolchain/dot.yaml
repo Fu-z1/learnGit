@@ -1,0 +1,21 @@
+shared: True
+
+environment:
+   PKG_VERSION: "2.40.1"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/dot-${PKG_VERSION}
+   digestSHA1: 47dfbb50ad6a8c782ba364ee79cf6280ab4e6393
+
+buildScript: |
+   ln -s $1/dot-*
+
+packageScript: |
+   mkdir -p bin
+   cp $1/dot-* bin/dot
+   chmod u+x bin/dot
+
+provideTools:
+   dot:
+      path: "bin"

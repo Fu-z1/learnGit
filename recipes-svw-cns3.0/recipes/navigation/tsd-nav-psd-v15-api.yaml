@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.psd.v15.api.git
+   dir: tsd.nav.psd.v15.api
+   tag: mqb_sop1_eu-v12.0.3  #navi-interface (interface to externel contractors)
+   # see link for change prozess: https://wiki-automotive.server.technisat-digital/display/MIB3SERIE/Schnittstellen+Navigation
+
+checkoutDeterministic: true
+checkoutScript: CapiGenProcessFIDLFiles tsd.nav.psd.v15.api
+
+buildScript: |
+   build(){
+      buildenvBuildAll
+   }
+
+# No warning-as-error for generated code
+packageVars: [LIBDIR]
+multiPackage:
+   dev:
+      buildScript: build $@
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target: # Shared-lib (FIDL)
+      buildScript: build $@
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "nav-psd-v15-api" \
+            -p "emmc.navigation" \
+            -o "navigation:tsd-nav-psd-v15-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

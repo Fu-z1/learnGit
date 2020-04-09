@@ -1,0 +1,88 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+depends:
+  - system::ext-boost-dev
+  - system::tsd-common-dev
+  - navigation::tsd-nav-updatemanager-api-dev
+  - use: []
+    depends:
+     - system::ext-boost-target
+     - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.middleware.interface.git
+   dir: tsd.nav.middleware.interface
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+
+buildVars: [TARGET_TYPE]
+buildScript: |
+   build() {
+      case "${TARGET_TYPE}" in
+         host)
+            buildenvBuildAll \
+               -DTSD_NAV_MIDDLEWARE_INTERFACE_ENABLE_MAINTENANCE_FUNCTIONALITY=1
+            ;;
+         embedded)
+            buildenvBuildAll
+            ;;
+      esac
+   }
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+      dev:
+        buildScript: build
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+      target: # Shared-lib
+        buildScript: build
+        packageVars: [LIBDIR]
+        packageScript: |
+           buildenvPackageTarget
+           d=$(mktemp -d)
+           rsync -a --delete --exclude ".debug" ./ $d
+           buildSwupModule -n "nav-middleware-interface" \
+              -p "emmc.navigation" \
+              -o "navigation:tsd-nav-middleware-interface " -f $d -- \
+              -U "Partition=rootfs_ro"
+           rm -rf $d
+        provideDeps: ['*-target']
+
+  unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildVars: [MOBICA_UNITTESTS, PCC_UNITTESTS]
+      buildScript: |
+         buildenvTestAll \
+            -DTSD_NAV_MIDDLEWARE_INTERFACE_ENABLE_MAINTENANCE_FUNCTIONALITY=1 \
+            -DTSD_NAV_MIDDLEWARE_INTERFACE_ENABLE_MOBICA_UNITTESTS=${MOBICA_UNITTESTS} \
+            -DTSD_NAV_MIDDLEWARE_INTERFACE_ENABLE_PCC_UNITTESTS=${PCC_UNITTESTS}
+      packageScript: |
+         buildenvPackageTests
+      multiPackage:
+         ? ""
+         :  privateEnvironment:
+               MOBICA_UNITTESTS: "On"
+               PCC_UNITTESTS: "On"
+
+         pcc:
+            privateEnvironment:
+               MOBICA_UNITTESTS: "Off"
+               PCC_UNITTESTS: "On"
+         mobica:
+            privateEnvironment:
+               MOBICA_UNITTESTS: "On"
+               PCC_UNITTESTS: "Off"
+  doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

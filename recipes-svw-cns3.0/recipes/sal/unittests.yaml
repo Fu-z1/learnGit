@@ -1,0 +1,60 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+   TSD_BUILDENV_ENABLE_TEST_RUN_TARGETS: "1"
+   TSD_BUILDENV_ENABLE_RPATH: "1"
+
+depends:
+   #######################################################################
+   ### available unittests                                             ###
+   #######################################################################
+   - sal::tsd-sal-common-unittests
+   - sal::tsd-sal-iap2-unittests
+   - sal::tsd-sal-mirrorlink-mib3-unittests
+   #######################################################################
+   ### to be unittested                                                ###
+   #######################################################################
+   # - sal::tsd-android-aoa-unittests
+   # - sal::tsd-sal-app-unittests
+   # - sal::tsd-sal-audio-mib3-unittests
+   # - sal::tsd-sal-carlife-unittests
+   # - sal::tsd-sal-carplay-unittests
+   # - sal::tsd-sal-cinemo-unittests
+   # - sal::tsd-sal-gal-unittests
+   # - sal::tsd-sal-video-cinemo-unittests
+   # - sal::viwiproxy::tsd-sal-viwiproxy-unittests
+   #######################################################################
+   ### not to be unittested                                            ###
+   ### (see https://wiki-automotive.server.technisat-digital/x/JpqzGQ) ###
+   #######################################################################
+   # - sal::ext-apple-bonjour-unittests
+   # - sal::ext-apple-carplay-unittests
+   # - sal::ext-google-gal-unittests
+   # - sal::ext-jrtplib-unittests
+   # - sal::ext-libfaketime-unittests
+   # - sal::ext-libupnp-unittests
+   # - sal::ext-opus-unittests
+   # - sal::ext-realvnc-unittests
+   # - sal::tsd-sal-api-unittests
+   # - sal::tsd-sal-audio-unittests
+   # - sal::tsd-sal-carplay-brands-unittests
+   # - sal::tsd-sal-client-unittests
+   # - sal::tsd-sal-config-mib3-unittests
+   # - sal::tsd-sal-guidance-unittests
+   # - sal::tsd-sal-service-unittests
+   # - sal::tsd-sal-video-unittests
+   # - sal::viwiproxy::tsd-sal-viwiproxy-api-unittests
+   #######################################################################
+
+buildScript: |
+   rm -rf *
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+      mkdir -p "${dep}"
+      cp -a "${BOB_DEP_PATHS[$dep]}"/* "${dep}"/
+   done
+
+packageScript: |
+   cp -a $1/* .

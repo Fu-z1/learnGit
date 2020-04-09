@@ -1,0 +1,261 @@
+inherit: [cmake]
+
+depends:
+   - system::tsd-buildenv
+
+buildVarsWeak: [RUN_UNITTESTS, RUN_CODE_COVERAGE, JENKINS_HOME]
+buildVars:
+   - CMAKE_TARGET_FILE
+   - TSD_BUILDENV_DEFAULT_WARNLEVEL
+   - TSD_BUILDENV_CALL_COUNT_INSTR
+   - TSD_BUILDENV_ENABLE_TEST_TARGETS
+   - TSD_BUILDENV_ENABLE_RPATH
+   - TSD_BUILDENV_IS_SWITTEST
+
+checkoutDeterministic: true
+checkoutScript: |
+   cat >CMakeLists.txt <<'EOF'
+   project(ROOT)
+   cmake_minimum_required(VERSION 3.0)
+
+   # Let's rock...
+   include(TsdBuildenv)
+   collect_modules()
+   EOF
+
+buildTools: [lcov, lcov2cobertura]
+buildScript: |
+   BUILDENV_SRC_PATH="$1"
+
+   if [[ ${CMAKE_TARGET_FILE:+true} ]] ; then
+      CMAKE_TARGET_FILE="${BOB_DEP_PATHS[system::tsd-buildenv]}/tsd.buildenv.mib3/${CMAKE_TARGET_FILE}"
+   fi
+
+   buildenvConfigure()
+   {
+      declare -a RPATH_FLAGS=( )
+      case "${TSD_BUILDENV_ENABLE_RPATH:-0}" in
+         1 | true)
+            RPATH_FLAGS=( "-DCMAKE_SKIP_BUILD_RPATH=FALSE" \
+                     "-DCMAKE_BUILD_WITH_INSTALL_RPATH=FALSE" \
+                     "-DCMAKE_INSTALL_RPATH=\$ORIGIN/../${LIBDIR}" \
+                     "-DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE" )
+           ;;
+         0 | false)
+            ;;
+         *)
+            echo "Invalid value for TSD_BUILDENV_ENABLE_RPATH" >&2
+            exit 1
+      esac
+      cmakeConfigure ${CMAKE_TARGET_FILE:+-DTARGET=${CMAKE_TARGET_FILE}} \
+         ${TSD_BUILDENV_CALL_COUNT_INSTR:+-DTSD_BUILDENV_CALL_COUNT_INSTR:BOOL=${TSD_BUILDENV_CALL_COUNT_INSTR}} \
+         ${TSD_BUILDENV_ENABLE_TEST_TARGETS:+-DTSD_BUILDENV_ENABLE_TEST_TARGETS:BOOL=${TSD_BUILDENV_ENABLE_TEST_TARGETS}} \
+         ${TSD_BUILDENV_DEFAULT_WARNLEVEL:+-DTSD_BUILDENV_DEFAULT_WARNLEVEL=${TSD_BUILDENV_DEFAULT_WARNLEVEL}} \
+         -DCMAKE_PREFIX_PATH="/tsd;/usr/local;/usr" ${RPATH_FLAGS:+"${RPATH_FLAGS[@]}"} \
+         -DCMAKE_MODULE_PATH="${BOB_DEP_PATHS[system::tsd-buildenv]}/tsd.buildenv/Modules" "$@"
+   }
+
+   buildenvInstall()
+   {
+      cmakeInstall "$@"
+   }
+
+   buildenvBuildAll()
+   {
+      buildenvConfigure "$@"
+      makeParallel
+      buildenvInstall install
+   }
+
+   buildenvBuildModules()
+   {
+      local i
+      declare -a OPTS=( ) BUILD_TARGETS=( ) INSTALL_TARGETS=( )
+
+      for i in "$@"; do
+         if [[ "$i" == -* ]] ; then
+            OPTS+=("$i")
+         else
+            BUILD_TARGETS+=("$i")
+            INSTALL_TARGETS+=("${i}.install")
+         fi
+      done
+
+      buildenvConfigure ${OPTS:+"${OPTS[@]}"}
+      makeParallel ${BUILD_TARGETS:+"${BUILD_TARGETS[@]}"}
+      buildenvInstall ${INSTALL_TARGETS:+"${INSTALL_TARGETS[@]}"}
+   }
+
+   _buildenvTestPrepare()
+   {
+      buildenvConfigure \
+         -DTSD_BUILDENV_GENERATE_TEST_RUN_TARGETS:BOOL=ON \
+         -DTSD_BUILDENV_INSTALLABLE_TEST_TARGETS:BOOL=ON \
+         -DTSD_BUILDENV_CODE_COVERAGE_INSTRUMENTATION:BOOL=ON \
+         -DTSD_BUILDENV_XUNIT_XML:BOOL=ON \
+         -DTSD_BUILDENV_IS_SWITTEST:BOOL=${TSD_BUILDENV_IS_SWITTEST:-0} \
+         "$@"
+   }
+
+   _buildenvTestCoveragePrepare()
+   {
+      if [[ ! ${RUN_CODE_COVERAGE:-${JENKINS_HOME:-false}} != false ]]; then
+         echo "skipped code coverage." >&2
+         return
+      fi
+
+      mkdir -p coverage_results
+      lcov --initial --capture --directory . -o "./coverage_results/coverage_base.info"
+   }
+
+   _buildenvTestCoverageFinish()
+   {
+      if [[ ! ${RUN_CODE_COVERAGE:-${JENKINS_HOME:-false}} != false ]]; then
+         return
+      fi
+
+      lcov --rc lcov_branch_coverage=1 --capture --directory . -o "./coverage_results/coverage_test.info"
+
+      if [[ -s "./coverage_results/coverage_test.info" ]] ; then
+         lcov --rc lcov_branch_coverage=1 -a "./coverage_results/coverage_base.info" -a "./coverage_results/coverage_test.info" -o "./coverage_results/coverage_unstripped.info"
+      else
+         mv "./coverage_results/coverage_base.info" "./coverage_results/coverage_unstripped.info"
+      fi
+
+      ## remove unwanted stuff -- whitelist '/src/' and '/public/' dirs
+      find "${BUILDENV_SRC_PATH}" -type f \
+            \( -path "*/src/*/src/*" -or -path "*/src/*/public/*"  \) \
+            -and \( -iname "*.c" -or -iname "*.cpp" -or -iname "*.h" -or -iname "*.hpp" \) > "./coverage_results/_src_list_"
+
+      # find files within /src/ that include public headers, to use them as a whitelist for lcov later
+      if [[ ${TSD_BUILDENV_IS_SWITTEST:-false} != false ]]; then
+         grep -e '/public/.*\.hpp$' -e '/public/.*\.h$' "./coverage_results/_src_list_" > "./coverage_results/_public_header_list_"
+
+         SEARCH_PATTERN=""
+         while IFS=\n read -r i; do
+            FILENAME=$(echo $i | sed 's#/.*/##g')
+            SEARCH_PATTERN="${SEARCH_PATTERN} -e \"#include.*${FILENAME}\""
+         done < "./coverage_results/_public_header_list_"
+
+         # the following statement will only list files that include public headers directly!
+         # at some point it might be interesting to get more files too.
+         # e.g. 'use_header.h' includes 'public/public_header.h' but we might be interested in the coverage of 'use_header.cpp' as well
+         # for now this is not requested by the QM, so we leave it as simple as possible
+         grep "${BUILDENV_SRC_PATH}.*/src/" "./coverage_results/_src_list_" > "./coverage_results/_src_only_list_"
+         while IFS=\n read -r F; do
+            grep -l ${SEARCH_PATTERN} "${F}" 2>/dev/null >> "./coverage_results/_header_using_files_" || true
+         done < "./coverage_results/_src_only_list_"
+
+         cat "./coverage_results/_public_header_list_" "./coverage_results/_header_using_files_" > "./coverage_results/_src_list_"
+      fi
+      # use the whitelist to generate an apropriate coverage result
+      lcov --rc lcov_branch_coverage=1 --extract "./coverage_results/coverage_unstripped.info" $(cat ./coverage_results/_src_list_) -o "./coverage_results/coverage.info"
+
+      # cleanup
+      rm -f "./coverage_results/_src_list_"
+      rm -f "./coverage_results/_src_only_list_"
+      rm -f "./coverage_results/_header_using_files_"
+      rm -f "./coverage_results/_public_header_list_"
+
+      if [[ ${JENKINS_HOME:+true} ]] ; then
+         CWD="$(pwd)"
+         pushd ${WORKSPACE}
+         lcov2cobertura "${CWD}/coverage_results/coverage.info"
+         popd
+         mv "./coverage_results/coverage.info.xml" "./coverage_results/coverage.xml"
+      else
+         if [[ -s "./coverage_results/coverage.info" ]]; then
+            genhtml --demangle-cpp --branch-coverage "./coverage_results/coverage.info" --output-directory "./coverage_results/HTML-page/"
+         else
+            touch "./coverage_results/_NO_HTML_GENERATED_SINCE_COVERAGE.INFO_IS_EMPTY"
+         fi
+      fi
+   }
+
+   buildenvTestAll()
+   {
+      _buildenvTestPrepare "$@"
+      makeParallel tests
+      if [[ ${RUN_UNITTESTS:-false} != false ]]; then
+         _buildenvTestCoveragePrepare
+         make tests.run 2>&1 </dev/null | tee unit-test-results.txt
+         sed -n 's/^test.*returns [^0].*/*** TEST FAILURE: &/p' < unit-test-results.txt >&2
+         _buildenvTestCoverageFinish
+      else
+         echo "Not executed" > unit-test-results.txt
+         echo "Skip unit test execution..." >&2
+      fi
+      buildenvInstall tests.install
+   }
+
+   buildenvTestTargets()
+   {
+      local i
+      declare -a OPTS=( ) TEST_TARGETS=( ) RUN_TARGETS=( ) INSTALL_TARGETS=( )
+
+      for i in "$@"; do
+         if [[ "$i" == -* ]] ; then
+            OPTS+=("$i")
+         else
+            TEST_TARGETS+=("$i")
+            RUN_TARGETS+=("${i}.run")
+            INSTALL_TARGETS+=("${i}.install")
+         fi
+      done
+
+      _buildenvTestPrepare ${OPTS:+"${OPTS[@]}"}
+      makeParallel "${TEST_TARGETS[@]}"
+      if [[ ${RUN_UNITTESTS:-false} != false ]]; then
+         _buildenvTestCoveragePrepare
+         make "${RUN_TARGETS[@]}" > unit-test-results.txt 2>&1
+         _buildenvTestCoverageFinish
+      else
+         echo "Not executed" > unit-test-results.txt
+         echo "Skip unit test execution..." >&2
+      fi
+      buildenvInstall ${INSTALL_TARGETS:+"${INSTALL_TARGETS[@]}"}
+   }
+
+   buildenvBuildDocAll()
+   {
+      buildenvConfigure \
+      -DTSD_BUILDENV_BUILD_DOCUMENTATION_TARGETS:BOOL=ON \
+      "$@"
+      makeParallel doc
+   }
+
+packageScript: |
+   BUILDENV_BUILD_PATH="$1"
+
+   buildenvPackageDev()
+   {
+      cmakePackageDev
+   }
+
+   buildenvPackageTarget()
+   {
+      cmakePackageTarget "$@"
+   }
+
+   buildenvPackageTests()
+   {
+      cmakePackageTarget --no-strip
+      cp -a $BUILDENV_BUILD_PATH/unit-test-results.txt .
+      find $BUILDENV_BUILD_PATH/result/ -name '*.cppunitreport' -exec cp {} . \;
+
+      if ! [[ ! ${RUN_CODE_COVERAGE:-${JENKINS_HOME:-false}} != false ]] && [[ ${RUN_UNITTESTS:-false} != false ]]; then
+         # copy coverage results
+         if [[ ${JENKINS_HOME:+true} ]] ; then
+            cp -a $BUILDENV_BUILD_PATH/coverage_results/coverage.xml .
+         else
+            cp -a $BUILDENV_BUILD_PATH/coverage_results .
+         fi
+      fi
+   }
+
+   buildenvPackageDoc()
+   {
+      for i in $(find $BUILDENV_BUILD_PATH -type d -name doc); do
+         rsync -r --delete $i ./$(basename -- "$(dirname -- "$i")")
+      done
+   }

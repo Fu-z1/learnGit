@@ -1,0 +1,38 @@
+inherit: [autotools, strip, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-3.0-or-later"
+   PKG_VERSION: "487"
+   PKG_NAME: "less"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-ncurses-dev
+  - use: []
+    depends:
+      - libs::ext-ncurses-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-less/less-${PKG_VERSION}.tar.gz
+   digestSHA1: "8a5c4be2a51f11543793defec7ccb77c525f007e"
+
+buildVars: [PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   LDFLAGS+=" -ltinfo"
+   autotoolsBuild $1/less-${PKG_VERSION} --with-regex=none --with-secure
+
+packageScript: |
+   # Avoid autotoolsPackageTarget in order to exclude other exe artifacts of build
+   rsync -aH --exclude 'share/' --exclude 'less?*' "$1/dist/" .
+   stripAll . "$OBJCPY"
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-less" \
+      -p "emmc.system" \
+      -o "system:ext-less " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps: ["*-target"]

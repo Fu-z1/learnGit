@@ -1,0 +1,104 @@
+inherit: [rootfs, packing-module]
+
+environment:
+   SW_LOGGING_INETWORKING_SUPPORT: "0"
+
+depends:
+  - name: toolchain::aarch64-linux-gnu
+    use: [tools, environment]
+    forward: true
+  - basic-services::persistence::tsd-persistence-service-mib3-target
+   #- connectivity::networking::tsd-networking-mib3-target
+  - connectivity::usb::tsd-usb-mib3-target
+  - name: system::bsp::ext-linux-headers
+    use: [environment]
+  - system::bsp::ext-kmod-glx
+  - system::bsp::ext-linux-modules
+  - system::ext-busybox
+  - system::ext-optee::linuxdriver
+  - system::ext-systemd-target
+  - system::tsd-common-target
+  - system::tsd-config-buildcfg
+  - system::tsd-config-gpio
+  - system::tsd-config-target
+  - system::tsd-logging-mib3-target
+  - system::tsd-minijournald
+  - system::tsd-swupdate-target
+   #- system::tsd-swupdate-rsihmiserver-target
+  - system::tsd-root-mib3
+
+buildVars: [KERNEL_VERSION]
+buildScript: |
+   rm -rf *
+
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[system::tsd-config-buildcfg]
+   unset tocopy[demo]
+
+   rm -rf tmp symbols
+   mkdir -p tmp symbols
+
+   # add default directories and special files
+   pushd tmp
+   mkdir -p boot
+   mkdir -p dev/pts
+   mkdir -p etc/init.d
+   mkdir -p home/user
+   mkdir -p java # SWDL checks for the existence
+   mkdir -p lib
+   mkdir -p media
+   mkdir -p mnt/nfs
+   mkdir -p opt/bin
+   mkdir -p proc
+   mkdir -p root
+   mkdir -p run
+   mkdir -p sys
+   mkdir -p tmp
+   mkdir -p usr/lib
+   mkdir -p var/log
+   ln -sfT /run var/run
+   mkdir -p var/lib/nfs
+   mkdir -p var/lib/persistence
+   mkdir -p var/core
+   popd
+
+   # copy rootfs from SDK
+   copyFromFile ${BOB_DEP_PATHS["system::tsd-config-buildcfg"]}/rootfs-arm64.txt tmp
+
+   # copy target specific files without overwriting anything
+   shopt -s dotglob nullglob
+   for dep in "${tocopy[@]}" ; do
+      for i in ${dep}/* ; do
+         cp -an --reflink=auto "$i" tmp/
+      done
+   done
+   shopt -u dotglob nullglob
+
+   # configure kernel module dependencies
+   /sbin/depmod -b ${PWD}/tmp -C ${PWD}/tmp/etc/depmod.d ${KERNEL_VERSION}
+
+   move_symbols tmp symbols
+
+   # find missing dependencies
+   checkSharedLibraries tmp
+
+packageVars: [KERNEL_VERSION]
+packageScript: |
+   # create archive for symbols and rootfs-pkg in parallel
+   declare -a jobs
+   tar -zcf symbols.tgz -C $1/symbols/tmp/ . &
+   jobs+=($!)
+
+   buildSwupModule -n 'rootfs' -p "emmc" -o 'images::demo' -f $1/tmp -- \
+          -U Depmod=${KERNEL_VERSION} \
+          -U "Partition=rootfs_ro" &
+   jobs+=($!)
+
+   failed=0
+   for i in "${jobs[@]}" ; do
+      wait $i || failed=$?
+   done
+   [[ $failed -eq 0 ]] || exit $failed

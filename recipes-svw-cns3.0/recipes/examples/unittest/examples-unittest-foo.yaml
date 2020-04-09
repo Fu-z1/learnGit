@@ -1,0 +1,30 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+   - system::tsd-common-dev
+   - examples::unittest::examples-unittest-interface-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:jens.baumann/example.unittest.foo.git
+      dir: example.unittest.foo
+      branch: master_mqb_sop1_eu
+
+
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps:
+         - system::tsd-common-dev
+         - examples::unittest::examples-unittest-interface-dev
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageTarget

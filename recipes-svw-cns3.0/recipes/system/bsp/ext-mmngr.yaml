@@ -1,0 +1,60 @@
+inherit: [autotools, packing-module]
+
+depends:
+  - system::bsp::ext-kmod-mmngr-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.renesas.mmngr.lib.git
+   branch: yocto-3.15.0
+
+multiPackage:
+   mmngr:
+      buildScript: |
+         rsync -a --delete $1/libmmngr/mmngr/ .
+         autoreconf -i
+         autotoolsBuild $PWD
+         cp $2/usr/include/* dist/usr/include
+
+      multiPackage:
+         dev:
+            packageTools: [buildenv]
+            packageScript: |
+               autotoolsPackageDev
+               tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include -l mmngr ext.renesas.mmngr
+            provideDeps: ["*-dev"]
+         target:
+            packageScript: |
+               autotoolsPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-mmngr-mmngr" \
+                   -p "emmc.system.bsp" \
+                   -o "system:bsp" -f $d -- \
+                   -U "Partition=rootfs_ro"
+               rm -rf $d
+
+   mmngrbuf:
+      buildScript: |
+         rsync -a --delete $1/libmmngr/mmngrbuf/ .
+         autoreconf -i
+         autotoolsBuild $PWD
+         cp $2/usr/include/* dist/usr/include
+
+      multiPackage:
+         dev:
+            packageTools: [buildenv]
+            packageScript: |
+               autotoolsPackageDev
+               tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -I include -l mmngrbuf ext.renesas.mmngrbuf
+            provideDeps: ["*-dev"]
+         target:
+            packageScript: |
+               autotoolsPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-mmngr-mmngrbuf" \
+                   -p "emmc.system.bsp" \
+                   -o "system:bsp" -f $d -- \
+                   -U "Partition=rootfs_ro"
+               rm -rf $d

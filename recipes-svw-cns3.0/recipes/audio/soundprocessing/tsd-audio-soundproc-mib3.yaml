@@ -1,0 +1,100 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+environment:
+   TSD_BUILDENV_DEFAULT_WARNLEVEL: "2"
+
+depends:
+  - audio::soundprocessing::tsd-audio-soundproc-blocklibrary-dev
+  - audio::audiomanager::tsd-audio-common-dev
+  - system::tsd-config-dev
+  - system::tsd-common-dev
+  - system::system-lifecycle::tsd-pwc-proxy-api-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - communication::tsd-communication-dev
+  - system::tsd-watchdog-mib3-api-dev
+  - system::tsd-clock-service-mib3-adsp
+
+checkoutSCM:
+   - scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.soundproc.mib3.git
+     dir: tsd.audio.soundproc.mib3
+#     tag: 1.6.11
+     branch: release/cns_mqb
+
+   - if: "${CONFIG_AUDIO_TEST:-False}"
+     scm: git
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.soundproc.mib3.test.git
+     remote-gerrit: http://esxi-amb1-slave-gerrit.mib3.technisat-digital:8080/tsd.audio.soundproc.mib3.test
+     dir: tsd.audio.soundproc.mib3.test
+     branch: master
+
+multiPackage:
+   ? ""
+   :  environment:
+         TARGET_OS: "freertos"
+
+      depends:
+        - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-dev-dsp
+        - system::tsd-freertos-mib3
+
+      buildScript: |
+         # Generate a linker command file from the memory map
+         # this is normally not needed except you have modified the memory map. The new linker command file
+         # is generated in this workspace but not picked up by the linker.
+         # You have to copy the new linker command file to tsd.buildenv.mib3 and commit the new file!
+
+         mkdir -p ldscripts
+         cp ${BOB_DEP_PATHS[system::tsd-buildenv]}/tsd.buildenv.mib3/xtensa/memmap.xmm ldscripts
+         XTENSA_SYSTEM=${BOB_TOOL_PATHS[toolchain]}/../config \
+         XTENSA_CORE=hifi2_rcar_rf20153c \
+         XTENSA_TOOLS_ROOT=${BOB_TOOL_PATHS[toolchain]}/.. \
+         ${BOB_TOOL_PATHS[toolchain]}/xt-genldscripts -b ldscripts
+
+         cp ${BOB_DEP_PATHS[system::tsd-buildenv]}/tsd.buildenv.mib3/xtensa/*.py .
+         buildenvBuildAll
+         ./mkfw.py dist/usr/bin/tsd.audio.soundproc.mib3
+         mkdir -p lib/firmware/.debug
+         cp xf-rcar.fw lib/firmware
+         cp -rf result/exe/* lib/firmware/.debug
+
+      packageScript: |
+         rsync -a --delete $1/lib .
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "soundproc-mib3" \
+             -p "emmc.audio.soundprg" \
+             -o "system:audio:soundprocessing " -f $d -- \
+             -U "Partition=rootfs_ro"
+         rm -rf $d
+
+
+   unittests:
+      depends:
+        - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-dev-host
+      buildScript: |
+         buildenvTestTargets tsd.audio.soundproc.mib3.test.signalpath
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      depends:
+        - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-dev-dsp
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   app:
+      depends:
+        - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-dev-host
+
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS:BOOL=ON \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.audio.soundproc.mib3.app
+
+      packageScript: |
+         buildenvPackageTarget

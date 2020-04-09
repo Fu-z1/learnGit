@@ -1,0 +1,25 @@
+depends:
+   - sds::asr::ext-nuance-vocon-res
+
+buildScript: |
+
+   # param1 the HMI lang code e.g. "de_DE"
+   # param2 the engine lang code e.g. "ged"
+   copyEngineResFromVocon()
+   {
+      TARGET=$1/engine
+      LANG_DIR=$2
+
+      VOCON_PATH=${BOB_DEP_PATHS[sds::asr::ext-nuance-vocon-res]}
+      test -z ${VOCON_PATH} && { echo "Vocon dependency missing"; exit 1; }
+
+      mkdir -p ${TARGET}
+
+      echo "Gathering engine resources - from Vocon ${VOCON_PATH} - for ${LANG_DIR}"
+      models=$(ls $VOCON_PATH/language_buffers/*_${LANG_DIR}_*)
+      cp $models ${TARGET}
+
+      # make simple validity check
+      [ "$(find ${TARGET} -iname 'acmod*')" ] || (echo "Error - Vocon: acmod files missing!"; exit 1)
+      [ "$(find ${TARGET} -iname 'clc*')" ]   || (echo "Error - Vocon: clc files missing!";   exit 1)
+   }

@@ -1,0 +1,71 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Kartendarstellung"
+
+depends:
+  - navigation::ext-assimp-dev
+  - navigation::ext-glm-dev
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-sdk-mapdisplay-api-dev
+  - navigation::tsd-nav-sdk-utils-dev
+  - libs::tsd-rasterimage-dev
+  - libs::tsd-fontprocessor-dev
+  - system::ext-boost-dev
+  - name: system::ext-opengles-dev
+    if: "$(or,$(eq,${CONFIG_BOARD:-},zr3),$(eq,${CONFIG_BOARD:-host},host))"
+  - system::tsd-common-dev
+  - name: system::bsp::ext-weston-dev
+    if: "$(eq,${CONFIG_BOARD:-},zr3)"
+  - use: []
+    depends:
+      - navigation::tsd-nav-middleware-interface-target
+      - libs::tsd-fontprocessor-target
+      - system::ext-boost-target
+      #- system::ext-opengles-target # No Packagescript, no need for target dep
+      - name: system::bsp::ext-weston-target
+        if: "$(eq,${CONFIG_BOARD:-},zr3)"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.mapdisplay.git
+   dir: tsd.nav.sdk.mapdisplay
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildVars: [TARGET_OS]
+
+multiPackage:
+   ? ""
+   :
+      inherit: [navi_compflags_werror_sanitize]
+      #inherit: [navi_compflags_sanitize]
+      multiPackage:
+       dev:
+          buildScript: |
+             buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+   swittests:
+      buildVars: [TSD_BUILDENV_IS_SWITTEST]
+      buildScript: |
+         buildenvTestAll -DTSD_NAV_MAPDISPLAY_SWITS_ENABLED=${TSD_BUILDENV_IS_SWITTEST}
+      packageScript: |
+         buildenvPackageTests
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildVars: [TSD_NAV_SDK_MAPDISPLAY_ENABLE_MOBICA_UNITTESTS, TSD_NAV_SDK_MAPDISPLAY_ENABLE_PCC_UNITTESTS]
+      buildScript: |
+         buildenvTestAll \
+            ${TSD_NAV_SDK_MAPDISPLAY_ENABLE_MOBICA_UNITTESTS:+-DTSD_NAV_SDK_MAPDISPLAY_ENABLE_MOBICA_UNITTESTS=$TSD_NAV_SDK_MAPDISPLAY_ENABLE_MOBICA_UNITTESTS} \
+            ${TSD_NAV_SDK_MAPDISPLAY_ENABLE_PCC_UNITTESTS:+-DTSD_NAV_SDK_MAPDISPLAY_ENABLE_PCC_UNITTESTS=$TSD_NAV_SDK_MAPDISPLAY_ENABLE_PCC_UNITTESTS}
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

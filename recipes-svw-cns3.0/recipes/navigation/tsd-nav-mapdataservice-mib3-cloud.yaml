@@ -1,0 +1,31 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+depends:
+  - navigation::tsd-nav-mapdataservice-mib3-api-dev
+  - navigation::tsd-nav-sdk-mapdataservice-api-dev
+  - navigation::tsd-nav-sdk-mapdataservice-dev
+  - navigation::tsd-nav-crypto-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mapdataservice.mib3.cloud.git
+   dir: tsd.nav.mapdataservice.mib3.cloud
+   branch: develop   #navi-cloud (part of navi-cloud)
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+      dev:
+        buildScript: buildenvBuildAll
+        packageScript: buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

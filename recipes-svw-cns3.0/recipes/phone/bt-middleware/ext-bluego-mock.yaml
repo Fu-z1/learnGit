@@ -1,0 +1,38 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+  - phone::bt-middleware::ext-bluego-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - phone::bt-middleware::ext-bluego-target
+      - system::tsd-common-target
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.bluego.mock.git
+   dir: ext.bluego.mock
+   branch: master
+buildScript: |
+   buildenvBuildAll
+   cp -au $1/ext.bluego.mock/src/bluego.cpp dist/usr/include/
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-bluego-mock" \
+            -p "emmc.phone.bt-middleware" \
+            -o "phone.bt-middleware:ext-bluego-mock " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

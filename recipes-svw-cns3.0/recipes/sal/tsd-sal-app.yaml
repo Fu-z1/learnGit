@@ -1,0 +1,168 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "Application"
+
+privateEnvironment:
+   SW_INCLUDE_MIRROELINK: "$(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_HM),1,\
+                           $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_HM_sec),1,\
+                           $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_TW),1,\
+                           $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_TW_sec),1,\
+                           $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,SK_TW),1,\
+                           $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,SK_TW_sec),1,0))))))"
+
+depends:
+   # build dependencies
+ - communication::tsd-communication-binding-dev
+ - hmi::tsd-dsi-cpp-dev
+ - sal::ext-apple-carplay-dev
+ - system::tsd-activation-api-dev
+ - system::tsd-common-dev
+ - system::tsd-common-daemon-dev
+ - libs::tsd-common-stm-dev
+ - system::system-lifecycle::tsd-systemstate-guard-api-mib3-dev
+ - system::system-lifecycle::tsd-systemstate-manager-api-dev
+ - connectivity::usb::tsd-usb-api-dev
+ - connectivity::networking::tsd-networking-api-dev
+ - connectivity::networking::tsd-networking-wlan-api-dev
+ - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+ - phone::bt-devicemanagement::tsd-bt-management-mib3-api-dev
+ - phone::bt-middleware::tsd-blueware-mib3-bluego-api-dev
+ - phone::tsd-phone-callservice-api-dev
+ - basic-services::persistence::tsd-persistence-client-mib3-dev
+ - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+ - basic-services::systeminfo::tsd-systeminformation-features-dev
+ - basic-services::systeminfo::tsd-systeminformation-hardware-dev
+ - navigation::tsd-nav-sal-api-dev
+ - sal::tsd-sal-api-dev
+ - sal::tsd-sal-audio-mib3-dev
+ - sal::tsd-sal-carlife-dev
+ - sal::tsd-sal-carplay-dev
+ - sal::tsd-sal-common-dev
+ - sal::tsd-sal-gal-dev
+ - sal::tsd-sal-iap2-dev
+ - if: "$(eq,$(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_HM),1,\
+             $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_HM_sec),1,\
+             $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_TW),1,\
+             $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_TW_sec),1,\
+             $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,SK_TW),1,\
+             $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,SK_TW_sec),1,0)))))),1)"
+   depends:
+    - sal::tsd-sal-mirrorlink-mib3-dev
+ - sal::tsd-sal-video-cinemo-dev
+ - sal::viwiproxy::tsd-sal-viwiproxy-api-dev
+ - sal::tsd-sal-carplay-brands-dev
+ - media::mediaapplication::tsd-media-mib3-picturelink-dev
+ - media::pictureserver::tsd-media-picserver-dev
+
+   # runtime dependencies
+ - use: []
+   depends:
+    - communication::tsd-communication-target
+    - hmi::tsd-dsi-cpp-target
+    - sal::ext-apple-carplay-target
+    - system::tsd-activation-api-target
+    - system::tsd-common-target
+    - system::tsd-common-daemon-target
+    - libs::tsd-common-stm-target
+    - system::system-lifecycle::tsd-systemstate-guard-api-mib3-target
+    - system::system-lifecycle::tsd-systemstate-manager-api-target
+    - connectivity::usb::tsd-usb-api-target
+    - connectivity::networking::tsd-networking-api-target
+    - connectivity::networking::tsd-networking-wlan-api-target
+    - engineering::diagnostic-management::tsd-uds-api-mib3-target
+    - phone::bt-devicemanagement::tsd-bt-management-mib3-api-target
+    - phone::bt-middleware::tsd-blueware-mib3-bluego-api-target
+    - phone::tsd-phone-callservice-api-target
+    - basic-services::persistence::tsd-persistence-client-mib3-target
+    - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+    - basic-services::systeminfo::tsd-systeminformation-features-target
+    - basic-services::systeminfo::tsd-systeminformation-hardware-target
+    - navigation::tsd-nav-sal-api-target
+    - sal::tsd-sal-api-target
+    - sal::tsd-sal-audio-mib3-target
+    - sal::tsd-sal-carlife-target
+    - sal::tsd-sal-carplay-target
+    - sal::tsd-sal-common-target
+    - sal::tsd-sal-gal-target
+    - sal::tsd-sal-iap2-target
+    - if: "$(eq,$(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_HM),1,\
+                $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_HM_sec),1,\
+                $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_TW),1,\
+                $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,VW_TW_sec),1,\
+                $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,SK_TW),1,\
+                $(if-then-else,$(flagIsSet,${VARIANTS},Container Name,SK_TW_sec),1,0)))))),1)"
+      depends:
+       - sal::tsd-sal-mirrorlink-mib3-target
+    - sal::tsd-sal-video-cinemo-target
+    - sal::viwiproxy::tsd-sal-viwiproxy-api-target
+    - sal::tsd-sal-carplay-brands-target
+    - media::mediaapplication::tsd-media-mib3-picturelink-target
+    - media::pictureserver::tsd-media-picserver-target
+    - if: "$(eq,${TARGET_TYPE},embedded)"
+      name: system::tsd-authentic-fs-sal
+
+checkoutSCM:
+
+ - if: $(eq,${SW_INCLUDE_MIRROELINK:-1},1)
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.sal.app.git
+   dir: tsd.sal.app
+   branch: main/svw_cns3.0_1480_sop1_dev_FBU
+
+ - if: $(eq,${SW_INCLUDE_MIRROELINK},0)
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.sal.app.git
+   dir: tsd.sal.app
+   branch: main/svw_cns3.0_1480_sop1_dev
+
+environment:
+   SW_HMI_REGION_TWN: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_HMI_REGION,tw),HMI_VARIANT_TWN,HMI_VARIANT_CHN)"
+
+multiPackage:
+   ? ""
+   :  buildVars: [SW_HMI_REGION_TWN]
+      buildScript: |
+         buildenvBuildAll \
+         -DSW_CIF_DSI=DSI_MQB \
+         -DSW_HMI_VARIANT=$SW_HMI_REGION_TWN
+
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               mkdir -p var/lib/tsd.sal.app
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "sal-app" \
+                  -p "emmc.sal" \
+                  -m 'display,display,0770,/var/lib/tsd.sal.app$'     \
+                  -m 'display,display,0770,/var/lib/tsd.sal.app/.*'   \
+                  -o "sal:tsd-sal-app " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target", "system::tsd-authentic-fs-sal"]
+
+   app:
+      buildScript: |
+         buildenvBuildModules \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+         tsd.sal.app \
+         tsd.sal.app.app.msggenerator.example
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

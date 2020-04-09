@@ -1,0 +1,38 @@
+inherit: [packing-module]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+   -
+      name: system::bsp::ext-linux-headers
+      use: [environment]
+
+environment:
+   SHA1: ""
+   #FILE_NAME: "$(if-then-else,$(match,${CONFIG_TARGET:-normal},normal),tuxera-file-systems-3018.6.12d-rcar-m3-4.14.75-20190117.tgz,tuxera-file-systems-3018.6.12d-rcar-m3-4.14.75-swupdate-20190117.tgz)"
+   #SHA1: "$(if-then-else,$(match,${CONFIG_TARGET:-normal},normal),5aaf818149752c77eadc8cb2de04c1196fa4ff4e,a5a5069495c2e0970f69376ec4f1d487f1af6796)"
+   FILE_NAME: "$(if-then-else,$(match,${CONFIG_TARGET:-normal},normal),tuxera-file-systems-3018.6.5.3.2-rcar-m3-20200129.tgz,tuxera-file-systems-3018.6.5.3.2-rcar-m3-20200129_swupdate.tgz)"
+   SHA1: "$(if-then-else,$(match,${CONFIG_TARGET:-normal},normal),b3bdf447353880617c08393622a4ae2f4343be37,604130d1d518e20a63288a7925d793159aa5c72b)"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-tuxera/${FILE_NAME}
+   digestSHA1: "${SHA1}"
+
+buildVars: [FILE_NAME]
+buildScript: |
+   rsync -av ${1}/ . --exclude "${FILE_NAME}" --exclude ".${FILE_NAME}.*"
+
+packageVars: [KERNEL_VERSION]
+packageScript: |
+   mkdir -p lib/modules/${KERNEL_VERSION}/extra
+   find ${1} -type f -name "tntfs.ko"  -exec cp -a {} lib/modules/${KERNEL_VERSION}/extra \;
+   find ${1} -type f -name "texfat.ko" -exec cp -a {} lib/modules/${KERNEL_VERSION}/extra \;
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-tuxera-filesys" \
+      -p "emmc.media.mountingsvc" \
+      -o "media.mountingservice:ext-tuxera-filesystems " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

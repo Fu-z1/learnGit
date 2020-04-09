@@ -1,0 +1,33 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - navigation::tsd-nav-sdk-adashorizon-api-dev
+  - navigation::tsd-nav-sdk-mapdataservice-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.adashorizon.git
+   dir: tsd.nav.sdk.adashorizon
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+   ? ""
+   :
+      inherit: [navi_compflags_werror_sanitize]
+      #inherit: [navi_compflags_sanitize]
+      multiPackage:
+       dev:
+          buildScript: |
+             buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

@@ -1,0 +1,57 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - phone::bt-middleware::tsd-blueware-api-dev
+ - phone::tsd-parser-phonenumber-dev
+ - system::ext-boost-dev
+ - system::ext-boost-regex-dev
+ - system::tsd-common-dev
+ - libs::tsd-common-stm-dev
+ - system::tsd-threadmessages-dev
+ - phone::tsd-phone-common-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-telephony/tsd.bt.messaging.git
+   dir: tsd.bt.messaging
+#  tag: mqb_sop1_eu-1.59.7
+   branch: main/svw_cns3.0_1480_dev
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps:
+       - phone::bt-middleware::tsd-blueware-api-dev
+       - phone::tsd-parser-phonenumber-dev
+       - system::ext-boost-dev
+       - system::ext-boost-regex-dev
+       - system::tsd-common-dev
+       - libs::tsd-common-stm-dev
+       - system::tsd-threadmessages-dev
+       - phone::tsd-phone-common-dev
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "bt-messaging" \
+            -p "emmc.phone.bt-messaging" \
+            -o "phone.bt-messaging:tsd-bt-messaging " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

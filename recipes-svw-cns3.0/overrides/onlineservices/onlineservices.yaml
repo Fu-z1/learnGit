@@ -1,0 +1,151 @@
+scmOverrides:
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/ext.web.browser.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.common.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.diagnosis.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.downloadmanager.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.remoteupdate.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.framework.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.web.engine.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webapp.common.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webapp.controller.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webapp.management.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webapp.manager.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webapp.storage.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webengine.media.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.web.engine.api.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webserver.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.client.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.vkms.update.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.vkms.update.api.git"
+      del: [commit, tag, branch]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.backendcomcore.git"
+      del: [commit, tag, branch]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.tpfs.git"
+      del: [commit, tag, branch]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.eso.clientsideswitching.git"
+      del: [commit, tag, branch]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.remoteupdate.api.git"
+      del: [commit, tag, branch]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.web.engine.dsi.dummy.git"
+      del: [commit, tag, branch]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.truststoreupdater.git"
+      del: [commit, tag, branch]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/ext.preloaded.webapps.git"
+      del: [commit, tag, branch]
+      set:
+         branch: "develop_mqb_sop1_eu"

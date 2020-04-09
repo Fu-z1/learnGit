@@ -1,0 +1,67 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - name: basic-services::persistence::tsd-persistence-api-dev
+    use: [deps, result, environment]
+    forward: true
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::persistence::tsd-persistence-api-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.persistence.core.git
+   dir: tsd.persistence.core
+   tag: 2.2.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM]
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0}
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM]
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "persistence-core" \
+            -p "emmc.basic-svcs.persistence" \
+            -o "basic-services.persistence:tsd-persistence-core " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM]
+      buildScript: |
+         buildenvTestAll  -DTSD_PERSISTENCE_EMMC=1 -DTSD_PERSISTENCE_EEPROM=1
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_EEPROM]
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_EEPROM=${TSD_PERSISTENCE_EEPROM:-0}
+      packageScript: buildenvPackageDoc
+
+provideVars:
+   TSD_PERSISTENCE_EMMC: "${TSD_PERSISTENCE_EMMC:-0}"
+   TSD_PERSISTENCE_EEPROM: "${TSD_PERSISTENCE_EEPROM:-0}"
+   TSD_PERSISTENCE_HOST: "${TSD_PERSISTENCE_HOST:-0}"
+   TSD_PERSISTENCE_PATH: "${TSD_PERSISTENCE_PATH:-0}"

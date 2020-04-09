@@ -1,0 +1,443 @@
+inherit: [packing-module]
+
+depends:
+   - carcom::tsd-carcom-mib3-image
+     #- images::boot #FIXME rh
+   #- images::min
+   #- images::rescue
+   #- images::rootfs
+   - images::manufacturing-image
+   #-
+   #   name: maps::ext-here-map-eu-livecache-bin
+   - system::tsd-config-target
+   #   - system::tsd-config-devicetree #TODO
+   #   - system::tsd-pwc-mib3-updater-firmware
+   #-
+   #   name: system::tsd-pwc-mib3-updater-updater
+   #   environment:
+   #      TSD_PWC_MIB3_UPDATER_PREFIX: "misc"
+
+   # pkg packages
+   # using fixed TRAIN_NUMBER/VARIANT, else the package is build for every variant
+   # only possible as long as same version is used for each variant
+   # TODO: build packages outside of bob
+   #-
+   #   name: packing::rootfs
+   #-
+   #   name: packing::ext-here-map-eu-livecache
+   #   environment:
+   #      TRAIN_NUMBER: "MOI3_EU_VW_E0490P"
+   #      VARIANT: "FM3-S-*-EU-VW-MQB-PC"
+   #-
+   #   name: packing::ext-ve-voices
+   #   if: "${CONFIG_SDS:-1}"
+   #   environment:
+   #      TRAIN_NUMBER: "MOI3_EU_VW_E0490P"
+   #      VARIANT: "FM3-S-*-EU-VW-MQB-PC"
+
+environment:
+   UPDATE_CONTAINER_DIR: "MS"
+   FLASH_CONTAINER_DIR: "FlashContainer"
+   #BUILDREF: "1"
+   #HW_INDEX_INST_DIR: "1-6"
+   #HW_INDEX: "(1,6)"
+
+#checkoutSCM:
+#   -
+#      scm: git
+#      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.boardupdater.mib3.git
+#      dir: tsd.boardupdater.mib3
+#      branch: zr3
+#   -
+#      scm: git
+#      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.update.scripts.git
+#      dir: tsd.update.scripts
+#      branch: master_mqb_sop1_eu
+
+buildVars:
+   - FLASH_CONTAINER_DIR
+   - UPDATE_CONTAINER_DIR
+   #- MAP_NAME
+   #- MU_VERSION
+   #- TRAIN_NUMBER
+   - VARIANT
+   #- BUILDREF
+   #- CONFIG_SDS
+   #- CONFIG_SYSTEM_BASIS
+   #- HW_INDEX_INST_DIR
+   #- HW_INDEX
+   - SW_BUS_MONITOR
+buildScript: |
+   rm -rf *
+
+   # create flash container
+   mkdir -p ${FLASH_CONTAINER_DIR}
+   pushd ${FLASH_CONTAINER_DIR}
+   #cp -anu $1/tsd.boardupdater.mib3/* .
+   cp -anu ${BOB_DEP_PATHS['images::boot']}/* .
+   #cp -anu ${BOB_DEP_PATHS['images::min']}/* .
+   #cp -anu ${BOB_DEP_PATHS['images::rescue']}/* .
+   #cp -anu ${BOB_DEP_PATHS['system::tsd-pwc-mib3-updater-updater']}/* .
+   cp -anu ${BOB_DEP_PATHS['system::tsd-config-target']}/sbin/u-boot-write-env_clear.sh .
+   cp -anu ${BOB_DEP_PATHS['system::tsd-config-devicetree']}/* .
+   cp -anu ${BOB_DEP_PATHS['carcom::tsd-carcom-mib3-image']}/* .
+   cp -anu ${BOB_DEP_PATHS['images::manufacturing-image']}/* .
+   popd
+
+   # create update container
+   mkdir -p ${UPDATE_CONTAINER_DIR}
+
+   # create Data directories
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/boot.bootparam/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/boot.bl2/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/boot.certheadersa6/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/boot.bl31/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/boot.tee/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/boot.carcom/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/boot.uboot/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/emmc.boot/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/emmc.rootfs/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/navigation.map/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/powercontroller.firmware/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/swupdate.app/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/swupdate.image/${HW_INDEX_INST_DIR}
+   #mkdir -p ${UPDATE_CONTAINER_DIR}/Data/scripts.initpersistence/${HW_INDEX_INST_DIR}
+   #[ ${CONFIG_SDS:-1} -eq 0 ] || mkdir -p ${UPDATE_CONTAINER_DIR}/Data/sds.voices/${HW_INDEX_INST_DIR}
+
+   # move files into update container
+   #cp $1/tsd.update.scripts/persistence/tsd.persistence.client.mib3.app.InitPersistence ${UPDATE_CONTAINER_DIR}/Data/scripts.initpersistence/${HW_INDEX_INST_DIR}/
+   
+
+   # boot modules
+   cp ${FLASH_CONTAINER_DIR}/flash/bootparam_sa0.bin ${UPDATE_CONTAINER_DIR}
+
+   cp ${FLASH_CONTAINER_DIR}/flash/bl2-zr3.bin ${UPDATE_CONTAINER_DIR}
+
+   cp ${FLASH_CONTAINER_DIR}/flash/cert_header_sa6.bin ${UPDATE_CONTAINER_DIR}
+
+   cp ${FLASH_CONTAINER_DIR}/flash/bl31-zr3.bin ${UPDATE_CONTAINER_DIR}
+
+   cp ${FLASH_CONTAINER_DIR}/flash/tee-zr3.bin ${UPDATE_CONTAINER_DIR}
+
+   cp ${FLASH_CONTAINER_DIR}/flash/tsd.carcom.image.mib3.bin ${UPDATE_CONTAINER_DIR}
+
+   cp ${FLASH_CONTAINER_DIR}/flash/u-boot.bin ${UPDATE_CONTAINER_DIR}
+
+   # emmc.boot
+   #mkdir -p tmp
+   cp ${FLASH_CONTAINER_DIR}/flash/Image-r8a7796-pcc-zr3* ${UPDATE_CONTAINER_DIR}
+   cp ${FLASH_CONTAINER_DIR}/flash/uImage-r8a7796-pcc-zr3 ${UPDATE_CONTAINER_DIR}
+   grep -v  "tsd.carcom.image.mib3" ${FLASH_CONTAINER_DIR}/flash/layout.txt > ${FLASH_CONTAINER_DIR}/flash/new_layout.txt
+   mv ${FLASH_CONTAINER_DIR}/flash/new_layout.txt ${FLASH_CONTAINER_DIR}/flash/layout.txt
+   cp ${FLASH_CONTAINER_DIR}/flash/layout.txt ${UPDATE_CONTAINER_DIR}
+   touch ${FLASH_CONTAINER_DIR}/flash/dummy
+   echo "0         2000000   dummy" >> ${FLASH_CONTAINER_DIR}/flash/layout.txt
+   ${FLASH_CONTAINER_DIR}/combine_flash_images.sh
+
+   # rootfs
+   cp ${BOB_DEP_PATHS['images::manufacturing-image']}/flash/manufacturing.cpio ${UPDATE_CONTAINER_DIR}
+   #cp ${BOB_DEP_PATHS['images::rootfs']}/symbols.tgz ${FLASH_CONTAINER_DIR}
+
+   # map
+   #cp ${BOB_DEP_PATHS['packing::ext-here-map-eu-livecache']}/navigation.map-*.tgz ${UPDATE_CONTAINER_DIR}/Data/navigation.map/${HW_INDEX_INST_DIR}/
+
+   # power controller
+   #cp ${BOB_DEP_PATHS['system::tsd-pwc-mib3-updater-firmware']}/pwc/tsd.pwc.mib3.bin ${UPDATE_CONTAINER_DIR}
+
+   # swupdate
+   #if [[ ${CONFIG_SYSTEM_BASIS:-1} -eq 1 ]]; then
+   #   tar -xf ${BOB_DEP_PATHS['images::rootfs']}/flash/rootfs.tgz --strip-components=3 ./usr/bin/tsd.swupdate ./usr/lib/libtsd.swupdate.client.flash.so
+   #   mv tsd.swupdate ${UPDATE_CONTAINER_DIR}/Data/swupdate.app/${HW_INDEX_INST_DIR}/
+   #   tar zcf ${UPDATE_CONTAINER_DIR}/Data/swupdate.image/${HW_INDEX_INST_DIR}/swupimage.tgz \
+   #      --absolute-names \
+   #      --transform="s|^${FLASH_CONTAINER_DIR}/flash/||" \
+   #      --transform="s|^$1/tsd.update.scripts/u-boot-env/||" \
+   #      ${FLASH_CONTAINER_DIR}/flash/swupdate-image.cpio \
+   #      $1/tsd.update.scripts/u-boot-env/u-boot-write-env-swupdate.sh \
+   #      libtsd.swupdate.client.flash.so
+   #   rm -f libtsd.swupdate.client.flash.so
+   #fi
+
+   # sds voices
+   #[ ${CONFIG_SDS:-1} -eq 0 ] || cp ${BOB_DEP_PATHS['packing::ext-ve-voices']}/sds.voices*.tgz ${UPDATE_CONTAINER_DIR}/Data/sds.voices/${HW_INDEX_INST_DIR}/
+
+   # manifest generation
+   #python3 $1/update-script/mib3-manifest-generator/mib3-manifest-helper.py --generateAllManifests --updateOrderFile False --installerForDeviceManifest False -u ${UPDATE_CONTAINER_DIR} -x MIB3 -y ${TRAIN_NUMBER} --variantstring ${VARIANT} -z ${MU_VERSION}
+
+   # set the build reference information
+   #python3 $1/update-script/mib3-manifest-generator/mib3-manifest-helper.py -u ${UPDATE_CONTAINER_DIR} --setBuildReference ${BUILDREF}
+
+   # set module offsets from layout.txt
+   #python3 $1/update-script/mib3-manifest-generator/mib3-manifest-helper.py --setModuleOffset -u ${UPDATE_CONTAINER_DIR} --layoutOffsetFile ${FLASH_CONTAINER_DIR}/flash/layout.txt
+
+   # validate container - existence of directories and manifest files
+   # fails if modules under ${UPDATE_CONTAINER_DIR}/Data were not generated
+   # not good for testing
+   #python $1/update-script/mib3-manifest-generator/mib3-manifest-helper.py --validateFinishedContainer -u ${UPDATE_CONTAINER_DIR} -x MIB3 -y ${TRAIN_NUMBER} --variantstring ${VARIANT} --relDescrRepoPath $1/update-releasedescription
+
+packageScript: |
+   rsync -a --delete $1/ .
+
+multiPackage:
+   6g-highres:
+      environment:
+         SW_MANUFACTURING: "1"
+         SW_SWUP_MAINUNIT_UPDATE: "1"
+         SW_BUS_MONITOR: "0"
+         HW_RAM_VARIANT: "6"
+         HW_DISPLAY_VARIANT: "1280640"
+         VARIANTS: "101001,101004,101033"
+         #TRAIN_NUMBER: "MOI3_CN_VW_E0490P"
+         #VARIANT: "FM3-S-*-CN-VW-MQB-PC"
+         #MU_VERSION: "C049"
+   4g-lowres:
+      environment:
+         SW_MANUFACTURING: "1"
+         SW_SWUP_MAINUNIT_UPDATE: "1"
+         SW_BUS_MONITOR: "0"
+         HW_RAM_VARIANT: "4"
+         HW_DISPLAY_VARIANT: "800480"
+         VARIANTS: "101001,101004,101033"
+         #TRAIN_NUMBER: "MOI3_CN_VW_E0490P"
+         #VARIANT: "FM3-SM-*-CN-VW-MQB-PC"
+         #MU_VERSION: "C049"
+   #6g-highres-chn-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: chn
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_CN_SK_E0490P"
+   #      VARIANT: "FM3-S-*-CN-SK-MQB-PC"
+   #      MU_VERSION: "C049"
+   #4g-lowres-chn-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: chn
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_CN_SK_E0490P"
+   #      VARIANT: "FM3-SM-*-CN-SK-MQB-PC"
+   #      MU_VERSION: "C049"
+   #6g-highres-eu-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: eu
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_EU_VW_E0490P"
+   #      VARIANT: "FM3-S-*-EU-VW-MQB-PC"
+   #      MU_VERSION: "X049"
+   #4g-lowres-eu-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: eu
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_EU_VW_E0490P"
+   #      VARIANT: "FM3-SM-*-EU-VW-MQB-PC"
+   #      MU_VERSION: "X049"
+   #6g-highres-eu-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: eu
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_EU_SK_E0490P"
+   #      VARIANT: "FM3-S-*-EU-SK-MQB-PC"
+   #      MU_VERSION: "X049"
+   #4g-lowres-eu-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: eu
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_EU_SK_E0490P"
+   #      VARIANT: "FM3-SM-*-EU-SK-MQB-PC"
+   #      MU_VERSION: "X049"
+   #6g-highres-rdw-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: rdw
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_RW_VW_E0490P"
+   #      VARIANT: "FM3-S-*-RW-VW-MQB-PC"
+   #      MU_VERSION: "R049"
+   #4g-lowres-rdw-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: rdw
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_RW_VW_E0490P"
+   #      VARIANT: "FM3-SM-*-RW-VW-MQB-PC"
+   #      MU_VERSION: "R049"
+   #6g-highres-rdw-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: rdw
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_RW_SK_E0490P"
+   #      VARIANT: "FM3-S-*-RW-SK-MQB-PC"
+   #      MU_VERSION: "R049"
+   #4g-lowres-rdw-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: rdw
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_RW_SK_E0490P"
+   #      VARIANT: "FM3-SM-*-RW-SK-MQB-PC"
+   #      MU_VERSION: "R049"
+   #6g-highres-jp-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: jp
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_JP_VW_E0490P"
+   #      VARIANT: "FM3-S-*-JP-VW-MQB-PC"
+   #      MU_VERSION: "J049"
+   #4g-lowres-jp-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: jp
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_JP_VW_E0490P"
+   #      VARIANT: "FM3-SM-*-JP-VW-MQB-PC"
+   #      MU_VERSION: "J049"
+   #6g-highres-kor-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: kor
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_KR_VW_E0490P"
+   #      VARIANT: "FM3-S-*-KR-VW-MQB-PC"
+   #      MU_VERSION: "K049"
+   #4g-lowres-kor-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: kor
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_KR_VW_E0490P"
+   #      VARIANT: "FM3-SM-*-KR-VW-MQB-PC"
+   #      MU_VERSION: "K049"
+   #6g-highres-kor-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: kor
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_KR_SK_E0490P"
+   #      VARIANT: "FM3-S-*-KR-SK-MQB-PC"
+   #      MU_VERSION: "K049"
+   #4g-lowres-kor-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: kor
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_KR_SK_E0490P"
+   #      VARIANT: "FM3-SM-*-KR-SK-MQB-PC"
+   #      MU_VERSION: "K049"
+   #6g-highres-twn-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: twn
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_TW_VW_E0490P"
+   #      VARIANT: "FM3-S-*-TW-VW-MQB-PC"
+   #      MU_VERSION: "T049"
+   #4g-lowres-twn-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: twn
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_TW_VW_E0490P"
+   #      VARIANT: "FM3-SM-*-TW-VW-MQB-PC"
+   #      MU_VERSION: "T049"
+   #6g-highres-twn-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: twn
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "MOI3_TW_SK_E0490P"
+   #      VARIANT: "FM3-S-*-TW-SK-MQB-PC"
+   #      MU_VERSION: "T049"
+   #4g-lowres-twn-sk:
+   #   environment:
+   #      SW_HMI_BRAND: sk
+   #      SW_HMI_REGION: twn
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "MOI3_TW_SK_E0490P"
+   #      VARIANT: "FM3-SM-*-TW-SK-MQB-PC"
+   #      MU_VERSION: "T049"
+   #37W-6g-highres-eu-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: eu
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "M37W_EU_VW_E0490P"
+   #      VARIANT: "FM3-S-*-EU-VW-MQ2-PC"
+   #      MU_VERSION: "X049"
+   #37W-4g-lowres-eu-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: eu
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "M37W_EU_VW_E0490P"
+   #      VARIANT: "FM3-SM-*-EU-VW-MQ2-PC"
+   #      MU_VERSION: "X049"
+   #37W-6g-highres-rdw-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: rdw
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "6"
+   #      HW_DISPLAY_VARIANT: "1280640"
+   #      TRAIN_NUMBER: "M37W_RW_VW_E0490P"
+   #      VARIANT: "FM3-S-*-RW-VW-MQ2-PC"
+   #      MU_VERSION: "R049"
+   #37W-4g-lowres-rdw-vw:
+   #   environment:
+   #      SW_HMI_BRAND: vw
+   #      SW_HMI_REGION: rdw
+   #      SW_BUS_MONITOR: "1"
+   #      HW_RAM_VARIANT: "4"
+   #      HW_DISPLAY_VARIANT: "800480"
+   #      TRAIN_NUMBER: "M37W_RW_VW_E0490P"
+   #      VARIANT: "FM3-SM-*-RW-VW-MQ2-PC"
+   #      MU_VERSION: "R049"

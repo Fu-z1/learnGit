@@ -1,0 +1,42 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "2.4.85"
+   PKG_NAME: "libdrm"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-libpthread-stubs-dev
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libdrm/libdrm-${PKG_VERSION}.tar.bz2
+   digestSHA1: 48de7661b6b5ee03d950affaf01790eb8c5ede2b
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/libdrm-${PKG_VERSION} \
+      --disable-cairo-tests \
+      --enable-omap-experimental-api \
+      --enable-install-test-programs \
+      --disable-manpages \
+      --disable-valgrind
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l drm -I include -I include/libdrm ext.libdrm
+      provideDeps: ["*-dev"]
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libdrm" \
+            -p "emmc.system" \
+            -o "system:ext-libdrm " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

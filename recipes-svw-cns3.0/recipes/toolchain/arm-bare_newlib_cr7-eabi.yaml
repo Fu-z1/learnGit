@@ -1,0 +1,123 @@
+shared: True
+
+environment:
+   URL:            "src/toolchain/arm-bare_newlib_cortex_r7_nommu-eabi-gcc6.3.0-4.tar.xz"
+   TOOLCHAIN_NAME: "arm-bare_newlib_cortex_r7_nommu-eabi"
+   TOOLCHAIN_HASH: "2acf307e1c2f7929cb29dcb3bd1b114c6eda7654"
+
+checkoutVars: [URL]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}${URL}
+   digestSHA1: ${TOOLCHAIN_HASH}
+   extract: no
+
+buildScript: |
+   ln -sf $1/*tar.xz .
+
+packageVars: [TOOLCHAIN_NAME, TOOLCHAIN_HASH]
+packageVarsWeak: [KLOCWORK_BIN_PATH]
+packageScript: |
+   if [ ! -e usr/$TOOLCHAIN_NAME ] ; then
+      tar xJf $1/*tar.xz
+      sed -i -e 's/_GLIBCXX_DEPRECATED//' usr/$TOOLCHAIN_NAME/include/c++/*/backward/auto_ptr.h
+   fi
+
+   #
+   # Create toolchain file
+   #
+   cat > arm-bare_newlib_cr7-eabi-klocwork.toolchain <<EOF
+   # kw wrapper toolchain
+   SET( KLOCWORK_BIN_PATH "\$ENV{KLOCWORK_BIN_PATH}" )
+   IF( NOT KLOCWORK_BIN_PATH )
+   SET( KLOCWORK_BIN_PATH "/opt/install/klocwork/bin" )
+   ENDIF()
+
+   IF( NOT WORKSPACE )
+   SET(WORKSPACE "\$ENV{WORKSPACE}")
+   ENDIF()
+
+   FIND_PROGRAM(
+   KWWRAP_PATH
+   kwwrap
+   PATHS "\${KLOCWORK_BIN_PATH}"
+   )
+
+   SET(KLOCWORK_LOGFILE "\${WORKSPACE}/klocwork-buildtrace.log")
+
+   SET(CMAKE_C_COMPILER   "arm-bare_newlib_cortex_r7_nommu-eabi-gcc")
+   SET(CMAKE_CXX_COMPILER "arm-bare_newlib_cortex_r7_nommu-eabi-g++")
+   SET(CMAKE_SYSTEM_NAME "Generic")
+
+   # compiler check is failing...
+   set(CMAKE_C_COMPILER_WORKS 1)
+   set(CMAKE_CXX_COMPILER_WORKS 1)
+
+   # programs are from host; libs and headers only from target
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+   SET(GCC_KW_WRAPPER_PATH "\${WORKSPACE}/gcc-kw-wrapper.sh")
+   SET(GXX_KW_WRAPPER_PATH "\${WORKSPACE}/gxx-kw-wrapper.sh")
+   FILE(WRITE "\${GCC_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_C_COMPILER} \"\$@\"")
+   FILE(WRITE "\${GXX_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_CXX_COMPILER} \"\$@\"")
+   execute_process(COMMAND chmod 754 "\${GCC_KW_WRAPPER_PATH}")
+   execute_process(COMMAND chmod 754 "\${GXX_KW_WRAPPER_PATH}")
+
+   SET(CMAKE_C_COMPILER "\${GCC_KW_WRAPPER_PATH}")
+   SET(CMAKE_CXX_COMPILER "\${GXX_KW_WRAPPER_PATH}")
+   EOF
+      # If no klocwork, then create normal toolchain
+
+      # tell cmake the name of our target system
+   cat > arm-bare_newlib_cr7-eabi.toolchain <<EOF
+   # Generic system
+   set(CMAKE_SYSTEM_NAME "Generic")
+
+   # set compiler
+   set(CMAKE_C_COMPILER "arm-bare_newlib_cortex_r7_nommu-eabi-gcc")
+   set(CMAKE_CXX_COMPILER "arm-bare_newlib_cortex_r7_nommu-eabi-g++")
+
+   # compiler check is failing...
+   set(CMAKE_C_COMPILER_WORKS 1)
+   set(CMAKE_CXX_COMPILER_WORKS 1)
+
+   # programs are from host; libs and headers only from target
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+   EOF
+
+provideVars:
+   # architecture
+   ARCH: arm
+   AUTOCONF_HOST:   "${TOOLCHAIN_NAME}"
+   AUTOCONF_TARGET: "${TOOLCHAIN_NAME}"
+   CROSS_COMPILE: "${TOOLCHAIN_NAME}-"
+   TARGET_TYPE: "embedded"
+
+   # compiler settings
+   CMAKE_TOOLCHAIN_FILE: $(if-then-else,$(eq,${CONFIG_KLOCWORK:-0},1),"../arm-bare_newlib_cr7-eabi-klocwork.toolchain","../arm-bare_newlib_cr7-eabi.toolchain")
+   CFLAGS: "-Os -g -mcpu=cortex-r7 -mfpu=vfpv4 -mhard-float -mthumb -ffunction-sections -fdata-sections"
+   CXXFLAGS: "-Os -g -mcpu=cortex-r7 -mfpu=vfpv4 -mhard-float -mthumb -ffunction-sections -fdata-sections -std=c++11"
+   LDFLAGS: "-Wl,-O1 -Wl,--gc-sections"
+   LIBDIR: lib
+   SYSROOT: ""
+
+   # tools
+   AR:     "${TOOLCHAIN_NAME}-ar"
+   AS:     "${TOOLCHAIN_NAME}-as"
+   CC:     "${TOOLCHAIN_NAME}-gcc"
+   CPP:    "${TOOLCHAIN_NAME}-cpp"
+   CXX:    "${TOOLCHAIN_NAME}-g++"
+   GDB:    "${TOOLCHAIN_NAME}-gdb"
+   LD:     "${TOOLCHAIN_NAME}-ld"
+   NM:     "${TOOLCHAIN_NAME}-nm"
+   OBJCPY: "${TOOLCHAIN_NAME}-objcopy"
+   OBJDMP: "${TOOLCHAIN_NAME}-objdump"
+   RANLIB: "${TOOLCHAIN_NAME}-ranlib"
+   STRIP:  "${TOOLCHAIN_NAME}-strip"
+
+provideTools:
+   toolchain: bin

@@ -1,0 +1,56 @@
+inherit: [buildenv, install, make, patch, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "BSD-3-Clause"
+   PKG_VERSION: "4.9.2"
+   #PKG_NAME: "tcpdump"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+   PKG_NAME: "ext-tcpdump"
+
+depends:
+ - name: connectivity::networking::ext-libpcap-dev
+ - use: []
+   depends:
+    # runtime dependencies
+    - name: connectivity::networking::ext-libpcap-target
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.tcpdump.git
+   dir: ${PKG_NAME}
+   tag: tcpdump-4.9.0
+
+
+buildVars: [PKG_NAME, LIBDIR]
+buildTools: [toolchain, autotools]
+buildScript: |
+   # copy cloned source to build directory
+   rsync -a --delete $1/${PKG_NAME}/* ${PWD}/${PKG_NAME}
+
+   # dont use crypto lib
+   autotoolsBuild ${PKG_NAME} --with-crypto=no
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageScript: |
+         # copy the (only) executables from dev/build to dev/dist
+         installPackageDev $1/dist --no-strip
+      provideDeps: ["*-dev"]
+
+   target:
+      packageVars: [LIBDIR]
+      packageScript: |
+         # copy the (only) executables from dev/build to dev/dist
+         installPackageTarget $1/dist --no-strip
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-tcpdump" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-tcpdump " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

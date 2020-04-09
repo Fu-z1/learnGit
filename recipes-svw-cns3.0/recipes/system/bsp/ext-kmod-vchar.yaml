@@ -1,0 +1,44 @@
+inherit: [make, strip, packing-module]
+
+depends:
+   - system::bsp::ext-opensynergy-coqoshv-abi
+   - system::bsp::ext-opensynergy-vchar-src
+   -
+      name: system::bsp::ext-linux-headers
+      use: [result, environment]
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete ${BOB_DEP_PATHS["system::bsp::ext-opensynergy-vchar-src"]}/ .
+
+   export TARGETOS="linux"
+   export MAIN_INC_DIR="${BOB_DEP_PATHS["system::bsp::ext-opensynergy-coqoshv-abi"]}/"
+   export INTER_INC_DIR="${PWD}/include"
+
+   make KDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build
+
+packageVars: [STRIP]
+packageScript: |
+   DIR="lib/modules/${KERNEL_VERSION}/extra"
+   mkdir -p "${DIR}"
+
+multiPackage:
+   dev:
+      packageScript: |
+         mkdir -p include
+         rsync -a --delete $1/include/ include
+
+   target:
+      packageVars: [STRIP]
+      packageScript: |
+          cp -rf $1/linux/*.ko ${DIR}
+          stripAllKernelModules "${DIR}" "${STRIP}"
+          d=$(mktemp -d)
+          rsync -a --delete --exclude ".debug" ./ $d
+          buildSwupModule -n "ext-kmod-vchar" \
+                          -p "emmc.system.bsp" \
+                          -o "system.bsp:ext-kmod-vchar" -f $d -- \
+                          -U Depmod=true \
+                          -U "Partition=rootfs_ro"
+          rm -rf $d

@@ -1,0 +1,21 @@
+inherit: [buildenv]
+
+depends:
+   - examples::proto-api
+   - basic-services::common-base::common-base-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:staging/fdbus-example.git
+   dir: example
+   branch: "master"
+
+buildScript: |
+     buildenvBuildModules \
+        -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+        -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+        example.app.example
+
+packageScript: |
+   buildenvPackageDev
+

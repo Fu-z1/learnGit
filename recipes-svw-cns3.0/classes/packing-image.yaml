@@ -1,0 +1,40 @@
+inherit: [packing-utils, packing-common]
+
+packageTools: [pkg, mib3-packing]
+packageVarsWeak: [MODULE_VERSION, PACKAGE_VERSION, CONFIG_SKIP_SWUPDATE_PKG_BUILD]
+packageVars: [MANIFEST_VERSION, CHECKSUM]
+packageScript: |
+   # build a image for swupdater. Images are not packed with pkg tool
+   # and have no default userdata
+   buildSwupImage() {
+      # we are now building swup modules in (almost) all target packages
+      # some are used in root recipes (doxygen, unittest, host-linux etc.)
+      # where no MODULE/PACKGE_VERSION is set
+      # do not try to build them there
+      if [[ -z "${MODULE_VERSION+xyz}" ]] && [[ -z "${PACKAGE_VERSION+xyz}" ]] ; then
+         echo "buildSwupImage: aborting, no MODULE_VERSION or PACKAGE_VERSION defined"
+         return
+      fi
+      if [[ ! -z ${CONFIG_SKIP_SWUPDATE_PKG_BUILD+xyz} ]] && [[ ${CONFIG_SKIP_SWUPDATE_PKG_BUILD} == "1" ]] ; then
+         echo "buildSwupImage: skipping"
+         return
+      fi
+
+      # limited module depth in RequiredBy
+      PARAMS=$(__restrictModuleDepthInRequiredBy "$@")
+
+      mib3-packing module \
+         --fileType "image" \
+         --packageType="module" \
+         --packageVersion ${PACKAGE_VERSION} \
+         --manifestVersion ${MANIFEST_VERSION} \
+         --moduleVersion ${MODULE_VERSION} \
+         -o _swupdata $PARAMS
+
+      if [[ ${CHECKSUM} == "true" ]] ; then
+         mib3-packing checksum \
+            --manifestVersion ${MANIFEST_VERSION} \
+            -o _swupdata \
+            --type "image"
+      fi
+   }

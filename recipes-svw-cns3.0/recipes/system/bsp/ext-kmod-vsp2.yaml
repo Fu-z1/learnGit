@@ -1,0 +1,44 @@
+inherit: [strip, packing-module]
+
+depends:
+  - system::bsp::ext-kmod-vspm-dev
+  - name: system::bsp::ext-linux-headers
+    use: [result, environment]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/renesas-rcar-vsp2drive.git
+   branch: yocto-3.15.0
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/vsp2driver/ ${PWD}
+   cp ${BOB_DEP_PATHS["system::bsp::ext-kmod-vspm-dev"]}/usr/include/*.h ${PWD}
+   make KERNELDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build all
+
+packageScript: |
+   DIR="lib/modules/${KERNEL_VERSION}/extra"
+   mkdir -p "${DIR}"
+
+multiPackage:
+   dev:
+      packageScript: |
+         mkdir -p usr/include
+         cp $1/*.h usr/include
+         cp -rf $1/vsp2.ko lib/modules/${KERNEL_VERSION}/extra
+
+   target:
+      packageVars: [STRIP, KERNEL_VERSION]
+      packageScript: |
+         cp -rf $1/vsp2.ko ${DIR}
+         stripAllKernelModules "${DIR}" "${STRIP}"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-kmod-vsp2" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-kmod-vsp2 " -f $d -- \
+            -U Depmod=${KERNEL_VERSION} \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

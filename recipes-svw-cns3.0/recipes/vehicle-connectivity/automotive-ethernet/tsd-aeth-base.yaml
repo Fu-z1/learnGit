@@ -1,0 +1,171 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Application"
+
+environment:
+   PKG_NAME_AETH_BASE: "tsd.aeth.base"
+   PKG_NAME_AETH_TESTABILITY: "tsd.aeth.testability"
+   TSD_NM_VW_MIB_CONFIG: "TSD_NM_VW_MIB_CONFIG_ETH"
+   SW_AETH_PLATFORM: "$(getUniqueFeatureFromList,${VARIANTS},SW_AETH_PLATFORM)"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-types-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-drivers-dev
+  - system::system-lifecycle::tsd-pwc-proxy-api-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - connectivity::networking::ext-libnl-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-aeth-interface-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-aeth-core-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-dev
+  - vehicle-connectivity::automotive-ethernet::ext-avbstack-cetitec-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - connectivity::networking::ext-iptables-dev
+  - basic-services::systeminfo::tsd-systeminformation-features-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-types-target
+      - system::tsd-drivers-target
+      - system::system-lifecycle::tsd-pwc-proxy-api-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - connectivity::networking::ext-libnl-target
+      - vehicle-connectivity::automotive-ethernet::tsd-aeth-interface-target
+      - vehicle-connectivity::automotive-ethernet::tsd-aeth-core-target
+      - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-target
+      - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - connectivity::networking::ext-iptables-target
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.aeth.base.git
+    dir: ${PKG_NAME_AETH_BASE}
+    tag: mqb_sop1_eu-1.10.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.aeth.testability.git
+    dir: ${PKG_NAME_AETH_TESTABILITY}
+    tag: mqb_sop1_eu-2.0.0
+    branch: master_mqb_sop1_eu
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-python-libs/jinja-2.8.tar.gz
+    dir: jinja2
+    digestSHA1: 0736002664e720d183806d09e2b50bdcce045fa2
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-python-libs/markupsafe-1.0.tar.gz
+    dir: markupsafe
+    digestSHA1: 57bc9a7dd347ef066f9ecfd2b291a965b085b273
+
+checkoutVars: [PKG_NAME_AETH_BASE, SW_AETH_PLATFORM]
+checkoutDeterministic: true
+checkoutScript: |
+   # Some extra python depencies have to be copied.
+   cp -a jinja2/jinja-*/jinja2 ${PKG_NAME_AETH_BASE}/tool
+   cp -a markupsafe/markupsafe-*/markupsafe ${PKG_NAME_AETH_BASE}/tool
+
+   # get the current project we want to build for
+   configDir=""
+   if [ "$SW_AETH_PLATFORM" = "MQB" ]; then
+      configDir="mqb"
+   elif [ "$SW_AETH_PLATFORM" = "MQB2020" ]; then
+      configDir="mqb2020"
+   else
+      configDir="None"
+   fi
+
+   if [ $configDir != "None" ]
+   then
+    # generate project specific configuration files
+    python3 ${PKG_NAME_AETH_BASE}/tool/prjGenerator.py -c ${PKG_NAME_AETH_BASE}/src/tsd/aeth/base/cfg/json/${configDir} \
+                                                       -s ${PKG_NAME_AETH_BASE}/src/tsd/aeth/base/cfg/json/${configDir}/aeth-${configDir}-switch-config.xml \
+                                                       -o ${PKG_NAME_AETH_BASE}/src/tsd/aeth/base/cfg \
+                                                       -t ${PKG_NAME_AETH_BASE}/tool/templates
+   else
+    echo "Error: there is no configuration available for this platform"
+   fi
+
+   # clean up compiled python files otherwise jenkins will failed (artefact server vs build id)
+   py3clean ${PKG_NAME_AETH_BASE}/tool
+
+buildVars: [PKG_NAME_AETH_TESTABILITY, PKG_NAME_AETH_BASE, SW_TESTABILITY_SERVICE_ETHERNET,
+   SW_AETH_PLATFORM]
+buildScript: |
+   build_sw()
+   {
+      buildenvBuildAll -DVERSION_AETH_TESTABILITY=$(getScmVersion $1 ${PKG_NAME_AETH_TESTABILITY}) \
+                       -DVERSION_AETH_BASE=$(getScmVersion $1 ${PKG_NAME_AETH_BASE}) \
+                       -DSW_TESTABILITY_SERVICE_ETHERNET:BOOL=${SW_TESTABILITY_SERVICE_ETHERNET-0}
+
+      mkdir -p ${PWD}/dist/var/aeth/mon
+      rsync $1/${PKG_NAME_AETH_BASE}/src/tsd/aeth/base/cfg/script/runAVB-${SW_AETH_PLATFORM,,}.sh ${PWD}/dist/usr/bin/runAVB.sh
+      rsync $1/${PKG_NAME_AETH_BASE}/src/tsd/aeth/base/cfg/script/runGPTP.sh ${PWD}/dist/usr/bin/
+      rsync $1/${PKG_NAME_AETH_BASE}/src/tsd/aeth/base/cfg/script/config*.ini ${PWD}/dist/var/aeth/mon/
+   }
+   getScmVersion()
+   {
+      echo `git -C $1/$2 symbolic-ref -q --short HEAD \
+         || git -C $1/$2 describe --tags --exact-match \
+         || git -C $1/$2 rev-parse --short HEAD \
+         || echo "unkown"`
+   }
+
+multiPackage:
+   dev:
+      environment:
+         #set default variant: eu-vw (101001) by parameter expansion if variable VARIANTS is empty or not defined
+         SW_TESTABILITY_SERVICE_ETHERNET: "$(if-then-else,$(flagIsSet,${VARIANTS-101001},SW_TESTABILITY_SERVICE_ETHERNET,1),1,0)"
+      buildScript: |
+         build_sw $1
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      environment:
+         #set default variant: eu-vw (101001) by parameter expansion if variable VARIANTS is empty or not defined
+         SW_TESTABILITY_SERVICE_ETHERNET: "$(if-then-else,$(flagIsSet,${VARIANTS-101001},SW_TESTABILITY_SERVICE_ETHERNET,1),1,0)"
+      buildScript: |
+         build_sw $1
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "aeth-base" \
+            -p "emmc.vehicle-connectivity.autom-enet" \
+            -o "vehicle-connectivity.automotive-ethernet:tsd-aeth-base " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      depends:
+        - system::ext-cppunit-google-mock-dev
+      buildVars: [LIBDIR]
+      buildScript: |
+         export COMMONAPI_CONFIG=$1/tsd.aeth.base/test/tsd/aeth/base/vlanserver/commonapi.ini
+         export LD_LIBRARY_PATH=${BOB_DEP_PATHS["vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-mib3-mqb-dev"]}/usr/${LIBDIR}
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll
+      packageScript: |
+         buildenvPackageDoc

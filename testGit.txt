@@ -1,3 +1,10 @@
+
+Now I have create feature2 branch!
+
+The step was woring, now keep foword!
+
+I am rewrite master branch!
+
 I am test git handsome boy!
 learnling GIT ready up! rewrite txt
 has a mutable index called stage.

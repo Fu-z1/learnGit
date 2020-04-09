@@ -1,0 +1,37 @@
+inherit: [buildenv]
+
+depends:
+   - sds::tts::ve::ext-ve-delivery
+
+buildVars: [VOICE_NAME, LANG, QUALITY, PKG_VERSION]
+buildScript: |
+
+   ZIP=""
+   
+   for dep in "${!BOB_DEP_PATHS[@]}" ; do
+       if [ "$dep" = "sds::tts::ve::ext-ve-delivery" ]
+       then
+          ZIP=${BOB_DEP_PATHS[$dep]}/${PKG_VERSION}.ZIP
+       fi
+   done
+
+   echo zip is $ZIP
+
+   VOICE_DIR=$VOICE_NAME-$QUALITY
+   SYNTH_DIR=tmp/$VOICE_DIR/synthesis
+   CONF_DIR=tmp/$VOICE_DIR/config
+
+   mkdir -p $CONF_DIR
+   mkdir -p $SYNTH_DIR
+
+   unzip -jo $ZIP */$LANG/*$VOICE_NAME*$QUALITY*.dat -d $SYNTH_DIR
+   unzip -jo $ZIP */$LANG/*$VOICE_NAME*$QUALITY*.hdr -d $CONF_DIR
+
+   HMI_LANG=$(echo $(sed -n '/<langietf>/p'  $(find $CONF_DIR | grep hdr)) | sed -n 's/<langietf>\(.*\)<\/langietf>/\1/p' | sed -n 's/-/_/p') 
+   DIST_DIRECTORY=dist/var/speech/tts/voices/$HMI_LANG
+   mkdir -p $DIST_DIRECTORY
+   mv -f tmp/* $DIST_DIRECTORY
+   rm -r tmp
+
+packageScript: |
+   cmakePackageTarget

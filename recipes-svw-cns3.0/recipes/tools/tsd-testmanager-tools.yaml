@@ -1,0 +1,26 @@
+inherit: [buildenv]
+
+depends:
+   - engineering::testmanager::tsd-testmanager-client-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:tools/tsd.testmanager.tools.git
+      dir: tsd.testmanager.tools
+      branch: develop
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: [ '*-dev' ]
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.testmanager.tools.app.functionTestPcb
+      packageScript: buildenvPackageTarget

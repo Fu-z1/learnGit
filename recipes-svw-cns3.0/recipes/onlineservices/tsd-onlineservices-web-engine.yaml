@@ -1,0 +1,125 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - audio::audiorouter::ext-alsa-lib-dev
+ - hmi::tsd-dsi-cpp-dev
+ - system::tsd-common-dev
+ - system::tsd-common-daemon-dev
+ - system::tsd-system-displaymanager-dev
+ - system::tsd-system-displaymanager-mib3-dev
+ - basic-services::rsi-library::tsd-rsi-client-dev
+ - name: onlineservices::ext-web-browser-dev
+   use: [result, environment]
+  #- audio::audiorouter::tsd-audio-audiorouter-client-api-dev
+ - onlineservices::tsd-onlineservices-webengine-api-dev
+  #- onlineservices::tsd-onlineservices-webengine-media-dev
+ - connectivity::networking::tsd-networking-api-dev
+  #- audio::audiorouter::ext-alsa-lib-dev
+  #- media::libraries::ext-cinemo-dev
+ - onlineservices::tsd-onlineservices-common-dev
+ - onlineservices::tsd-onlineservices-webapp-controller-dev
+ - use: []
+   depends:
+    - audio::audiorouter::ext-alsa-lib-target
+    - system::tsd-system-displaymanager-mib3-target
+    - hmi::tsd-dsi-cpp-target
+    - system::tsd-common-target
+    - system::tsd-common-daemon-target
+    - system::tsd-system-displaymanager-target
+    - basic-services::rsi-library::tsd-rsi-client-target
+    - name: onlineservices::ext-web-browser-target
+      use: [result, environment]
+      #- audio::audiorouter::tsd-audio-audiorouter-client-api-target
+    - onlineservices::tsd-onlineservices-webengine-api-target
+      #- onlineservices::tsd-onlineservices-webengine-media-target
+    - onlineservices::tsd-onlineservices-common-target
+    - connectivity::networking::tsd-networking-api-target
+      #- audio::audiorouter::ext-alsa-lib-target
+      #- media::libraries::ext-cinemo-target
+    - onlineservices::tsd-onlineservices-webapp-controller-target
+
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.web.engine.git
+   dir: tsd.onlineservices.web.engine
+   tag: mqb_sop1_eu-1.147.2
+multiPackage:
+   target:
+      privateEnvironment:
+         SW_MQB: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,MQB)"
+         SW_37W: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W)"
+
+      buildVars: [LIBDIR, WEB_BROWSER_LIBS, SW_37W, SW_MQB]
+      buildScript: |
+         for i in "${@:2}" ; do
+            CMAKE_CXX_FLAGS+=" -I$i/usr/include"
+            CMAKE_LINKER_FLAGS+=" -L$i/usr/$LIBDIR -Wl,-rpath-link=$i/usr/$LIBDIR"
+            LIB_DIRS+="-L$i/usr/${LIBDIR} "
+         done
+
+         if [[ $SW_37W == "True" ]]; then
+            SW_CIF_DSI="DSI_37W"
+         elif [[ $SW_MQB == "True" ]]; then
+            SW_CIF_DSI="DSI_MQB"
+         fi
+
+         buildenvBuildAll -DSW_CIF_DSI="${SW_CIF_DSI}" -DWEB_ENGINE_LIBS="${WEB_BROWSER_LIBS}" -DWEB_ENGINE_LIB_DIRS="${LIB_DIRS}" -DWEB_ENGINE_INCLUDE="${BOB_DEP_PATHS[onlineservices::ext-web-browser-dev]}/usr/ ${BOB_DEP_PATHS[onlineservices::ext-web-browser-dev]}/usr/include" -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 #-DCMAKE_VERBOSE_MAKEFILE=ON
+
+         mkdir -p browser
+         rsync -a --delete ${BOB_DEP_PATHS["onlineservices::ext-web-browser-target"]}/* browser/
+         mkdir -p usr/bin/
+         sed s/cefsimple/tsd.onlineservices.web.engine/ browser/usr/bin/start_raw_browser.sh >  usr/bin/start_browser.tmp
+         mv usr/bin/start_browser.tmp usr/bin/start_browser.sh
+
+         mkdir -p etc/tsd.onlineservices.web.engine/
+         cp -r $1/tsd.onlineservices.web.engine/ini/* etc/tsd.onlineservices.web.engine/
+         mkdir -p var/lib/tsd.onlineservices.web.engine/.pki
+         cp -r $1/tsd.onlineservices.web.engine/pages/* var/lib/tsd.onlineservices.web.engine/
+         cp -r $1/tsd.onlineservices.web.engine/certificates/nssdb var/lib/tsd.onlineservices.web.engine/.pki
+
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p usr/bin/web_browser
+         mv usr/bin/tsd.onlineservices.web.engine usr/bin/web_browser/
+
+         cp -r $1/etc ${PWD}
+         cp -r $1/var ${PWD}
+         cp -v $1/usr/bin/* usr/bin/
+
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-web-engine" \
+            -p "emmc.onlineservices" \
+            -o "onlineservices:tsd-onlineservices-web-engine " \
+            -m 'wam,browser,0770,/var/lib/tsd.onlineservices.web.engine$'   \
+            -m 'wam,wam,0750,/var/lib/tsd.onlineservices.web.engine/.pki$'   \
+            -m 'wam,wam,0750,/var/lib/tsd.onlineservices.web.engine/.pki/nssdb$'   \
+            -m 'wam,wam,0750,/var/lib/tsd.onlineservices.web.engine/.pki/nssdb/.*$'   \
+            -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      inherit:
+       - packing-module
+      provideDeps: ["*-target"]
+
+   dev:
+      buildScript: |
+         buildenvBuildDev
+
+      packageScript: |
+         buildenvPackageDev
+
+#   unittests:
+#      buildScript: |
+#         buildenvTestAll
+#      packageScript: |
+#         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

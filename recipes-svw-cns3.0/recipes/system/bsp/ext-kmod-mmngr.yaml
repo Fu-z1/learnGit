@@ -1,0 +1,59 @@
+inherit: [strip, packing-module]
+
+depends:
+  - name: system::bsp::ext-linux-headers
+    use: [result, environment]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/renesas-rcar-mmngr_drv.git
+   branch: yocto-3.15.0
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP]
+buildTools: [toolchain]
+buildScript: |
+   mkdir -p mmngr mmngrbuf
+
+   rsync -a --delete $1/mmngr_drv/mmngr/mmngr-module/files/mmngr/ mmngr
+   sed -i "s@\$(CP)@#\$(CP)@g" mmngr/drv/Makefile
+   export MMNGR_SSP_CONFIG="MMNGR_SSP_DISABLE"
+   export MMNGR_IPMMU_MMU_CONFIG="IPMMU_MMU_DISABLE"
+   export MMNGR_CONFIG="MMNGR_SALVATORX"
+   export EXTRA_CFLAGS="-I${PWD}/mmngr/include"
+   pushd mmngr/drv
+   make EXTRA_CFLAGS=${EXTRA_CFLAGS} KERNELSRC=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build all
+   popd
+
+   rsync -a --delete $1/mmngr_drv/mmngrbuf/mmngrbuf-module/files/mmngrbuf/ mmngrbuf
+   sed -i "s@\$(CP)@#\$(CP)@g" mmngrbuf/drv/Makefile
+   export EXTRA_CFLAGS="-I${PWD}/mmngrbuf/include"
+   pushd mmngrbuf/drv
+   make EXTRA_CFLAGS=${EXTRA_CFLAGS} KERNELSRC=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build all
+   popd
+
+packageScript: |
+   DIR="lib/modules/${KERNEL_VERSION}/extra"
+   mkdir -p ${DIR}
+
+multiPackage:
+   dev:
+      packageScript: |
+         mkdir -p usr/include
+         cp $1/mmngr/include/*.h usr/include
+         cp $1/mmngrbuf/include/*.h usr/include
+
+   target:
+      packageVars: [STRIP, KERNEL_VERSION]
+      packageScript: |
+         cp -rf $1/mmngr/drv/mmngr.ko ${DIR}
+         cp -rf $1/mmngrbuf/drv/mmngrbuf.ko ${DIR}
+         stripAllKernelModules "${DIR}" "${STRIP}"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-kmod-mmngr" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-kmod-mmngr " -f $d -- \
+            -U Depmod=${KERNEL_VERSION} \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+

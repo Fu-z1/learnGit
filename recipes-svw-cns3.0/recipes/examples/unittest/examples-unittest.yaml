@@ -1,0 +1,47 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+   - system::tsd-common-dev
+
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:jens.baumann/example.unittest.app.git
+      dir: example.unittest.app
+      branch: master_mqb_sop1_eu
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:jens.baumann/example.unittest.bar.git
+      dir: example.unittest.bar
+      branch: master_mqb_sop1_eu
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:jens.baumann/example.unittest.foo.git
+      dir: example.unittest.foo
+      branch: master_mqb_sop1_eu
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:jens.baumann/example.unittest.interface.git
+      dir: example.unittest.interface
+      branch: master_mqb_sop1_eu
+      
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps:
+         - system::tsd-common-dev
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageTarget
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

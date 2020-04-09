@@ -1,0 +1,26 @@
+checkoutTools: [capi-generator, capi-commgr-binding-generator, capi-commgr-binding-scripts, java]
+
+checkoutDeterministic: True
+checkoutScript: |
+   # Function to generate C++ code out of Franca IDL files, the code will be used in conjunction with CommonAPI.
+   CapiGenProcessFIDLFiles()
+   {
+      pushd $1
+      CreateAPIModule.py -svn idl/*.fidl
+      # Don't ask. See DEFECT-27823
+      find definition/src/ -name "*.cpp" -exec sed -i '/assert(/d' {} \;
+      popd
+   }
+
+   # Special case for the "Testing Framework", since several Franca IDL files are located inside its "own" test case subdirectory.
+   # Also the generated CMake files are a "little" different from the "normal" ones (thus the additional parameter 't' on the generation script).
+   CapiGenTFWProcessFIDLFiles()
+   {
+      for dir in $1/tests/*/; do
+         pushd $dir
+         CreateAPIModule.py -svnt idl/*.fidl
+         # Don't ask. See DEFECT-27823
+         find definition/src/ -name "*.cpp" -exec sed -i '/assert(/d' {} \;
+         popd
+      done
+   }

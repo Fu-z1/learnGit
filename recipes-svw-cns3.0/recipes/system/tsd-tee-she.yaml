@@ -1,0 +1,42 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::ext-optee::client-dev
+  - system::ext-optee::os-dev
+
+  - use: []
+    depends:
+      - system::ext-optee::client-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.tee.she.git
+   dir: tsd.tee.she
+   tag: mqb_sop1_eu-1.7.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [ARCH, CC, CROSS_COMPILE]
+buildTools: [toolchain]
+buildScript: |
+   export TA_DEV_KIT_DIR=${BOB_DEP_PATHS["system::ext-optee::os-dev"]}
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         mkdir -p lib/optee_armtz
+         find $1/tsd.tee.she/ -name "*.ta" -print0 -exec cp {} lib/optee_armtz/ \;
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "tee-she" \
+            -p "emmc.system" \
+            -o "system::tsd-tee-she " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

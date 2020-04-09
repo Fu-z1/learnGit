@@ -1,0 +1,16 @@
+inherit: [buildenv]
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/nlohmann/json.git
+   dir: ext.nlohmann.json
+
+multiPackage:
+   dev:
+      buildScript: |
+         rsync -a --delete $1/ext.nlohmann.json/* ${PWD}
+      packageTools: [buildenv]
+      packageScript: |
+         rsync -a --delete $1/* ${PWD}
+         tsd-buildenv-create-shim.sh -p . -I include ext.nlohmann.json
+         

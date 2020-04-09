@@ -1,0 +1,25 @@
+inherit: [packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "Library"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.dsi.java.git
+   dir: tsd.dsi.java
+   branch: rebase/mqb_sop1_eu_1480-rc4
+
+buildScript: |
+   mkdir -p tsd/hmi/tsd_jars
+   cp -au $1/tsd.dsi.java/java/lib/tsd.dsi.jar tsd/hmi/tsd_jars/
+
+packageScript: |
+   rsync -a --delete $1/tsd ${PWD}
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "dsi-java" \
+      -p "emmc.hmi" \
+      -o "hmi:tsd-dsi-java " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

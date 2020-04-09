@@ -1,0 +1,54 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - communication::tsd-communication-dev
+  - basic-services::car-function-management::tsd-carssw-viwiusermanagementservice-adapter-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - communication::tsd-communication-target
+      - basic-services::car-function-management::tsd-carssw-viwiusermanagementservice-adapter-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.viwiusermanagementservice.mib3.git
+    dir: tsd.viwiusermanagementservice.mib3
+    tag: mqb_sop1_eu-1.7.0
+    branch: master_mqb_sop1_eu
+
+
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+      buildScript: |
+         buildenvBuildAll
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "carssw-viwiumservice-mib3" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:tsd-carssw-viwiusermanagementservice-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+      buildScript: |
+         buildenvBuildAll
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

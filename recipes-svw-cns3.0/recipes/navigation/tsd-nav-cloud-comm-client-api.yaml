@@ -1,0 +1,36 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Service Cloud"
+
+
+depends:
+   - system::tsd-common-dev
+   - navigation::tsd-nav-common-mib3-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud.comm.client.api.git
+   dir: tsd.nav.cloud.comm.client.api
+   tag: mqb_sop1_eu-150.0.1       #navi-api (internal only interface)
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     buildScript: buildenvBuildAll
+     multiPackage:
+       dev:
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps:  ['*-dev']
+  unittests:
+    buildScript: |
+       buildenvTestAll
+    packageScript: |
+       buildenvPackageTests
+  doc:
+      buildScript: |
+         buildenvBuildDocAll
+      packageScript: |
+         buildenvPackageDoc

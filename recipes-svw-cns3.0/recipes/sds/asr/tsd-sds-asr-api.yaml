@@ -1,0 +1,62 @@
+inherit: [buildenv, packing-module, capigen]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "MMI-ASR"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-binding-dev
+  - communication::ext-commonapi-runtime-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-binding-target
+      - communication::ext-commonapi-runtime-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.asr.api.git
+    dir: tsd.sds.asr.api
+    tag: mqb_sop1_eu-2.1.0
+  - if: "${CONFIG_CAPI_MOCKS:-0}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.asr.client.git
+    dir: tsd.sds.asr.client
+    branch: master_mqb_sop1_eu
+  - if: "${CONFIG_CAPI_MOCKS:-0}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-sds/tsd.sds.asr.service.git
+    dir: tsd.sds.asr.service
+    branch: master_mqb_sop1_eu
+
+checkoutScript: CapiGenProcessFIDLFiles tsd.sds.asr.api
+checkoutDeterministic: True
+
+multiPackage:
+   dev:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps:
+        - system::tsd-common-dev
+
+   target:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "sds-asr-api" \
+            -p "emmc.sds.asr" \
+            -o "sds.asr:tsd-sds-asr-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

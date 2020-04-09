@@ -1,0 +1,53 @@
+inherit: [install, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only"
+   #PKG_VERSION: "1.0.2"
+   PKG_NAME: "libnetfilter_queue"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#   PKG_VERSION: "libnetfilter_queue-1.0.2"
+   PKG_NAME: "ext.libnetfilter-queue"
+
+depends:
+  - connectivity::networking::ext-libnfnetlink-dev
+  - connectivity::networking::ext-libmnl-dev
+  - use: []
+    depends:
+      # runtime dependencies
+      - connectivity::networking::ext-libmnl-target
+
+checkoutVars: [PKG_VERSION, PKG_NAME]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.libnetfilter.queue.git
+    dir: ${PKG_NAME}
+    tag: libnetfilter_queue-1.0.2
+
+buildVars: [PKG_NAME, AR, CC, LD]
+buildTools: [autotools]
+buildScript: |
+   # Preparing build process (cleanup, synching etc.)
+   rm -rf *
+   rsync -a --delete $1/${PKG_NAME}/ ${BOB_CWD}
+
+   # Configuring and building the libnetfilter-queue package
+   autotoolsBuild ${BOB_CWD}
+
+multiPackage:
+   dev:
+      packageScript: installPackageDev "$1/dist"
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         installPackageTarget $1/dist
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libnetfilter-queue" \
+            -p "emmc.connectivity.netwg" \
+            -o "connectivity.networking:ext-libnetfilter-queue " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

@@ -1,0 +1,66 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "StaticLib"
+
+depends:
+   # build dependencies
+ - system::tsd-common-dev
+ - system::tsd-threadmessages-dev
+ - libs::tsd-common-stm-dev
+ - sal::ext-apple-carplay-dev
+ - sal::tsd-sal-audio-dev
+ - sal::tsd-sal-audio-mib3-dev
+ - sal::tsd-sal-common-dev
+ - sal::tsd-sal-video-dev
+ - sal::tsd-sal-iap2-dev
+
+   # runtime dependencies
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - system::tsd-threadmessages-target
+    - libs::tsd-common-stm-target
+    - sal::ext-apple-carplay-target
+    - sal::tsd-sal-audio-target
+    - sal::tsd-sal-audio-mib3-target
+    - sal::tsd-sal-common-target
+    - sal::tsd-sal-video-target
+    - sal::tsd-sal-iap2-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.sal.carplay.git
+   dir: tsd.sal.carplay
+   branch: main/svw_cns3.0_1520_dev
+
+multiPackage:
+   ? ""
+   :  buildVars: [AUTOCONF_HOST]
+      buildScript: buildenvBuildAll
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "sal-carplay" \
+                  -p "emmc.sal" \
+                  -o "sal:tsd-sal-carplay " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,22 @@
+checkoutSCM:
+   - scm: git
+     #url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/mib3.manifestgen.git
+     #tag: mqb_sop1_eu-1.16.0
+     #branch: main/svw_cns3.0_1480_dev
+
+     #out local manifest generator repo
+     url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/mib3.manifestgen-ORU.git
+     branch: AGSWINT-3393_cns_moduledepth_namelength
+
+buildScript: |
+   rsync -a --delete --exclude='.git' $1/ .
+
+packageScript: |
+   rsync -a --delete --exclude='.git' $1/ .
+
+provideTools:
+   mib3-packing:
+      path: .
+   prepare_multirelease_container.sh:
+      path: scripts
+

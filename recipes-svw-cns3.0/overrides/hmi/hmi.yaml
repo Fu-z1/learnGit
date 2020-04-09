@@ -1,0 +1,162 @@
+scmOverrides:
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.fontconfig.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.freetype.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.harfbuzz.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.oracle.xiploder.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.oracle.objectswapper.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.oracle.mcfobjectreader.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.pango.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.vw.dsi.git
+     del: [rev,commit,tag]
+     set:
+        branch: '3.14.1'
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.vw.extlibs.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/ext.zulu.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.anim.interpreter.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.common.log.java.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.dsi.cpp.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.dsi.java.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.dsi.native.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.hmi.gesture.service.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.i18n.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.i18n.mib3.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.keypanel.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengl.jsr231.low.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengl.jsr231.high.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengl.jsr231.37w.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengles.low.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengles.high.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengles.37w.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.opengles.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu
+
+   - match:
+        url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/pcc.hmiwatchdog.git
+     del: [rev,commit,tag]
+     set:
+        branch: develop_mqb_sop1_eu

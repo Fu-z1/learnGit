@@ -1,0 +1,49 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.pos.sensors.api.git
+   dir: tsd.nav.pos.sensors.api
+   #tag: mqb_sop1_eu-v1.1.5  #navi-interface (interface to externel contractors)
+   # see link for change prozess: https://wiki-automotive.server.technisat-digital/display/MIB3SERIE/Schnittstellen+Navigation
+   branch: main/svw_cns3.0_1520_dev
+
+checkoutDeterministic: true
+checkoutScript: CapiGenProcessFIDLFiles tsd.nav.pos.sensors.api
+
+buildScript: |
+   build(){
+      buildenvBuildAll
+   }
+
+packageVars: [LIBDIR]
+multiPackage:
+   dev:
+      buildScript: build $@
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target: # Shared-lib (FIDL)
+      buildScript: build $@
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "nav-pos-sensors-api" \
+            -p "emmc.navigation" \
+            -o "navigation:tsd-nav-pos-sensors-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

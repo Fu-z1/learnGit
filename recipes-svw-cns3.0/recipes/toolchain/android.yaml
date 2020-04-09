@@ -1,0 +1,44 @@
+
+environment:
+   TOOLCHAIN_NAME_ANDROID: "gcc-aarch64-linux-android-4.9-20150123"
+   TOOLCHAIN_NAME_LINUX:   "gcc-linaro-aarch64-linux-gnu-5.4.1-2017.05"
+   URL:             "${DEFAULT_DOWNLOAD_SCM_JPCC_URL}tools"
+   COMPRESS_FORMAT: "tar.gz"
+
+#shared: True
+
+checkoutDeterministic: True
+checkoutVars: [TOOLCHAIN_NAME_ANDROID, TOOLCHAIN_NAME_LINUX, COMPRESS_FORMAT, URL]
+checkoutSCM:
+  -
+   scm: url
+   url: ${URL}/${TOOLCHAIN_NAME_ANDROID}.${COMPRESS_FORMAT}
+   extract: no
+  -
+   scm: url
+   url: ${URL}/${TOOLCHAIN_NAME_LINUX}.${COMPRESS_FORMAT}
+   extract: no
+
+buildScript: |
+   ln -sf $1/*${COMPRESS_FORMAT} .
+
+packageScript: |
+   ln -sf $1/*${COMPRESS_FORMAT} .
+   if [ ! -e .extracted ];then
+      tar zxf ${TOOLCHAIN_NAME_LINUX}.${COMPRESS_FORMAT}   
+      tar zxf ${TOOLCHAIN_NAME_ANDROID}.${COMPRESS_FORMAT}   
+      touch .extracted;
+
+      rm -f *${COMPRESS_FORMAT}
+   fi
+
+   # todo
+   mkdir bin
+
+# provide sth
+provideVars:
+  COMPILER_ANDROID: "${TOOLCHAIN_NAME_ANDROID}"
+  COMPILER_LINUX:   "${TOOLCHAIN_NAME_LINUX}"
+provideTools:
+   android-compiler:
+      path: bin

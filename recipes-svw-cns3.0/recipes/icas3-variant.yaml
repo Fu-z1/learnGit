@@ -1,0 +1,80 @@
+inherit: [root]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   TARGET_OS: "linux"
+   SOC_FAMILY: r8a7795
+   CONFIG_BOARD: icas
+   TARGET_ENVIRONMENT: "icas"
+depends:
+   -
+      name: system::ext-liblz4-tool
+      use: [tools]
+      forward: True
+   -
+      name: toolchain::icas::aarch64-poky-agl
+      use: [tools, environment]
+      forward: True
+   #- navigation::tsd-nav-mainapp-mib3-target
+   #- navigation::tsd-nav-configdata-variant-embedded-target
+buildVarsWeak: [PACKAGE_VERSION, MODULE_VERSION, BUILDREF]
+buildScript: |
+   rm -rf *
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[icas3-variant]
+   unset tocopy[packing::packing-scripts]
+   unset tocopy[keys::devkeys::devkeys-updatecontainer]
+   copy_symbols()
+   {
+      local DEST DIR RET=1
+
+      for DIR in $(cd $1; find . -type d -name ".debug") ; do
+         DEST="$2/$DIR"
+         mkdir -p $DEST
+         rsync -a $1/$DIR/ $DEST
+         RET=0
+      done
+
+      return $RET
+   }
+
+   # symbols
+   if [[ ${CONFIG_NO_SYMBOLS_TGZ:-0} == 0 ]]; then
+      mkdir Symbols
+      for key in ${!BOB_DEP_PATHS[@]}; do
+         symfile="Symbols/${key//::/_}.tgz"
+         if [[ -e ${BOB_DEP_PATHS[$key]}/symbols.tgz ]] ; then
+            cp ${BOB_DEP_PATHS[$key]}/symbols.tgz $symfile
+         else
+            symbolsTmp=$(mktemp -d)
+            if copy_symbols ${BOB_DEP_PATHS[$key]} $symbolsTmp ; then
+               tar -C $symbolsTmp -cvzf $symfile .
+            fi
+            rm -rf $symbolsTmp
+         fi
+      done
+   fi
+packageScript: |
+   rsync -a --delete $1/ .
+   env
+
+multiPackage:
+   MEB-ICAS_LG:
+      environment:
+         MU_VERSION: "LG120"
+         VARIANTS: "301001" # use eu variant for now
+      privateEnvironment:
+         UPDATE_VARIANTS: "LG"
+   MEB-ICAS_LG_sec:
+      environment:
+         MU_VERSION: "0120"
+         VARIANTS: "301001" # use eu variant for now
+         SIGNATURE: "false"
+         DEVELOPMENT_FLAGS: "false"
+      privateEnvironment:
+         UPDATE_VARIANTS: "LG"

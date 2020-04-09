@@ -1,0 +1,54 @@
+inherit: [buildenv, packing-module, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-gem/tsd.gem.generic.api.git
+   dir: tsd.gem.generic.api
+   tag: mqb_sop1_eu-1.4.0
+   branch: master_mqb_sop1_eu
+
+checkoutDeterministic: true
+checkoutScript: CapiGenProcessFIDLFiles tsd.gem.generic.api
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_API_LINK_SHARED=1
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_API_LINK_SHARED=1
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "gem-generic-api" \
+            -p "emmc.engineering.gem" \
+            -o "engineering.gem:tsd-gem-generic-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

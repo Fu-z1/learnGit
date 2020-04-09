@@ -1,0 +1,76 @@
+root: True
+
+environment:
+   HOST: "amd64"
+   RELEASE: "jessie"
+   VARIANT: "minbase"
+   MIRROR: "http://ftp.de.debian.org/debian/"
+   PACKAGES_ARCHIVE: "packages.tar"
+   ADDITIONAL_PACKAGES: "autogen,autopoint,automake,bc,bison,bzip2,cpio,curl,fakeroot,file,flex,gawk,git,libmagickwand-6.q16-2,lcov,make,python,python3,python-crypto,python-wand,rsync,srecord,ssh,wget,xz-utils,p7zip-full,patch,unzip,kmod,binutils,squashfs-tools,pkg-config,libtool-bin,intltool,gperf,subversion"
+
+checkoutDeterministic: True
+checkoutVars: [HOST, RELEASE, VARIANT, MIRROR, PACKAGES_ARCHIVE, ADDITIONAL_PACKAGES]
+checkoutScript: |
+   /usr/sbin/debootstrap \
+      --arch=${HOST} \
+      --variant=$VARIANT \
+      --include=$ADDITIONAL_PACKAGES \
+      --no-check-gpg \
+      --download-only \
+      --make-tarball=$PACKAGES_ARCHIVE \
+      --keep-debootstrap-dir \
+      $RELEASE \
+      debian_${RELEASE}_${HOST} \
+      $MIRROR
+
+buildScript: |
+   # add debootstrap to sudoers like this
+   # user ALL=(root) NOPASSWD: /usr/sbin/debootstrap
+   sudo /usr/sbin/debootstrap \
+      --arch=${HOST} \
+      --variant=$VARIANT \
+      --include=$ADDITIONAL_PACKAGES \
+      --no-check-gpg \
+      --unpack-tarball=$1/$PACKAGES_ARCHIVE \
+      --keep-debootstrap-dir \
+      --exclude=build-essential,systemd \
+      $RELEASE \
+      debian_${RELEASE}_${HOST} \
+      $MIRROR
+
+   sudo chroot debian_${RELEASE}_${HOST} /bin/sh -c "dpkg --add-architecture i386 && apt-get update && apt-get -y install libc6:i386 zlib1g:i386"
+
+   sudo chroot debian_${RELEASE}_${HOST} /bin/sh -c \
+      "echo 'StrictHostKeyChecking no\nUserKnownHostsFile /dev/null\nGlobalKnownHostsFile /dev/null\nLogLevel ERROR' >> /etc/ssh/ssh_config"
+
+packageScript: |
+   sudo tar --preserve-permissions \
+      --exclude=./var \
+      --exclude=./boot \
+      --exclude=./debootstrap \
+      --exclude=./media \
+      --exclude=./opt \
+      --exclude=./srv \
+      --exclude=./dev \
+      --exclude=./tmp \
+      -zcf debian-${RELEASE}-${HOST}-rootfs.tgz -C $1/debian_${RELEASE}_${HOST}/ .
+
+   tar -xf debian-${RELEASE}-${HOST}-rootfs.tgz --exclude=./dev
+
+   for DIR in bin etc lib lib64 opt sbin usr var; do
+      if [[ -d $1/${DIR} ]];then
+         cp -al $1/${DIR} ${PWD}
+      fi
+   done
+
+provideVars:
+   HOME: "/tmp"
+
+provideSandbox:
+   paths: [ "/bin", "/usr/bin", "/sbin"]
+   mount:
+       - "/etc/resolv.conf"
+         # mount proc fs. autogen needs this
+       - [ "/proc", "/proc" ]
+       - [ "\\$HOME/.ssh", "/nonexistent/.ssh"]
+       - [ "\\$HOME/.subversion", "/nonexistent/.subversion"]

@@ -1,0 +1,26 @@
+inherit: [buildenv]
+
+depends:
+   - if: "$(eq,${TARGET_TYPE},embedded)"
+     depends:
+      - system::bsp::ext-opengl-dev
+      - use: []
+        depends:
+         - system::bsp::ext-opengl-target
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR, TARGET_TYPE]
+      packageTools: [buildenv]
+      packageScript: |
+         mkdir -p usr/$LIBDIR
+         if [[ "$TARGET_TYPE" == embedded ]] ; then
+            tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -d ext.m3.bsp.opengl ext.opengles
+         else
+            tsd-buildenv-create-shim.sh -p usr -L $LIBDIR -f "-lEGL" -f "-lGLESv2" ext.opengles
+         fi
+      provideDeps: [ "*-dev" ]
+
+   target:
+      packageScript: ""
+      provideDeps: [ "*-target" ]

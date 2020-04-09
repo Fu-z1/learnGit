@@ -1,0 +1,65 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_VERSION: "4.2.3.8372"
+   PKG_NAME: "RealVNC"
+   PKG_PATCH_VERSION: ""
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "SharedLib"
+
+depends:
+   # build dependencies
+ - connectivity::networking::ext-libnl-dev
+
+   # runtime dependencies
+ - use: []
+   depends:
+    - connectivity::networking::ext-libnl-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/ext.realvnc.git
+   dir: ext.realvnc
+   tag: mqb_sop1_eu-1.145.2
+
+packageTools: [buildenv]
+packageVars: [LIBDIR, ARCH]
+
+buildScript: |
+   buildenvBuildAll
+
+
+multiPackage:
+   dev:
+      provideDeps: ["*-dev"]
+      packageScript: |
+         buildenvPackageDev
+
+         if [[ ${ARCH} == "arm64" ]]; then
+            tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -I include -l vncdiscoverysdk -l vncviewersdk -l vncaudiorouter -lvnccdbsdk -l vncdapsdk \
+            -l vncdiscoverer-mirrorlink -l vncbearer-C ext.realvnc
+         else
+            tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -I include -l vncdiscoverysdk -l vncviewersdk -l vncaudiorouter -lvnccdbsdk -l vncdapsdk \
+            -l vncdiscoverer-mirrorlink -l vncbearer-C -l vncdeviceprovider-usb ext.realvnc
+         fi
+
+   target:
+      provideDeps: ["*-target"]
+      packageScript: |
+         buildenvPackageTarget
+
+         if [[ ${ARCH} == "arm64" ]]; then
+            tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l vncdiscoverysdk -l vncviewersdk -l vncaudiorouter -lvnccdbsdk -l vncdapsdk \
+            -l vncdiscoverer-mirrorlink -l vncbearer-C ext.realvnc
+         else
+            tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l vncdiscoverysdk -l vncviewersdk -l vncaudiorouter -lvnccdbsdk -l vncdapsdk \
+            -l vncdiscoverer-mirrorlink -l vncbearer-C -l vncdeviceprovider-usb ext.realvnc
+         fi
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-realvnc" \
+            -p "emmc.sal" \
+            -o "sal:ext-realvnc " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,49 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - system::tsd-common-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-sdk-traffic-api-dev
+  - navigation::tsd-nav-middleware-interface-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.traffic.git
+   dir: tsd.nav.sdk.traffic
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_werror_sanitize]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: |
+           buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+  swittests:
+      depends:
+         - system::ext-boost-filesystem-dev
+         - system::ext-boost-system-dev
+         - navigation::tsd-nav-sdk-mapdataservice-api-dev
+         - navigation::tsd-nav-sdk-mapdataservice-dev
+         - navigation::tsd-nav-middleware-nds-2_5_2-dev
+         - navigation::tsd-nav-traffic-clouddecoder-dev
+      buildVars: [MAP_PATH]
+      buildScript: |
+         buildenvTestAll -DTSD_MW_PATH=${BOB_DEP_PATHS["navigation::tsd-nav-middleware-nds-2_5_2-dev"]}/usr/lib64
+      packageScript: |
+         buildenvPackageTests

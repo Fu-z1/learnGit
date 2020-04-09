@@ -1,0 +1,70 @@
+inherit: [install, make, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "ISC"
+   PKG_VERSION: "4.3.4"
+   #PKG_NAME: "dhcp"
+   PKG_PATCH_VERSION: "v4_3_4_PCC_v1.7"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#   PKG_VERSION: "v4.3.4"
+   PKG_NAME: "ext.dhcp"
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.dhcp.git
+   dir: ${PKG_NAME}
+   tag: v4_3_4_PCC_v1.8
+
+buildVars: [PKG_NAME, TARGET_OS, AR, CC, CXX, LD, CPP, LIBDIR]
+buildTools: [toolchain, host-toolchain]
+buildScript: |
+   # Definition of common stuff for building and installing the ISC DHCP server
+   CONF_OPTIONS=(
+      --disable-tracing
+      --disable-failover
+      --enable-secs-byteorder
+      --with-randomdev=no
+      --enable-binary-leases
+      --enable-paranoia
+      --host=arm
+   )
+
+   # Synching sources from source directory
+   rm -rf *
+   rsync -a --delete $1/${PKG_NAME}/* ${PWD}
+
+   # Preparing build and installation process
+   mkdir bind
+   cp PCC/bind/* bind/
+
+   # define _GNU_SOURCE
+   # This is needed because otherwise configure is not detecting in6_pktinfo in
+   # aarch64-linux-gnu/libc/usr/include/netinet/in.h cause it's guarded by a
+   # define which is only set if \_GNU_SOURCE is defined.
+   #
+   # See: https://sourceware.org/bugzilla/show_bug.cgi?id=6775
+   #
+   export CFLAGS="${CFLAGS} -D_GNU_SOURCE"
+   # Configuring, patching and building the package
+   autotoolsConfigureOnly . "${CONF_OPTIONS[@]}"
+   make BUILD_CC=gcc
+
+   make -C client install DESTDIR=${PWD}/dist
+
+   # Copying MIB3 specific configurations and pre-requisites
+   cp -R PCC/Configs/* dist/
+
+multiPackage:
+   target:
+      packageScript: |
+         installPackageTarget "$1/dist"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-dhcp" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-dhcp " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,60 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - communication::tsd-communication-dev
+ - phone::tsd-parser-vobject-api-dev
+ - hmi::tsd-i18n-dev
+ - name: hmi::tsd-i18n-mib3-dev
+   if: $(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)
+ - name: system::ext-boost-dev
+   if: $(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)
+ - system::tsd-common-dev
+ - use: []
+   depends:
+    - communication::tsd-communication-target
+    - phone::tsd-parser-vobject-api-target
+    - hmi::tsd-i18n-target
+    - system::ext-boost-target
+    - system::tsd-common-target
+    - name: hmi::tsd-i18n-mib3-target
+      if: $(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.parser.vobject.git
+   dir: tsd.parser.vobject
+   tag: mqb_sop1_eu-1.51.1
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "parser-vobject" \
+            -p "emmc.phone" \
+            -o "phone:tsd-parser-vobject " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

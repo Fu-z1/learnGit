@@ -1,0 +1,32 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+depends:
+  - navigation::tsd-nav-sdk-mapdataservice-api-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-common-mib3-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mapdataservice.mib3.api.git
+   dir: tsd.nav.mapdataservice.mib3.api
+   tag: mqb_sop1_eu-150.0.1       #navi-api (internal only interface)
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+      dev:
+        buildScript: |
+           buildenvBuildAll
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

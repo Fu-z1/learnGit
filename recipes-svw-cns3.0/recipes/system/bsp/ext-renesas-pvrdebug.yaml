@@ -1,0 +1,19 @@
+inherit: [packing-module]
+checkoutSCM:
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/yocto/R-CarGen3_GPU_Debugging_for_ddk1.10_upd_190814.zip
+    digestSHA1: a12bd49a72332896e21b24126de02e1a985fa3ed
+
+buildScript: |
+   mkdir -p sbin
+   cp $1/R-CarGen3_GPU_Debugging_Guide_r1/pvrdebug sbin
+   chmod +x sbin/pvrdebug
+
+packageScript: |
+   d=$(mktemp -d)
+   rsync -a --delete $1/ $d
+   buildSwupModule -n "ext-renesas-pvrdebug" \
+      -p "emmc.system.bsp" \
+      -o "system.bsp:ext-renesas-pvrdebug" -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

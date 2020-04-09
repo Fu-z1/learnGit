@@ -1,0 +1,57 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+privateEnvironment:
+     INCLUDE_VICS_MODULE : "$(flagIsSet,${VARIANTS},SW_NAV_VICS_Backend,Hitachi)"
+
+depends:
+   - system::ext-boost-dev
+   - navigation::tsd-nav-utils-api-dev
+   - navigation::tsd-nav-sdk-common-api-dev
+   - navigation::tsd-nav-mapdataservice-mib3-api-dev
+   - navigation::tsd-nav-pathfinder-mib3-api-dev
+   - navigation::tsd-nav-rsi-clients-mib3-dev
+   - navigation::tsd-nav-psd-v15-dev
+   - navigation::tsd-nav-prednav-api-dev
+   - navigation::tsd-nav-input-mib3-api-dev
+   - if: "$(flagIsSet,${VARIANTS},SW_NAV_VICS_Backend,Hitachi)"
+     depends:
+       - navigation::tsd-nav-utils-dev
+       - navigation::ext-hitachi-vms-api-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.vehicle.mib3.git
+      dir: tsd.nav.vehicle.mib3
+      tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildVars:
+   - INCLUDE_VICS_MODULE
+
+buildScript: |
+   build(){
+      buildenvBuildAll -DINCLUDE_VICS_MODULE=${INCLUDE_VICS_MODULE}
+   }
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_werror_sanitize]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: |
+           build
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  unittests:
+      buildTools: [protoc]
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

@@ -1,0 +1,44 @@
+scmOverrides:
+#middleware
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.codec.nds.cpp.2.5.2.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.codec.nds.cpp.2.3.3.git"
+      del: [commit, tag]
+      set:
+         branch: develop
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.middleware*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.rds.runtime.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:*/tsd.nav.updatemanager*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:*-navigation/tsd.nav.*mapdataservice*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.crypto*.git"
+      del: [commit, tag]
+      set:
+         branch: develop_mqb_sop1_eu

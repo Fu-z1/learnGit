@@ -1,0 +1,35 @@
+inherit: [root]
+
+environment:
+   TARGET_OS: "linux"
+   TSD_BUILDENV_ENABLE_RPATH: "1"
+   CXXFLAGS: "-DBOOST_HAS_ICU=0"
+   VARIANTS: "301001"
+
+buildScript: |
+   rsync -a --delete $1/* ${PWD}
+
+packageScript: |
+   rsync -a --delete $1/* ${PWD}
+
+multiPackage:
+   host:
+      depends:
+         #- onlineservices::tsd-onlineservices-webapp-management-autotests-host
+         #- onlineservices::tsd-onlineservices-webapp-manager-autotests-host
+         #- onlineservices::tsd-onlineservices-webapp-controller-autotests-host
+         - onlineservices::tsd-onlineservices-tpfs-tests-host
+
+   target:
+      depends:
+         - 
+            name: toolchain::aarch64-linux-gnu
+            use: [tools,environment]
+            forward: True
+         #- onlineservices::tsd-onlineservices-webapp-management-autotests-target
+         #- onlineservices::tsd-onlineservices-webapp-manager-autotests-target
+         #- onlineservices::tsd-onlineservices-webapp-controller-autotests-target
+         - onlineservices::tsd-onlineservices-tpfs-tests-target
+         - onlineservices::tsd-onlineservices-downloadmanager-autotests-target
+
+

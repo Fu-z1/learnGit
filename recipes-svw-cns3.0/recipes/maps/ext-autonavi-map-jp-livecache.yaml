@@ -1,0 +1,56 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+
+   PKG_VERSION: "JPN_1C03_F1710_C1710_Japan_2.5.2_03B_FTS_Patch"
+   PKG_HASH: "cb0c687b4da23720df30b6a9654ff724f6a174df"
+
+   MAP_LOCATION: "maps"
+
+checkoutSCM:
+  - if: $(eq,${mapupdate:-0},0)
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}${MAP_LOCATION}/${PKG_VERSION}.tgz
+    digestSHA1: ${PKG_HASH}
+    extract: no
+
+buildScript: |
+   rm -rf *
+   ln -sf $1/*tgz
+packageVars: [PKG_VERSION]
+multiPackage:
+   pkg:
+      inherit: [packing-module]
+      packageScript: |
+         mkdir -p tmp/var/lib/nav/map
+         tar xzf $1/*.tgz -C tmp/var/lib/nav/map
+         echo ${PKG_VERSION} > tmp/var/lib/nav/map/map.version
+         buildSwupModule -n 'map' -p "emmc.maps" -o 'map::ext-autonavi-map-jp-livecache' -f tmp \
+            -m 'display,display,0775,/var/lib/nav/map/SDS$'   \
+            -m 'display,display,0775,/var/lib/nav/map/SDS/.*' \
+            -m 'display,display,0775,/var/lib/nav/map/[^/]+/SDS$'   \
+            -m 'display,display,0775,/var/lib/nav/map/[^/]+/SDS/.*' \
+            -m 'display,display,0771,/var/lib/nav$'           \
+            -m 'display,display,0771,/var/lib/nav/.*' --      \
+            --requiredBy '{"Packages":[{"PackageName":"prescripts.map-delete","Flags":"Selected"},{"PackageName":"prescripts.updatemanager-delete","Flags":"Selected"}]}' \
+            -U "Partition=rootfs_ro" \
+            -U "Optional=True"
+
+         rm -rf tmp
+
+   target:
+      packageScript: |
+         mkdir -p var/lib/nav/map
+         pushd var/lib/nav/map
+         echo ${PKG_VERSION} > map.version
+         tar xzf $1/*tgz
+
+   cloud:
+      packageScript: |
+         mkdir -p usr/bin/map
+         pushd usr/bin/map
+         tar xzf $1/*tgz
+
+provideVars:
+   TRAIN_PKG_VERSION: ${PKG_VERSION}

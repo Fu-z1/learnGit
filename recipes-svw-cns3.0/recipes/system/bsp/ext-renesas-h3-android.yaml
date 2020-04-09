@@ -1,0 +1,94 @@
+privateEnvironment:
+    ANDROID_VARIANTS: "$(if-then-else,$(match,${VARIANTS},'301001'),'VW_CHN',\
+                       $(if-then-else,$(match,${VARIANTS},'301002'),'VW_HM',\
+                       $(if-then-else,$(match,${VARIANTS},'301003'),'VW_TW',\
+                       $(if-then-else,$(match,${VARIANTS},'301004'),'SK_TW',\
+                       $(if-then-else,$(match,${VARIANTS},'301005'),'SK_CHN',\
+                       'VW_CHN')))))"
+
+
+checkoutSCM:
+
+  - if: $(eq,${CONFIG_ANDROID_SYSTEM},"1")
+    scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:svw-integration/scm.android.git 
+    branch: main/svw_cns3.0_8.1.0_r51_dev
+
+  - if: $(eq,${CONFIG_ANDROID_SYSTEM},"0")
+    scm: git
+    url: git@cnninvmgtlb01:tools/git-repo.git
+    branch: stable
+    dir: repo
+
+
+checkoutDeterministic: true
+checkoutVars: 
+   - CONFIG_ANDROID_SYSTEM
+   - CONFIG_INCREMENT
+checkoutScript: |
+   if [ "${CONFIG_ANDROID_SYSTEM}" == "0" ]; then
+      chmod +x repo/repo
+      mkdir -p android
+      cd android
+      echo -e \n\ny\n | ../repo/repo init -u git@cnninvmgtlb01:manifest/manifest-svw-cns3.0-android.git -b main/svw_cns3.0_8.1.0_r51_dev --depth 1
+      ../repo/repo sync -c
+   fi
+
+buildVars:
+  - VARIANTS
+  - ANDROID_VARIANTS
+  - CONFIG_INCREMENTAL_FILE
+
+buildScript: |
+   if [ "${CONFIG_ANDROID_SYSTEM}" == "0" ]; then
+      # repo ready
+      ln -sf ${1}/android/workspace
+      ln -sf ${1}/android/RELFILES
+      # set env and make 
+      export BUILD_VARIANTS=${ANDROID_VARIANTS}
+      cd RELFILES
+      set +u
+      source build.sh 2>&1 > android_log.txt
+      make otapackage
+      set -u
+   else
+     cp $1/ECF ./ECF
+     source ECF
+     wget -q http://cnninvmjnkns02/Android/continuously/${PROJECT}/${BRANCH}/${TIMESTAMP}/${PACKAGE}
+     tar xf ${PACKAGE}
+   fi
+
+multiPackage:
+   "":
+     packageTools: [android-tools-fsutils]
+     packageScript: |
+      if [ "${CONFIG_ANDROID_SYSTEM}" == "0" ]; then
+         cp ${1}/workspace/out/target/product/salvator/obj/KERNEL_OBJ/arch/arm64/boot/dts/renesas/r8a7795-pcc-zr3.dtb ./android.dtb
+         cp ${1}/workspace/out/target/product/salvator/obj/KERNEL_OBJ/arch/arm64/boot/Image ./android.kernel
+
+      else
+        cp ${1}/r8a7795-pcc-zr3.dtb ./android.dtb
+        cp ${1}/Image ./android.kernel
+      fi
+
+   full:
+      inherit: [packing-image]
+      packageScript: |
+         buildSwupImage --packageName "ota" \
+               --file $1/salvator-ota-full.zip
+
+   increment:
+      inherit: [packing-image]
+      packageVars: [CONFIG_INCREMENTAL_FILE]
+      packageScript: |        
+          cp $1/${CONFIG_INCREMENTAL_FILE} ./
+          while read SHA1NUM URL; do
+               filename=${URL##*/}
+               dirname=${URL%.*}
+               mkdir ${dirname} 
+               pushd ${dirname} 
+               buildSwupImage --packageName "ota" \
+               --file $1/${filename}
+               popd 
+          done < ${CONFIG_INCREMENTAL_FILE}
+

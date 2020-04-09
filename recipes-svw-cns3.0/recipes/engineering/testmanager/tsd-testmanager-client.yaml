@@ -1,0 +1,46 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - engineering::testmanager::tsd-testmanager-communication-dev
+  - hmi::tsd-dsi-cpp-dev
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - system::tsd-common-target
+      - engineering::testmanager::tsd-testmanager-communication-target
+      - hmi::tsd-dsi-cpp-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-testsupport/tsd.testmanager.client.git
+   dir: tsd.testmanager.client
+   tag: 1.3.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+      provideDeps:
+        - "*-target"
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget

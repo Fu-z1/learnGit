@@ -1,0 +1,34 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Kartendarstellung"
+
+depends:
+  - navigation::ext-freeimage-dev
+  - libs::ext-libpng-dev
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.rasterimage.git
+   dir: tsd.rasterimage
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+   dev:
+      depends:
+         - name: system::ext-cppunit-google-mock-dev
+           if: "$(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)"
+      inherit: [navi_compflags_werror_sanitize]
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   unittests:
+      depends:
+        - system::ext-cppunit-google-mock-dev
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+          buildenvPackageTests

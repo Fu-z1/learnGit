@@ -1,0 +1,35 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "1.12"
+   PKG_NAME: "wayland-protocols"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-wayland/wayland-protocols-${PKG_VERSION}.tar.xz
+   digestSHA1: ac908e91c6c5e7802c0af48f55725ad683017e72
+
+buildTools: [wayland-scanner]
+buildVars: [PKG_VERSION]
+buildScript: |
+   rsync -a --delete $1/wayland-protocols-${PKG_VERSION}/ ${PWD}
+   autotoolsBuild ${PWD}
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-wayland-protocols" \
+            -p "emmc.system" \
+            -o "system:ext-wayland-protocols " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

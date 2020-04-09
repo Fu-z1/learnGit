@@ -1,0 +1,47 @@
+inherit: [packing-image]
+
+buildVars: [MODULE_VERSION]
+
+multiPackage:
+   # include all scripts which will be executed after software update
+   MXNavi-pkg:                                                                                                                                                                                              
+      buildScript: |                                                                                                                                                                                        
+         touch MXNavi.sh                                                                                                                                                                                    
+         echo "rm -rf /media/rootfs_ro/var/MXNavi/NDS/*" >> MXNavi.sh                                                                                                                                       
+         echo "sync" >> MXNavi.sh                                                                                                                                                                           
+      packageScript: |                                                                                                                                                                                      
+         buildSwupImage --packageName "MXNavi-delete" \
+            --file $1/MXNavi.sh \
+            -U Installer=script \
+            -U Destination='/tmp/MXNavi.sh'
+#   cns-gateway-pkg:
+#      privateEnvironment:
+#         CNS_GATEWAY_DEL_SCRIPT: "cns-gateway-delete.sh"
+#      buildVars: [CNS_GATEWAY_DEL_SCRIPT]
+#      buildScript: |
+#         touch ${CNS_GATEWAY_DEL_SCRIPT}
+#         # android log remove
+#         echo "# android log remove" >> ${CNS_GATEWAY_DEL_SCRIPT}
+#         echo "rm -rf /media/rootfs_ro/var/nfs/log/*" >> ${CNS_GATEWAY_DEL_SCRIPT}
+
+         # new actions should be added to below
+
+         # do not remove it and should keep it at last.
+#         echo "sync" >> ${CNS_GATEWAY_DEL_SCRIPT}
+#      packageVars: [CNS_GATEWAY_DEL_SCRIPT]
+#      packageScript: |
+#         buildSwupImage --packageName "cns-gateway-delete" \
+#            --file $1/${CNS_GATEWAY_DEL_SCRIPT} \
+#            -U Installer=script \
+#            -U Destination=/tmp/${CNS_GATEWAY_DEL_SCRIPT}
+
+   todo:
+      buildScript: |
+         rsync -a --delete $1/pre-scripts/reset_webapps.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "reset-webapps" \
+            --file $1/reset_webapps.sh \
+            --requiredBy '{"Packages":[{"PackageName":"emmc.onlineservices.ext-preloaded-webapps","Flags":"Selected"}]}' \
+            -U Installer=script \
+            -U Destination='/tmp/reset_webapps.sh'

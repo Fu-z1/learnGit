@@ -1,0 +1,21 @@
+include:
+   - ../base-functions
+
+archive:
+   -
+      backend: http
+      url: "http://10.30.159.1:8081/artifactory/list/develop/archive"
+      flags: [download]
+   -
+      backend: shell
+      upload: "jfrog rt u ${BOB_LOCAL_ARTIFACT} develop/archive/${BOB_REMOTE_ARTIFACT}"
+      flags: [upload]
+   -
+      backend: http
+      url: http://artefact-repo.mib3.technisat-digital/
+      flags: [download]
+   -
+      backend: http
+      url: http://artefact-repo-unstable.mib3.technisat-digital/
+      flags: [download]
+   

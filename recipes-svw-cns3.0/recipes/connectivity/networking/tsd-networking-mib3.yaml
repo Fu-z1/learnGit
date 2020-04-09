@@ -1,0 +1,195 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+depends:
+   - use: []
+     depends:
+     # runtime dependencies
+       - connectivity::networking::ext-iproute2-target
+       - connectivity::networking::ext-ipset-target
+       - connectivity::networking::ext-iptables-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-internet/tsd.networking.mib3.git
+   dir: tsd.networking.mib3
+   branch: main/svw_cns3.0_1520_dev
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-internet/tsd.networking.ocu.git
+   dir: tsd.networking.ocu
+   branch: main/svw_cns3.0_1520_dev
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-internet/tsd.networking.git
+   dir: tsd.networking
+   branch: main/svw_cns3.0_1520_dev
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-internet/tsd.networking.wlan.git
+   dir: tsd.networking.wlan
+   branch: main/svw_cns3.0_1520_dev
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-internet/tsd.networking.rsi.git
+   dir: tsd.networking.rsi
+   branch: main/svw_cns3.0_1520_dev
+
+environment:
+  # this looks bad and it is. This recipe is referenced from different points and not all points have $VARIANTS defined
+  # Without a defined $VARIANTS, the substitutions fail because of unset variable
+  # So you could just define it as 0 or something, but then flagIsSet() fails, because it expects a valid value
+  # now the substitution executes all paths upfront, so we still need a valid $VARIANTS value.
+  # to get around those issues, the first if-then-else checks if $VARIANTS is set ( it is set to 0 if it is not set, resulting in false)
+  # the second if-then-else only executes, if $VARIANTS is set, but we still need some valid value if it is not set, so we use a dummy
+  # if it is not set, the result is 0
+  DEVELOPER_SW: "$(if-then-else,${VARIANTS-0},$(if-then-else,$(flagIsSet,${VARIANTS-101001},SW_DEV_ACCESS,0),0,1),0)"
+  TCPDUMP: "$(if-then-else,${VARIANTS-0},$(if-then-else,$(flagIsSet,${VARIANTS-211001},SW_TCPDUMP,1),1,0),0)"
+  IPERF: "$(if-then-else,${VARIANTS-0},$(if-then-else,$(flagIsSet,${VARIANTS-211001},SW_IPERF,1),1,0),0)"
+  PING: "$(if-then-else,${VARIANTS-0},$(if-then-else,$(flagIsSet,${VARIANTS-211001},SW_PING,1),1,0),0)"
+  CURL: "$(if-then-else,${VARIANTS-0},$(if-then-else,$(flagIsSet,${VARIANTS-211001},SW_CURL,1),1,0),0)"
+  TESTABILITY_SERVICE: "$(if-then-else,${VARIANTS-0},$(if-then-else,$(flagIsSet,${VARIANTS-101001},SW_TESTABILITY_SERVICE_ETHERNET,0),0,1),0)"
+  FW_CONFIG: "$(getUniqueFeatureFromList,${VARIANTS},SW_FIREWALL_CONFIG)"
+  NOTIFICATION: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_NOTIFICATION_ONLINE_STATES,1),1,0)"
+
+multiPackage:
+  ? ""
+  : depends:
+         # build dependencies
+       - basic-services::persistence::tsd-persistence-client-mib3-dev
+       - basic-services::rsi-library::tsd-rsi-client-dev
+       - communication::tsd-communication-dev
+       - connectivity::networking::tsd-networking-api-dev
+       - connectivity::networking::tsd-networking-wlan-api-dev
+       - connectivity::usb::tsd-usb-api-dev
+       - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+       - hmi::tsd-dsi-cpp-dev
+       - system::system-lifecycle::tsd-systemstate-manager-api-dev
+       - system::tsd-activation-intern-api-dev
+       - system::tsd-common-daemon-dev
+       - system::tsd-common-dev
+       - libs::tsd-common-stm-dev
+       - system::tsd-dataformats-dev
+       - system::tsd-threadmessages-dev
+         # build dependencies (external modules)
+       - connectivity::networking::ext-dnsmasq-dev
+       - connectivity::networking::ext-qrcodegen-nayuki-dev
+       - connectivity::networking::ext-stunnel-dev
+       - connectivity::networking::ext-libmnl-dev
+       - if: "$(eq,${TCPDUMP},1)"
+         depends:
+           - connectivity::networking::ext-tcpdump-dev
+       - connectivity::networking::ext-wpasupplicant-cypress-dev
+       - media::mountingservice::tsd-media-mount-status-api-dev
+       - phone::bt-devicemanagement::tsd-bt-management-mib3-api-dev
+       - vehicle-connectivity::canstack::tsd-canstack-api-dev
+       - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-dev
+       - libs::ext-c-ares-dev
+       - use: []
+         depends:
+            # runtime dependencies
+           - basic-services::persistence::tsd-persistence-client-mib3-target
+           - basic-services::rsi-library::tsd-rsi-client-target
+           - communication::tsd-communication-target
+           - connectivity::networking::tsd-networking-api-target
+           - connectivity::networking::tsd-networking-wlan-api-target
+           - connectivity::usb::tsd-usb-api-target
+           - engineering::diagnostic-management::tsd-uds-api-mib3-target
+           - hmi::tsd-dsi-cpp-target
+           - system::system-lifecycle::tsd-systemstate-manager-api-target
+           - system::tsd-activation-intern-api-target
+           - system::tsd-common-daemon-target
+           - system::tsd-common-target
+           - libs::tsd-common-stm-target
+           - system::tsd-dataformats-target
+           - system::tsd-threadmessages-target
+            # runtime dependencies (external modules)
+           - connectivity::networking::ext-conntrack-tools-target
+           - connectivity::networking::ext-dhcp-target
+           - connectivity::networking::ext-dnsmasq-target
+           - connectivity::networking::ext-libmnl-target
+           - if: "$(eq,${IPERF},1)"
+             depends:
+               - connectivity::networking::ext-iperf-target
+               - connectivity::networking::ext-iperf3-target
+           - connectivity::networking::ext-stunnel-target
+           - if: "$(eq,${TCPDUMP},1)"
+             depends:
+               - connectivity::networking::ext-tcpdump-target
+           - connectivity::networking::ext-wpasupplicant-cypress-target
+           - media::mountingservice::tsd-media-mount-status-api-target
+           - phone::bt-devicemanagement::tsd-bt-management-mib3-api-target
+           - vehicle-connectivity::canstack::tsd-canstack-api-target
+           - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-target
+           - libs::ext-c-ares-target
+
+    multiPackage:
+      ? ""
+      :
+        depends:
+          - system::tsd-tee-cryptolib-networking-dev
+          - system::tsd-tee-cpstate-dev
+          - use: []
+            depends:
+              - system::tsd-tee-cryptolib-networking-target
+              - system::tsd-tee-cpstate-target
+        buildVars: [DEVELOPER_SW, IPERF, PING, CURL, TESTABILITY_SERVICE, FW_CONFIG, NOTIFICATION]
+        buildScript: buildenvBuildAll -DCMAKE_DEV_ACCESS:BOOL=${DEVELOPER_SW} -DCMAKE_IPERF:BOOL=${IPERF} -DCMAKE_PING:BOOL=${PING} -DCMAKE_CURL:BOOL=${CURL} -DCMAKE_TESTABILITY_SERVICE:BOOL=${TESTABILITY_SERVICE} -DCMAKE_FW_CONFIG:STRING=${FW_CONFIG} -DCMAKE_NOTIFICATION:BOOL=${NOTIFICATION}
+        multiPackage:
+          dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+          target:
+            packageScript: |
+              buildenvPackageTarget
+              d=$(mktemp -d)
+              rsync -a --delete --exclude ".debug" ./ $d
+              buildSwupModule -n "networking-mib3" \
+                 -p "emmc.connectivity.networking" \
+                 -o "connectivity.networking:tsd-networking-mib3 " -f $d -- \
+                 -U "Partition=rootfs_ro"
+              rm -rf $d
+            provideDeps: ["*-target"]
+
+      unittests:
+        environment:
+          TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+        buildScript: buildenvTestAll
+        packageScript: buildenvPackageTests
+
+      doc:
+        buildTools: [doxygen, dot]
+        buildScript: buildenvBuildDocAll
+        packageScript: buildenvPackageDoc
+
+  swup:
+     buildVars: [TESTABILITY_SERVICE, FW_CONFIG]
+     buildScript: |
+        # copy the boot and automotive ethernet firewall rules only, there is no build necessary
+        #cp $1/tsd.networking.mib3/depl/etc/ip6tables.boot.policy.cfg .
+        #cp $1/tsd.networking.mib3/depl/etc/iptables.boot.policy.cfg .
+
+        config=""
+        if [ "$FW_CONFIG" = "Config_MQB" ]; then
+           config="mqb"
+        elif [ "$FW_CONFIG" = "Config_37W" ]; then
+           config="mqb2020high"
+        else
+           config="None"
+        fi
+
+        if [ $config != "None" ]; then
+            cp $1/tsd.networking.mib3/depl/${config}/etc/ipset.aeth.mib3.cfg .
+            cp $1/tsd.networking.mib3/depl/${config}/etc/ip6tables.aeth.mib3.cfg .
+            cp $1/tsd.networking.mib3/depl/${config}/etc/iptables.aeth.mib3.cfg .
+            cp $1/tsd.networking.mib3/depl/${config}/etc/initial_fw.sh .
+            cp $1/tsd.networking.mib3/depl/${config}/etc/extended_fw.sh .
+            if [ ${TESTABILITY_SERVICE} = 1 ]; then
+              cp $1/tsd.networking.mib3/depl/${config}/dev/ip6tables.aeth.dev.cfg .
+            fi
+        else
+          echo "Error: there is no configuration available for this platform"
+        fi
+     packageScript: |
+        mkdir -p etc/tsd.networking.mib3
+        rsync -a  $1/ etc/tsd.networking.mib3/
+     provideDeps: ["*-target"]

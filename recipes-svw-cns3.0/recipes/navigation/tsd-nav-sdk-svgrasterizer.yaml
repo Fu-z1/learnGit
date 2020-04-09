@@ -1,0 +1,37 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Kartendarstellung"
+
+depends:
+  - navigation::tsd-nav-sdk-svgrasterizer-api-dev
+  - libs::tsd-rasterimage-dev
+  - libs::ext-cairo-dev
+  - libs::ext-svgpp-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.svgrasterizer.git
+   dir: tsd.nav.sdk.svgrasterizer
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_werror_sanitize]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: |
+           buildenvBuildAll
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

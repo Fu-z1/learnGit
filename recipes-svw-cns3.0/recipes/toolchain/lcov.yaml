@@ -1,0 +1,22 @@
+shared: True
+
+environment:
+   PKG_VERSION: "1.13-3-gf62befd"
+   PKG_SHA1_SUM: "74661e197b6109f3511b1c9233cc75f830e7fcef"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/lcov/lcov-${PKG_VERSION}.tgz
+   digestSHA1: ${PKG_SHA1_SUM}
+   extract: no
+
+buildScript: |
+   ln -sf $1/*tgz .
+
+
+packageScript: |
+   tar -xzf $1/*tgz
+
+provideTools:
+   lcov:
+      path: "bin"

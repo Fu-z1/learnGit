@@ -1,0 +1,110 @@
+inherit: [buildenv]
+
+privateEnvironment:
+   SW_MQB: $(flagIsSet,${VARIANTS},SW_HMI_PROJECT,MQB)
+   SW_37W: $(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W)
+
+depends:
+   - audio::audiorouter::ext-alsa-lib-dev
+   - audio::audiorouter::tsd-audio-audiorouter-client-api-dev
+   - audio::microphoneprocessing::tsd-audio-microphoneprocessing-asr-mib3-api-dev
+   - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-dev
+   - basic-services::persistence::tsd-persistence-client-mib3-dev
+   - basic-services::rsi-library::tsd-rsi-client-dev
+   - basic-services::rsi-library::tsd-rsi-server-dev
+   - basic-services::systeminfo::tsd-systeminformation-features-dev
+   - communication::tsd-communication-dev
+   - sds::tsd-sds-utils-dev
+   - system::ext-sqlite-dev
+   - phone::bt-organizer::tsd-organizer-dev
+   - phone::bt-organizer::tsd-organizer-mib3-api-dev
+   - phone::bt-devicemanagement::tsd-bt-management-dev
+   - phone::bt-devicemanagement::tsd-bt-management-mib3-api-dev
+   - phone::bt-handsfree::tsd-bt-handsfree-mib3-api-dev
+   - hmi::tsd-dsi-cpp-dev
+   - communication::ext-commonapi-runtime-dev
+   - communication::tsd-communication-binding-dev
+   - system::ext-poco-dev
+   - system::tsd-cppsqlite-dev
+   - system::tsd-common-dev
+   - system::tsd-common-daemon-dev
+   - system::tsd-dataformats-dev
+   - system::tsd-infotainmentrecorder-api-dev
+   - connectivity::networking::tsd-networking-api-dev
+   - radio::tsd-radio-tss-api-dev
+   - navigation::tsd-nav-vehiclestatus-api-dev
+   - system::tsd-swupdate-testinterface-dev
+   - hmi::tsd-hmi-language-client-mib3-dev
+   - if: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,MQB)"
+     depends:
+        - radio::tsd-stationdb-api-dev
+   # target shared library dependencies
+   -  use: []
+      depends:
+         - audio::audiorouter::ext-alsa-lib-target
+         - audio::audiorouter::tsd-audio-audiorouter-client-api-target
+         - audio::microphoneprocessing::tsd-audio-microphoneprocessing-asr-mib3-api-target
+         - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-target
+         - basic-services::persistence::tsd-persistence-client-mib3-target
+         - basic-services::rsi-library::tsd-rsi-client-target
+         - basic-services::systeminfo::tsd-systeminformation-features-target
+         - communication::tsd-communication-target
+         - sds::tsd-sds-utils-target
+         - system::ext-sqlite-target
+         - system::tsd-cppsqlite-target
+         - phone::bt-organizer::tsd-organizer-target
+         - phone::bt-organizer::tsd-organizer-mib3-api-target
+         - phone::bt-devicemanagement::tsd-bt-management-target
+         - phone::bt-devicemanagement::tsd-bt-management-mib3-api-target
+         - phone::bt-handsfree::tsd-bt-handsfree-mib3-api-target
+         - communication::ext-commonapi-runtime-target
+         - communication::tsd-communication-binding-target
+         - system::ext-poco-target
+         - hmi::tsd-dsi-cpp-target
+         - system::tsd-common-target
+         - system::tsd-common-daemon-target
+         - system::tsd-dataformats-target
+         - system::tsd-infotainmentrecorder-api-target
+         - connectivity::networking::tsd-networking-api-target
+         - radio::tsd-radio-tss-api-target
+         - navigation::tsd-nav-vehiclestatus-api-target
+         - system::tsd-swupdate-testinterface-target
+         - hmi::tsd-hmi-language-client-mib3-target
+         - if: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,MQB)"
+           depends:
+              - radio::tsd-stationdb-api-target
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:speech/speech.service.git
+   dir: jpcc.sds
+   branch: master
+
+buildVars: [SW_MQB, SW_37W]
+buildScript: |
+    if [[ $SW_37W == "True" ]]; then
+        SDS_VARIANT_CONFIG="SDS_37W"
+    elif [[ $SW_MQB == "True" ]]; then
+        SDS_VARIANT_CONFIG="SDS_MQB"
+    fi
+
+    export CXXFLAGS="${CXXFLAGS:-} -DSDS_PLATFORM_VARIANT_CONFIG=SDS_PLATFORM_VARIANT_CONFIG_${SDS_VARIANT_CONFIG}"
+
+    buildenvBuildAll -DSDS_VARIANT_CONFIG="${SDS_VARIANT_CONFIG}"
+
+multiPackage:
+   dev:
+      packageScript: buildenvPackageDev 
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: buildenvPackageTarget
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

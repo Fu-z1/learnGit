@@ -1,0 +1,45 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_NAME: "Prometheus Client Library for Modern C++"
+   PKG_RESPONSIBLE: "Navigation-Service Cloud"
+
+depends:
+     - libs::ext-protobuf-dev
+     - use: []
+       depends:
+         - libs::ext-protobuf-target
+
+checkoutSCM:
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/ext.prometheus.client.cpp.git
+      dir: ext.prometheus.client.cpp
+      branch: snapshot
+
+buildScript: |
+   buildenvBuildAll
+
+buildTools: [protoc]
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+         if [ -d $1/dist/usr/lib64 ]; then
+            LIBDIR=lib64
+         fi
+         if [ -d $1/dist/usr/lib ]; then
+            LIBDIR=lib
+         fi
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l prometheus-cpp -I include ext.prometheus.client.cpp -d ext.protobuf
+   target:
+      buildVars: [TARGET_TYPE]
+      buildScript: copy_shared_lib $@
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         rm -rf $d
+      provideDeps: ['*-target']

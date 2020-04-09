@@ -1,0 +1,83 @@
+inherit: [install, make, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "proprietary"
+   PKG_VERSION: "Release P8.2 2018-03"
+   PKG_NAME: "wpa_supplicant"
+   PKG_PATCH_VERSION: "1.99.0"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+depends:
+ - name: system::tsd-buildenv
+   use: [tools]
+ - connectivity::networking::ext-libnl-dev
+ - libs::ext-openssl-dev
+ - use: []
+   depends:
+    - connectivity::networking::ext-libnl-target
+    - libs::ext-openssl-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.wpasupplicant.cypress.git
+   dir: ext.wpasupplicant.cypress
+   branch: master-wapi
+
+buildVars: [CROSS_COMPILE, ARCH, CC, CXX, CPP, KERNEL_VERSION, LIBDIR]
+buildTools: [toolchain, pkg-config]
+buildScript: |
+   # Gather all include and library paths.
+   for i in "${@:2}" ; do
+       if [[ -d "$i/usr/${LIBDIR}/pkgconfig" ]] ; then
+           PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/${LIBDIR}/pkgconfig"
+       fi
+       if [[ -d "$i/usr/share/pkgconfig" ]] ; then
+           PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/share/pkgconfig"
+       fi
+   done
+
+   export PKG_CONFIG_PATH
+   export CFLAGS="$(pkg-config --cflags libnl-3.0 openssl)"
+   export LDFLAGS="$(pkg-config --libs libnl-3.0 openssl)"
+
+   # copy sources from src to build
+   rsync -a --delete $1/ext.wpasupplicant.cypress/* .
+
+   pushd ${PWD}/hostapd_supplicant_src/linux/hostap/libbcmdhd
+   make clean
+   makeParallel
+   popd
+
+   pushd ${PWD}/hostapd_supplicant_src/linux/hostap/wpa_supplicant
+   make clean
+   makeParallel
+   popd
+
+packageTools: ["buildenv"]
+multiPackage:
+   dev:
+      packageScript: |
+         mkdir -p usr/bin
+         find $1 -executable -type f -exec cp -a {} usr/bin \;
+         mkdir -p usr/include
+         mkdir -p usr/${LIBDIR}
+         cp -a $1/hostapd_supplicant_src/linux/hostap/src/common/wpa_ctrl.h usr/include
+         cp -a $1/hostapd_supplicant_src/linux/hostap/wpa_supplicant/libwpa_client.a usr/${LIBDIR}
+         tsd-buildenv-create-shim.sh -p usr/ -I include -L ${LIBDIR} -l wpa_client ext.wpasupplicant.cypress
+
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         mkdir -p usr/bin
+         find $1 -executable -type f -exec cp -a {} usr/bin \;
+         installStripAll .
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-wpasupplicant-cypress" \
+            -p "emmc.connectivity.netwg" \
+            -o "connectivity.networking:ext-wpasupplicant-cypress " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+      provideDeps: ["*-target"]

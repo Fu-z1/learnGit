@@ -1,0 +1,74 @@
+scmOverrides:
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.onlineremoteupdate.git"
+      del: [commit, tag]
+      set:
+         branch: "feature/DeliveryTests"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.notificationservice.git"
+      del: [commit, tag]
+      set:
+         branch: "feature/DeliveryTests"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.carssw.viwicarservice.git"
+      del: [commit, tag]
+      set:
+         branch: "feature/DeliveryTests"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.usermanagement.git"
+      del: [commit, tag]
+      set:
+         branch: "feature/DeliveryTests"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.rsi.psodataexchange.git"
+      del: [commit, tag]
+      set:
+         branch: "feature/DeliveryTests"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.carssw.git"
+      del: [commit, tag]
+      set:
+         branch: "feature/DeliveryTests"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.carssw.viwinavsdclient.git"
+      del: [commit, tag]
+      set:
+         branch: "feature/DeliveryTests"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/ext.vw.rsi.serviceregistry.git"
+      del: [commit, tag]
+      set:
+         branch: "feature/DeliveryTests"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.renesas.signing.utils.git"
+      del: [commit, tag]
+      set:
+         branch: "develop"
+#   -
+#      match:
+#         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.carfunctionsadapter.git"
+#      del: [commit, tag]
+#      set:
+#         branch: "master"
+#         tag: 4.4.0
+#   -
+#      match:
+#         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.notificationservice.adapter.git"
+#      del: [commit, tag]
+#      set:
+#         branch: "master"
+#   -
+#      match:
+#         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.notificationservice.mib3.git"
+#      del: [commit, tag]
+#      set:
+#         branch: "master"

@@ -1,0 +1,84 @@
+inherit: [buildenv]
+
+depends:
+   - swi::pcc-swi-btf-common-api-dev
+
+   - communication::tsd-communication-binding-dev
+
+   - radio::tsd-radio-tss-api-dev
+   - media::mediaapplication::tsd-media-mib3-gem-api-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@git-repo.server.technisat-digital:swi-btf/pcc.swi.btf.common.commonapi.git
+      dir: pcc.swi.btf.common.commonapi
+      branch: master_mqb_sop1_eu
+      tag: "${PCC_SWI_BTF_COMMON_COMMONAPI_VERSION:-}"
+
+buildVars: [PCC_SWI_BTF_COMMON_COMMONAPI_VERSION]
+multiPackage:
+   dev:
+      buildScript: |
+         if [ -d "$1/pcc.swi.btf.common.commonapi/.git" ]; then
+            # get the real version from git
+            pushd $1/pcc.swi.btf.common.commonapi
+            GIT_VERSION=$(git describe --abbrev=4 --dirty --always --tags)
+            popd
+         else
+            # we are in sandbox and can take the git tag checked output
+            GIT_VERSION=${PCC_SWI_BTF_COMMON_COMMONAPI_VERSION:-unknown}
+         fi
+
+         # if DEVELOP is set to 1 we are not using sandbox and can generate sources to the source dir
+         DEVELOP=1
+         # set DEVELOP to 0 if source dir is not writeable
+         [ ! -w "$1" ] && DEVELOP=0
+
+         # we generate the sources here
+         GEN_DIR="$1/pcc.swi.btf.common.commonapi"
+
+         if [ $DEVELOP -ne 1 ]; then
+            # only if we build with sandbox
+            # we generate the source code to build dir
+            GEN_DIR="`pwd`/src/pcc.swi.btf.common.commonapi"
+         fi
+         mkdir -p $GEN_DIR
+
+         if [ $DEVELOP -ne 1 ]; then
+            # only if we build with sandbox
+            # copy the main CMakeLists.txt to build with buildenv correct
+            cp "$CMAKE_SRC_PATH/CMakeLists.txt" "`pwd`/src/"
+            # and sync sources to the generation directory
+            rsync -r --delete $CMAKE_SRC_PATH/pcc.swi.btf.common.commonapi/* $GEN_DIR/
+         fi
+
+         # after checkout from repo we generate the sourcecode according to used commonapi version of the dependency
+         path_to_commonapi="${BOB_ALL_PATHS[radio::tsd-radio-tss-api-dev]}"
+         # start generation of source code
+         $1/pcc.swi.btf.common.commonapi/src/scripts/pcc_swi_generate_commonapi_files.sh \
+         --commonapi-path "$path_to_commonapi" \
+         --remove-output-dir-first \
+         --output-dir "$GEN_DIR" \
+         --develop
+
+         if [ $DEVELOP -ne 1 ]; then
+            # only if we build with sandbox
+            # we setting CMAKE_SRC_PATH to the new src dir in the build dir
+            CMAKE_SRC_PATH="`pwd`/src"
+         fi
+         echo "TODO: if sourcecode is there call here: buildenvBuildAll -DGIT_VERSION=$GIT_VERSION"
+
+      packageScript: |
+         echo "TODO: if sourcecode is there call here: buildenvPackageDev"
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: |
+         echo "TODO: if sourcecode is there call here: buildenvBuildDocAll"
+      packageScript: |
+         echo "TODO: if sourcecode is there call here: buildenvPackageDoc"
+         touch index.html
+
+provideDeps:
+   - "*"

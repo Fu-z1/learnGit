@@ -1,0 +1,111 @@
+inherit: [autotools, packing-module]
+
+environment:
+   # be in sync with toolchain:
+   # GNU ld (Linaro_Binutils-2017.05) 2.27.0.20161019
+   PKG_PREFIX: "linaro_binutils"
+   PKG_VERSION: "2_27-branch"
+   PKG_PREFIX_VERSION: linaro_binutils-2_27-branch
+
+depends:
+  - libs::ext-zlib-dev
+  - use: []
+    depends:
+      - libs::ext-zlib-target
+
+checkoutVars: [PKG_VERSION, PKG_PREFIX]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.binutils.gdb.git
+   branch: ${PKG_PREFIX_VERSION}
+   dir: ${PKG_PREFIX_VERSION}
+   tag: 2.27.0
+
+# host toolchain needed to build bfd/doc folder. There is no configure switch to avoid this.
+buildTools: [toolchain, host-toolchain]
+buildVars: [PKG_VERSION, PKG_PREFIX, CROSS_COMPILE, AUTOCONF_TARGET]
+buildScript: |
+   # use host_configargs to avoid configure option checking issues
+   # The toplevel configure script does not understand these options,
+   # so it fails with strict option checking if these options are
+   # specified directly. (ptxdist)
+   export host_configargs=" \
+      --enable-targets=${AUTOCONF_TARGET} \
+      --disable-nls \
+      --enable-install-libiberty \
+      --disable-multilib"
+
+   # Don't build documentation. It takes up extra space / build time,
+   # and sometimes needs specific makeinfo versions to work. (buildroot)
+   export MAKEINFO=true
+
+   # When binutils sources are fetched from the binutils-gdb repository,
+   # they also contain the gdb sources, but gdb shouldn't be built, so we
+   # disable it. (buildroot)
+   BINUTILS_DISABLE_GDB_CONF_OPTS="\
+      --disable-sim \
+      --disable-gdb"
+
+   autotoolsConfigureOnly ${1}/${PKG_PREFIX}-${PKG_VERSION} \
+      --target=${AUTOCONF_TARGET} \
+      --host=${AUTOCONF_TARGET} \
+      --disable-werror \
+      ${BINUTILS_DISABLE_GDB_CONF_OPTS}
+
+   autotoolsFixLibtool
+
+   # We just want libbfd, libiberty and libopcodes,
+   # not the full-blown binutils
+   makeParallel MAKEINFO=true
+   make -C bfd MAKEINFO=true DESTDIR=${PWD}/dist-libbfd install
+   make -C opcodes MAKEINFO=true DESTDIR=${PWD}/dist-libopcodes install
+   make -C libiberty MAKEINFO=true DESTDIR=${PWD}/dist-libiberty install
+
+   # fix libiberty link
+   pushd dist-libiberty/usr/lib
+   ln -sf ../lib64/libiberty.a libiberty.a
+   popd
+
+multiPackage:
+   libbfd:
+      multiPackage:
+         dev:
+            packageScript: installPackageDev ${1}/dist-libbfd
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               installPackageTarget ${1}/dist-libbfd
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-binutils-libbdf" \
+                   -p "emmc.libs" \
+                   -o "libs" -f $d -- \
+                   -U "Partition=rootfs_ro"
+               rm -rf $d
+
+            provideDeps: ["*-target"]
+
+   libopcodes:
+      multiPackage:
+         dev:
+            packageScript: installPackageDev ${1}/dist-libopcodes
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               installPackageTarget ${1}/dist-libopcodes
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-binutils-libopcodes" \
+                   -p "emmc.libs" \
+                   -o "libs" -f $d -- \
+                   -U "Partition=rootfs_ro"
+               rm -rf $d
+
+            provideDeps: ["*-target"]
+
+   libiberty-dev:
+      # only a static version of libiberty is provided -> no target package is needed.
+      packageScript: installPackageDev ${1}/dist-libiberty
+      provideDeps: ["*-dev"]

@@ -1,0 +1,27 @@
+inherit: [buildenv]
+
+depends:
+   - system::tsd-pwc-mib3-api-dev
+   - system::system-lifecycle::tsd-systemstate-manager-api-dev
+   - system::system-lifecycle::tsd-systemstate-manager-adapt-dev
+   - system::system-lifecycle::tsd-pwc-proxy-api-dev
+   - system::system-lifecycle::tsd-systemstate-guard-api-mib3-dev
+   - vehicle-connectivity::canstack::tsd-canstack-api-dev
+   - vehicle-connectivity::network-management::tsd-nm-api-dev
+   - carcom::tsd-peripheral-controller-api-dev
+   - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:tools/mib3-pwc-filter.git
+      dir: mib3.pwc.filter
+      branch: develop
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: [ '*-dev' ]

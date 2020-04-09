@@ -1,0 +1,45 @@
+inherit: [autotools, packing-module, buildenv]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "0.34.0"
+   PKG_NAME: "pixman"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-libpng-dev
+  - libs::ext-zlib-dev
+  - use: []
+    depends:
+      - libs::ext-libpng-target
+      - libs::ext-zlib-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-pixman/pixman-${PKG_VERSION}.tar.gz
+   digestSHA1: a1b1683c1a55acce9d928fea1ab6ceb79142ddc7
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsConfigureOnly $1/pixman-${PKG_VERSION}
+   autotoolsBuildOnly
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l pixman-1 -I include/pixman-1 ext.pixman
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-pixman" \
+            -p "emmc.libs" \
+            -o "libs:ext-pixman " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

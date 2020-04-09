@@ -1,0 +1,78 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - audio::audiorouter::tsd-audio-audiorouter-service-api-dev
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+   # runtime dependencies
+  - use: []
+    depends:
+      - audio::audiorouter::tsd-audio-audiorouter-service-api-target
+      - communication::tsd-communication-target
+      - system::tsd-common-target
+      - audio::soundprocessing::tsd-audio-soundproc-soundcontrol-mib3-api-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiomgr.app.mib3.git
+    dir: tsd.audio.audiomgr.app.mib3
+#    tag: 1.0.2
+    branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      depends:
+        - audio::audiomanager::tsd-audio-audiomgr-mib3-dev
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   apps:
+      depends:
+        - audio::audiomanager::tsd-audio-audiomgr-mib3-dev-host
+        - audio::audiomanager::tsd-audio-audiomgr-mib3-apps
+        - use: []
+          depends:
+             - audio::audiomanager::tsd-audio-audiomgr-mib3-resources-apps
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.audio.audiomgr.app.mib3 \
+            tsd.audio.audiomgr.app.mib3.app
+      packageScript: |
+         buildenvPackageTarget --include-shared
+      provideDeps: ['*-apps']
+
+   target:
+      depends:
+        - audio::audiomanager::tsd-audio-audiomgr-mib3-dev
+        - use: []
+          depends:
+            - audio::audiomanager::tsd-audio-audiomgr-mib3-resources-target
+
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget --include-shared
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "audiomgr-app-mib3" \
+            -p "emmc.audio.audiomgr" \
+            -o "audio.audiomanager:tsd-audio-audiomgr-app-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: [ '*-target' ]
+
+   doc:
+      depends:
+        - audio::audiomanager::tsd-audio-audiomgr-mib3-dev-host
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

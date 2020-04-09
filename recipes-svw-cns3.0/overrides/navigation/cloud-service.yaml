@@ -1,0 +1,8 @@
+scmOverrides:
+#cloud senvices that also provide a api for the target
+   -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.cloud*.git"
+    del: [commit, tag]
+    set:
+       branch: snapshot

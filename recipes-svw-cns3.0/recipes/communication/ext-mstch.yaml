@@ -1,0 +1,20 @@
+inherit: [buildenv]
+
+depends:
+   -  system::ext-boost-dev
+
+checkoutSCM:
+   -
+      scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:tip-communication/ext.mstch.git
+      dir: ext.mstch
+      tag: 1.1.0
+      branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev

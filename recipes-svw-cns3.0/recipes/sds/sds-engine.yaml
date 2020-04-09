@@ -1,0 +1,28 @@
+inherit: [packing-module]
+
+#metaEnvironment:
+    #MODULE_VERSION:  "2.1.0"
+    #PACKAGE_VERSION: "2.1.0"
+
+depends:
+        - if: "${CONFIG_SDS:-1}"
+          depends:
+             - sds::speech.service::jpcc-sds-target
+             - sds::speech.external::ext-resource-target
+             #- sds::speech.external::ext-speech-target
+
+buildScript: |
+        mkdir -p tmp
+        for key in ${!BOB_DEP_PATHS[@]}; do
+           if [[ $key == sds::speech* ]]; then
+                cp -arf ${BOB_DEP_PATHS[$key]}/* tmp/
+           fi
+        done
+
+packageScript: |
+        buildSwupModule -n speech \
+                        -p "emmc.sds" \
+                        -m "cnssds,cnssds,0777,/var/speech$" \
+                        -m "cnssds,cnssds,0777,/var/speech/*" \
+                        -o 'sds:sds-engine' -f $1/tmp -- \
+                        -U "Partition=rootfs_ro"

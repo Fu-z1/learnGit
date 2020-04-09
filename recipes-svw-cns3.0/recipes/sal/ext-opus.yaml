@@ -1,0 +1,37 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "MIT"
+   PKG_VERSION: "1.1.4"
+   PKG_NAME: "Opus library"
+   PKG_PATCH_VERSION: ""
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: ""
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+  - scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-opus/opus-1.1.4.tar.gz
+    digestSHA1: "c7ecd67321c0e72c928ffc1013d725fc537e633f"
+
+buildVars: [PKG_VERSION, LIBDIR]
+buildScript: |
+   autotoolsBuild $1/opus-${PKG_VERSION}
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l opus -I include/opus ext.opus
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-opus" \
+            -p "emmc.sal" \
+            -o "sal:ext-opus " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

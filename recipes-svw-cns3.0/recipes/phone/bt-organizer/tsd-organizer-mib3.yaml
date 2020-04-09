@@ -1,0 +1,73 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - hmi::tsd-dsi-cpp-dev
+ - phone::bt-organizer::tsd-organizer-dev
+ - phone::bt-organizer::tsd-organizer-mib3-api-dev
+ - phone::bt-devicemanagement::tsd-bt-management-dev
+ - phone::tsd-phone-common-dev
+ - phone::tsd-phone-common-mib3-dev
+ - system::tsd-common-dev
+ - system::tsd-threadmessages-dev
+ - hmi::tsd-i18n-mib3-dev
+ - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+ - phone::tsd-parser-vobject-api-dev
+ - phone::tsd-parser-vobject-dev
+ - media::mediaapplication::tsd-media-mib3-picturelink-dev
+ - basic-services::systeminfo::tsd-systeminformation-features-dev
+ - use: []
+   depends:
+    - hmi::tsd-dsi-cpp-target
+    - phone::bt-organizer::tsd-organizer-target
+    - phone::bt-organizer::tsd-organizer-mib3-api-target
+    - phone::tsd-phone-common-mib3-target
+    - system::tsd-common-target
+    - system::tsd-threadmessages-target
+    - phone::bt-devicemanagement::tsd-bt-management-target
+    - hmi::tsd-i18n-mib3-target
+    - engineering::diagnostic-management::tsd-uds-api-mib3-target
+    - phone::tsd-parser-vobject-api-target
+    - phone::tsd-parser-vobject-target
+    - media::mediaapplication::tsd-media-mib3-picturelink-target
+    - basic-services::systeminfo::tsd-systeminformation-features-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.git
+   dir: tsd.organizer.mib3
+   branch: main/svw_cns3.0_1413_dev
+#  tag: mqb_sop1_eu-1.145.2
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "organizer-mib3" \
+            -p "emmc.phone.bt-organizer" \
+            -o "phone.bt-organizer:tsd-organizer-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

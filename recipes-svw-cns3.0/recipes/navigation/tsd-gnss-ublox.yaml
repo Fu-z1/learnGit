@@ -1,0 +1,38 @@
+inherit: [buildenv, packing-module, navi_compflags_werror_sanitize]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - communication::tsd-communication-dev
+  - navigation::tsd-nav-pos-gps-api-dev
+  - use: []
+    depends:
+      - navigation::tsd-nav-pos-gps-api-target
+
+checkoutSCM:
+   scm: git
+   #url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.gnss.ublox.git
+   url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-navigation/tsd.gnss.ublox.git
+   dir: tsd.gnss.ublox
+   #tag: mqb_sop1_eu-148.0.1      #navi-src (src of the navigation)
+   branch: main/svw_cns3.0_1480_dev
+
+buildScript: |
+   buildenvBuildAll
+   mkdir -p dist/etc/nav
+   cp -au $1/tsd.gnss.ublox/ini/commonapi.ini dist/etc/nav
+
+packageScript: |
+   buildenvPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "gnss-ublox" \
+      -p "emmc.navigation" \
+      -o "navigation:tsd-gnss-ublox " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps: ['*-target']

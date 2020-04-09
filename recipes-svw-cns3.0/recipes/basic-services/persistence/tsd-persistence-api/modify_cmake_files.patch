@@ -1,0 +1,37 @@
+--- a/tsd.persistence.api/commonapi/binding/proxy/CMakeLists.txt
++++ b/tsd.persistence.api/commonapi/binding/proxy/CMakeLists.txt
+@@ -10,8 +10,8 @@
+ )
+
+ module_dependencies(PUBLIC
+-   commonapi.definition
+-   commonapi.common
++   tsd.persistence.api.definition
++   tsd.persistence.api.common
+    tsd.common
+    tsd.communication.event
+    tsd.communication.messaging
+--- a/tsd.persistence.api/commonapi/binding/stub/CMakeLists.txt
++++ b/tsd.persistence.api/commonapi/binding/stub/CMakeLists.txt
+@@ -10,8 +10,8 @@
+ )
+
+ module_dependencies(PUBLIC
+-   commonapi.definition
+-   commonapi.common
++   tsd.persistence.api.definition
++   tsd.persistence.api.common
+    tsd.common
+    tsd.communication.event
+    tsd.communication.messaging
+--- a/tsd.persistence.api/commonapi/binding/common/CMakeLists.txt
++++ b/tsd.persistence.api/commonapi/binding/common/CMakeLists.txt
+@@ -10,7 +10,7 @@
+ )
+
+ module_dependencies(PUBLIC
+-   commonapi.definition
++   tsd.persistence.api.definition
+    tsd.communication.event
+    tsd.communication.messaging
+    tsd.common

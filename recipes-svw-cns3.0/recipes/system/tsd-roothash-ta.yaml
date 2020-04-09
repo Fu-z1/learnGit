@@ -1,0 +1,47 @@
+inherit: [make, install, werror, packing-module]
+
+depends:
+  - system::ext-optee::client-dev
+  - system::ext-optee::os-dev
+  - use: []
+    depends:
+      - system::ext-optee::client-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.roothash.ta.git
+   tag: mqb_sop1_eu-1.1.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [ARCH, CC, CROSS_COMPILE]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   # build the ta
+   export TA_DEV_KIT_DIR=${BOB_DEP_PATHS["system::ext-optee::os-dev"]}
+   make -C ta
+
+   # build the host app (host = target linux)
+   export TEEC_EXPORT=${BOB_DEP_PATHS["system::ext-optee::client-dev"]}
+   make -C host
+
+   mkdir -p dist/usr/bin
+   mv host/store_roothash dist/usr/bin
+
+packageScript: |
+   mkdir -p lib/optee_armtz/
+   cp $1/ta/89b1166c-aeba-4dfa-bf1fa51997d1e7c7.ta lib/optee_armtz
+
+   mkdir -p .debug/lib/optee_armtz/
+   cp $1/ta/89b1166c-aeba-4dfa-bf1fa51997d1e7c7.elf .debug/lib/optee_armtz/
+
+   installPackageTarget $1/dist
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "roothash-ta" \
+      -p "emmc.system" \
+      -o "system::tsd-roothash-ta" -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps: ['*-target']

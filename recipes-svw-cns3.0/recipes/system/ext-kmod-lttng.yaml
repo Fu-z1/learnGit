@@ -1,0 +1,48 @@
+inherit: [make, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-3.0-or-later"
+   PKG_VERSION: "2.10.5"
+   PKG_NAME: "lttng-modules"
+   PKG_PATCH_VERSION: "0001"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - name: system::bsp::ext-linux-headers
+    use: [result, environment]
+  - name: system::ext-kmod-adsp-headers
+    use: [result]
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-lttng/lttng-modules-${PKG_VERSION}.tar.bz2
+   digestSHA1: 265b2677c2e783b87760cdb427e1259860096980
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP, PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/lttng-modules-${PKG_VERSION}/ ${PWD}
+
+   patch -t -p1 < $<<ext-kmod-lttng-modules/0001_Remove_not_used_PREEMPT_ACTIVE.patch>>
+
+   makeParallel V=1 KERNELDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build
+   makeParallel V=1 KERNELDIR=${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build INSTALL_MOD_PATH=${PWD} modules_install
+
+multiPackage:
+   headers:
+      packageScript: |
+         rsync -ra --delete --include="*/" --include="*/*.h" --include="*.h" --exclude="*"  $1/ ./
+         rsync -a $1/Module.symvers ./
+   modules:
+      packageVars: [STRIP, KERNEL_VERSION]
+      packageScript: |
+         mkdir -p lib
+         cp -rf $1/lib/modules lib
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-kmod-lttng-modules" \
+            -p "emmc.system" \
+            -o "system:ext-kmod-lttng-modules " -f $d -- \
+            -U Depmod=${KERNEL_VERSION} \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,20 @@
+diff --git a/recipes/libs/ext-openssl.yaml b/recipes/libs/ext-openssl.yaml
+index a31b446..99f2cee 100644
+--- a/recipes/libs/ext-openssl.yaml
++++ b/recipes/libs/ext-openssl.yaml
+@@ -71,6 +71,7 @@ multiPackage:
+                --libdir=${LIBDIR} \
+                --debug \
+                shared \
++               no-async \
+                zlib-dynamic \
+                ${OPENSSL_SPECIAL_CFG} \
+                --with-zlib-include=${BOB_DEP_PATHS[libs::ext-zlib-dev]}/usr/include \
+@@ -80,6 +81,7 @@ multiPackage:
+                --prefix=/usr \
+                --libdir=${LIBDIR} \
+                no-shared \
++               no-async \
+                no-zlib-dynamic \
+                no-comp no-idea no-dtls no-hw no-engine no-threads no-err no-psk no-asm \
+                no-srp no-ec2m no-weak-ssl-ciphers no-autoerrinit  no-deprecated no-dso \

@@ -1,0 +1,43 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-3.0-or-later"
+   PKG_VERSION: "8.26"
+   PKG_NAME: "renesas.gbm"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-systemd-dev
+  - system::bsp::ext-wayland-kms-dev
+  - use: []
+    depends:
+      - system::ext-systemd-target
+      - system::bsp::ext-wayland-kms-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.renesas.gbm.git
+   tag: 1.0.0
+   branch: rcar-gen3
+buildScript: |
+   rsync -a --delete $1/ .
+   autotoolsBuild .
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l gbm -I include ext.libgbm
+      provideDeps: ["*-dev"]
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-gbm" \
+            -p "emmc.system.bsp" \
+            -o "system.bsp:ext-gbm " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

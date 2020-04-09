@@ -1,0 +1,36 @@
+inherit: [buildenv, packing-module]
+
+checkoutSCM:
+  - scm: git
+    url: https://github.com/philsquared/Catch.git
+    dir: catch
+    commit: 615aa071a8f741862c325e0aab47345cc5388169
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/ext.rxcpp.git
+    dir: ext.rxcpp
+    branch: feature/cmakefix
+checkoutDeterministic: true
+checkoutScript: |
+   rsync -a --delete catch ext.rxcpp/ext
+
+buildScript: |
+   export MAKE_JOBS=1
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         cmakePackageDev
+         tsd-buildenv-create-shim.sh -p usr -L lib -l RxCpp -I include ext.rxcpp
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-rxcpp" \
+            -p "emmc.libs" \
+            -o "libs:ext-rxcpp " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

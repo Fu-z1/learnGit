@@ -1,0 +1,49 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-personalization/tsd.personalization.client.api.git
+   dir: tsd.personalization.client.api
+   tag: mqb_sop1_eu-2.3.0
+   branch: master_mqb_sop1_eu
+
+checkoutScript: CapiGenProcessFIDLFiles tsd.personalization.client.api
+checkoutDeterministic: true
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "personalization_client-api" \
+            -p "emmc.basic-svcs" \
+            -o "basic-services.personalization:tsd-personalization-client-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"

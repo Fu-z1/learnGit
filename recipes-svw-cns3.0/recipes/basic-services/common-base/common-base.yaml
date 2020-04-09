@@ -1,0 +1,70 @@
+inherit: [buildenv,packing-module]
+
+depends:
+   - libs::ext-protobuf-dev
+   - system::tsd-common-daemon-dev
+   - use: []
+     depends:
+     - system::tsd-common-daemon-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:architecture/common_base.git
+   dir: common.base
+   branch: master
+
+buildTools: [protoc]
+#buildScript: |
+#         buildenvBuildModules \
+#         build_proto_source \
+#         common.base
+
+#packageScript: |
+#   buildenvPackageDev
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildModules   \
+            -DJPCC_BUILDENV_ENABLE_DEP_LOGGER=1 \
+            build_proto_source \
+            common.base
+#         buildenvBuildAll -DTSD_RSI_SERVER_LINK_SHARED=1 \
+#            -DTSD_BUILDENV_ENABLE_APP_TARGETS=${TSD_RSI_BUILD_APPS:-0} -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=${TSD_RSI_BUILD_APPS:-0}
+      packageScript: |
+         buildenvPackageDev install
+         d=$(mktemp -d)
+         mkdir -p $d/usr/lib/
+         cp usr/lib/libcommon.base.so $d/usr/lib/
+         buildSwupModule -n "library" \
+              -p "emmc.basic-services.common-base" \
+              -o "basic-services.common-base:common-base-library" -f $d -- \
+              -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: [ '*-dev' ]
+
+   servers:
+      buildScript: |
+           buildenvBuildModules \
+              -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+              -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+              -DJPCC_BUILDENV_PROJECT_NAME="CNS3_LINUX" \
+              -DJPCC_BUILDENV_ENABLE_DEP_DAEMON=1 \
+              -DJPCC_BUILDENV_ENABLE_DEP_LOGGER=1 \
+              common.base.app.name_server \
+              common.base.app.host_server \
+              common.base.app.lssvc \
+              common.base.app.lshost \
+              common.base.app.fdbtest \
+              common.base.app.logsvc \
+              common.base.app.logclt
+           mkdir -p dist/etc/android
+           cp -au $1/common.base/ini/ipFoward.sh dist/etc/android
+      packageScript: |
+            buildenvPackageTarget
+            d=$(mktemp -d)
+            rsync -a --delete --exclude ".debug" ./ $d
+            buildSwupModule -n "servers" \
+              -p "emmc.basic-services.common-base" \
+              -o "basic-services.common-base:common-base-servers" -f $d -- \
+              -U "Partition=rootfs_ro"

@@ -1,0 +1,32 @@
+inherit: [autotools, packing-module]
+
+environment:
+   PKG_VERSION: "5.2.2"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-xz/xz-${PKG_VERSION}.tar.gz
+   digestSHA1: "14663612422ab61386673be78fbb2556f50a1f08"
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/xz-${PKG_VERSION}
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l lzma -I include ext.xz
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-xz" \
+            -p "emmc.system" \
+            -o "system:ext-xz " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

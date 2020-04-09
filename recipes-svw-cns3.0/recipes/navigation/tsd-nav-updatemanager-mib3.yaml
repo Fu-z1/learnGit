@@ -1,0 +1,54 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+depends:
+  - system::tsd-common-dev
+  - navigation::tsd-nav-updatemanager-api-dev
+  - navigation::tsd-nav-updatemanager-mib3-ext-api-dev
+  - navigation::tsd-nav-utils-api-dev
+  - navigation::tsd-nav-configdata-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-middleware/tsd.nav.updatemanager.mib3.git
+   dir: tsd.nav.updatemanager.mib3
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+       dev:
+          buildScript: |
+             buildenvBuildAll
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+       unittests:
+          environment:
+             TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+          buildScript: |
+             buildenvTestAll
+          packageScript: |
+             buildenvPackageTests
+       swittests:
+          provideVars:
+             TSD_UPDATE_MANAGER_SWIT_TEST: "${TSD_UPDATE_MANAGER_SWIT_TEST:-1}"
+          depends:
+            - navigation::tsd-nav-mapdataservice-mib3-dev
+            - tip::ext-icu-dev
+            - libs::ext-sqlite-nds-dev
+            - libs::ext-curl-dev
+          buildScript: |
+             buildenvTestAll
+          packageScript: |
+             buildenvPackageTests
+
+       doc:
+          buildScript: buildenvBuildDocAll
+          packageScript: buildenvPackageDoc

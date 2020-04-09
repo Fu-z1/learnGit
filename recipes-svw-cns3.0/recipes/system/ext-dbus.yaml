@@ -1,0 +1,38 @@
+inherit: [autotools, packing-module]
+
+depends:
+  - system::ext-expat-dev
+  - use: []
+    depends:
+      - system::ext-expat-target
+
+privateEnvironment:
+   PKG_VERSION: "1.11.10"
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-dbus/dbus-${PKG_VERSION}.tar.gz
+   digestSHA1: aef66099a178d1eede0a8ba9a804443546172ad3
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/dbus-${PKG_VERSION}
+
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageDev
+      provideDeps: ["*-dev"]
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         rm -rf var
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-dbus" \
+            -p "emmc.system" \
+            -o "system:ext-dbus " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

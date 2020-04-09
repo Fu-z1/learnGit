@@ -1,0 +1,89 @@
+depends:
+   - sds::asr::tsd-sds-asr-resources
+
+buildVars: [PCC_RES_VARIANT]
+buildScript: |
+
+   PCC_RES_PKG=${BOB_DEP_PATHS[sds::asr::tsd-sds-asr-resources]}
+
+   PCC_CONFIG_GEN_TOOL=${PCC_RES_PKG}/tools/json_config_generator
+   PCC_CONFIG_GEN_TOOL_CFGS=${PCC_RES_PKG}/src/lang
+   PCC_DIR=${PCC_RES_PKG}/dist
+
+   # helper function to copy a resource from 2 different sources
+   # note that resources from the first parameter take precedence
+   # param1 source folder 1
+   # param2 source folder 2
+   # param3 destination folder
+   copy()
+   {
+      src1=$1
+      src2=$2
+      dest=$3
+
+      # at least one source folder has to exist
+      if [ ! -d ${src1} ] && [ ! -d ${src2} ]; then
+         echo "Missing resources - either 'all' or '${PCC_RES_VARIANT}' have to exist" >&2
+         echo "  path 1: '${src1}'" >&2
+         echo "  path 2: '${src2}'" >&2
+         exit 1
+      fi
+
+      if [ -d ${src1} ]; then
+         cp -r ${src1}/* ${dest}
+      fi
+
+      if [ -d ${src2} ]; then
+         cp -rn ${src2}/* ${dest}
+      fi
+   }
+
+   # param1 the HMI lang code e.g. "de_DE"
+   copyContextResFromPCC()
+   {
+      local LC=$1
+      SRC_ALL=${PCC_DIR}/all/lang/${LC}/context
+      SRC_VAR=${PCC_DIR}/${PCC_RES_VARIANT}/lang/${LC}/context
+
+      TARGET=${LC}/context
+      mkdir -p ${TARGET}
+
+      echo "Gathering context resources - from PCC - for ${LC} ${PCC_RES_VARIANT}"
+      copy ${SRC_VAR} ${SRC_ALL} ${TARGET}
+
+      # make simple validity check
+      [ "$(find ${TARGET} -iname '*.json')" ] || (echo "Error - PCC: jsons files missing!"; exit 1)
+      [ "$(find ${TARGET} -iname '*.fcf')" ]  || (echo "Error - PCC: static contexts missing!"; exit 1)
+   }
+
+   # param1 the HMI lang code e.g. "de_DE"
+   copyEngineResFromPCC()
+   {
+      local LC=$1
+      SRC_ALL=${PCC_DIR}/all/lang/${LC}/engine
+      SRC_VAR=${PCC_DIR}/${PCC_RES_VARIANT}/lang/${LC}/engine
+      TARGET=${LC}/engine
+      mkdir -p ${TARGET}
+
+      echo "Gathering engine resources - from PCC - for ${LC} ${PCC_RES_VARIANT}"
+      copy ${SRC_VAR} ${SRC_ALL} ${TARGET}
+
+      # make simple validity check
+      [ "$(find ${TARGET} -iname '*.json')" ] || (echo "Error - PCC: jsons files missing!"; exit 1)
+      [ "$(find ${TARGET} -iname '*.dcb')" ]  || (echo "Error - PCC: ASR lexicon missing!"; exit 1)
+      [ "$(find ${TARGET} -iname '*.txt')" ]  || (echo "Error - PCC: Ruleset files missing!"; exit 1)
+   }
+
+   copyCommonResFromPCC()
+   {
+      SRC_ALL=${PCC_DIR}/all/common
+      SRC_VAR=${PCC_DIR}/${PCC_RES_VARIANT}/common
+      TARGET=common
+      mkdir -p ${TARGET}
+
+      echo "Gathering common resources - from PCC - ${PCC_RES_VARIANT}"
+      copy ${SRC_VAR} ${SRC_ALL} ${TARGET}
+
+      # make simple validity check
+      [ "$(find ${TARGET} -iname '*.json')" ] || (echo "Error - PCC: jsons files missing!"; exit 1)
+   }

@@ -1,0 +1,51 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "API"
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-systemmanagement/tsd.systemstate.guard.api.mib3.git
+    dir: tsd.systemstate.guard.api.mib3
+    tag: mqb_sop1_eu-1.8.0
+    branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "systemstate-guard-api-mib3" \
+            -p "emmc.system.system-lifecycle" \
+            -o "system.system-lifecycle:tsd-systemstate-guard-api-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

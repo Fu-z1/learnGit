@@ -1,0 +1,20 @@
+bobMinimumVersion: "0.13"
+plugins:
+    - jenkins-tests
+    - jenkins-valgrind
+    - jenkins-gcc-warnings
+    - jenkins-gitlab
+    - jenkins-blame-upstream
+    - jenkins-send-mail
+    - jenkins-cppcheck
+    - jenkins-uploadbadge
+    - smartgit
+    - json-config
+    - metavarscheck
+    - shared_toolchain
+    - variants-helper
+    - fetch-information
+    - commonapi-testframework-xunit
+    - commonapi-testframework-valgrind
+    - sessiontoken
+    - variants-filter

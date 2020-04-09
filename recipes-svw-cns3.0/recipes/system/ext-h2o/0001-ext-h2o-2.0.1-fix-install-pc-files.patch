@@ -1,0 +1,14 @@
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -432,9 +432,9 @@ INSTALL(TARGETS h2o
+ IF (NOT WITHOUT_LIBS)
+     INSTALL(DIRECTORY include/ DESTINATION include FILES_MATCHING PATTERN "*.h")
+     IF (LIBUV_FOUND)
+-        INSTALL(FILES "${CMAKE_BINARY_DIR}/libh2o.pc" DESTINATION lib/pkgconfig)
++        INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/libh2o.pc" DESTINATION lib/pkgconfig)
+     ENDIF ()
+-    INSTALL(FILES "${CMAKE_BINARY_DIR}/libh2o-evloop.pc" DESTINATION lib/pkgconfig)
++    INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/libh2o-evloop.pc" DESTINATION lib/pkgconfig)
+ ENDIF ()
+ 
+ INSTALL(PROGRAMS share/h2o/annotate-backtrace-symbols share/h2o/fastcgi-cgi share/h2o/fetch-ocsp-response share/h2o/kill-on-close share/h2o/setuidgid share/h2o/start_server DESTINATION share/h2o)

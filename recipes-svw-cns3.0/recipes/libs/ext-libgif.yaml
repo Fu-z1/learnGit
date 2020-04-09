@@ -1,0 +1,26 @@
+inherit: [buildenv, packing-module]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/ext.libgif.git
+   dir: ext.libgif
+   tag: '4.1.4.2'
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libgif" \
+            -p "emmc.libs" \
+            -o "libs:ext-libgif " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

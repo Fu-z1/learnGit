@@ -1,0 +1,22 @@
+shared: True
+
+environment:
+   PKG_VERSION: "5.1.1r36"
+   PKG_SHA1_SUM: "acbc00bc9381a4d7a3efd58074b30ea9ec6fe212"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/android-tools-fsutils/android-tools-fsutils-${PKG_VERSION}.tar.bz2
+   digestSHA1: ${PKG_SHA1_SUM}
+   extract: no
+
+buildScript: |
+   ln -sf $1/*.tar.bz2 .
+
+
+packageScript: |
+   tar -xjf $1/*.tar.bz2
+
+provideTools:
+   android-tools-fsutils:
+      path: "usr/bin"

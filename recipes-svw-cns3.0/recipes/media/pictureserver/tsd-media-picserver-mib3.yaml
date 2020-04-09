@@ -1,0 +1,69 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+depends:
+  - media::pictureserver::tsd-media-picserver-dev
+  - media::mediaapplication::tsd-media-mib3-picturelink-dev
+  - media::libraries::tsd-media-common-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - basic-services::rsi-library::tsd-rsi-client-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - use: []
+    depends:
+      - media::pictureserver::tsd-media-picserver-target
+      - media::mediaapplication::tsd-media-mib3-picturelink-target
+      - media::libraries::tsd-media-common-target
+      - basic-services::rsi-library::tsd-rsi-server-target
+      - basic-services::rsi-library::tsd-rsi-client-target
+      - system::tsd-common-daemon-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.picserver.mib3.git
+   dir: tsd.media.picserver.mib3
+   tag: mqb_sop1_eu-1.0.24
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildModules \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+         tsd.media.picserver.mib3 \
+         tsd.media.picserver.mib3.app.target
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildModules \
+         -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+         -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+         tsd.media.picserver.mib3 \
+         tsd.media.picserver.mib3.app.target
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "picserver-mib3" \
+            -p "emmc.media.pictureserver" \
+            -o "media.pictureserver:tsd-media-picserver-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

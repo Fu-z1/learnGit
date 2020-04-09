@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd-recipes-mib3.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/boost165"
+        commit: "6f6e804093baa639eb59394566133f300b4198e4"

@@ -1,0 +1,33 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later WITH Libtool-exception)"
+   PKG_VERSION: "2.4.6"
+   PKG_NAME: "libtool"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libtool/libtool-${PKG_VERSION}.tar.gz
+   digestSHA1: "25b6931265230a06f0fc2146df64c04e5ae6ec33"
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   autotoolsBuild $1/libtool-${PKG_VERSION}
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l ltdl -I include ext.libtool
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libtool" \
+            -p "emmc.libs" \
+            -o "libs:ext-libtool " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

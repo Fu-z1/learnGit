@@ -1,0 +1,44 @@
+inherit: [buildenv, packing-module, werror, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sal.api.git
+   dir: tsd.nav.sal.api
+   tag: cns_sop1_sal-v1.0.0 #navi-interface (interface to externel contractors)
+   # see link for change prozess: https://wiki-automotive.server.technisat-digital/display/MIB3SERIE/Schnittstellen+Navigation
+
+checkoutDeterministic: true
+checkoutScript: CapiGenProcessFIDLFiles tsd.nav.sal.api
+
+buildScript: |
+   buildenvBuildAll
+
+# No warning-as-error for generated code
+packageVars: [LIBDIR]
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+   target: # Shared-lib (FIDl)
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "nav-sal-api" \
+            -p "emmc.navigation" \
+            -o "navigation:tsd-nav-sal-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

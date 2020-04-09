@@ -1,0 +1,16 @@
+# Test by calling bob dev -v zr3/zr3-variant-VW_JP|KR|EU/maps::integration/maps::ext-....-livecache.pkg
+depends:
+   - use: [environment]
+     depends:
+         - if: "$(eq,${MAP_VARIANT:-1},CHN)"
+           depends:
+              - MXNavi::ext-MXNavi-map-chn-target
+         - if: "$(eq,${MAP_VARIANT:-1},TW)"
+           depends:
+              - MXNavi::ext-MXNavi-map-tw-target
+         - if: "$(eq,${MAP_VARIANT:-1},CHN_2mesh)"
+           depends:
+              - MXNavi::ext-MXNavi-map-chn2mesh-target
+provideDeps: ['*']
+provideVars:
+   TRAIN_PKG_VERSION: ${TRAIN_PKG_VERSION}

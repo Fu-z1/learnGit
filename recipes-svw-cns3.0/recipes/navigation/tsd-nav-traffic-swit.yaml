@@ -1,0 +1,28 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+   - navigation::tsd-nav-traffic-clouddecoder-dev
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.swit.git
+   dir: tsd.nav.traffic.swit
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+   swittests:
+      depends:
+         - system::ext-boost-filesystem-dev
+         - system::ext-boost-system-dev
+         - navigation::tsd-nav-sdk-mapdataservice-api-dev
+         - navigation::tsd-nav-sdk-mapdataservice-dev
+         - navigation::tsd-nav-mapdataservice-mib3-api-dev
+         - navigation::tsd-nav-mapdataservice-mib3-dev
+         - navigation::tsd-nav-utils-dev
+         - navigation::tsd-nav-middleware-nds-2_5_2-dev
+      buildScript: |
+         buildenvTestAll -DTSD_MW_PATH=${BOB_DEP_PATHS["navigation::tsd-nav-middleware-nds-2_5_2-dev"]}/usr/lib64
+      packageScript: |
+         buildenvPackageTests

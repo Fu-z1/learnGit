@@ -1,0 +1,70 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - audio::audiorouter::ext-pulseaudio-dev
+  - audio::microphoneprocessing::tsd-audio-microphoneprocessing-plugins-handsfree-api-dev
+  - system::tsd-common-dev
+  - system::ext-libuv-dev
+  - use: []
+    depends:
+      - audio::audiorouter::ext-pulseaudio-target
+      - audio::microphoneprocessing::tsd-audio-microphoneprocessing-plugins-handsfree-api-target
+      - system::ext-libuv-target
+         # don't wants to install systemd using --destination
+         # a.k.a I don't like your transitive systemd dependency
+         #- system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiorouter.client.api.git
+   dir: tsd.audio.audiorouter.client.api
+#   tag: 1.6.24
+   branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_ENABLE_TEST_TARGETS=0 \
+            tsd.audio.audiorouter.client.api \
+            tsd.audio.audiorouter.client.api.app
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   unittests:
+      depends:
+        - audio::audiorouter::ext-pulseaudio-interface
+      buildScript: |
+         buildenvTestTargets tsd.audio.audiorouter.client.api.test
+      packageScript: |
+         buildenvPackageTests
+
+   target:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_ENABLE_TEST_TARGETS=0 \
+            tsd.audio.audiorouter.client.api \
+            tsd.audio.audiorouter.client.api.app
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "client-api" \
+            -p "emmc.audio.audiortr" \
+            -o "audio.audiorouter:tsd-audio-audiorouter-client-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

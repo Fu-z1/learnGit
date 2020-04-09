@@ -1,0 +1,125 @@
+inherit: [packing-module,bl2]
+
+environment:
+   PKG_VERSION: "coqos-sdk-jpcc-9.3.1-linux-x86_64"
+
+multiPackage:
+   "":
+      checkoutSCM:
+         scm: url
+         url: "${DEFAULT_DOWNLOAD_SCM_JPCC_URL}tools/opensyn_hv_yocto3.15/coqos-sdk-jpcc-190613-update-vmctrl-0711.tar.bz2"
+         digestSHA1: "f0679f82d8cea84c52dc19b3ecd11d70c004ef04"
+
+      buildScript: |
+         set -x
+         ln -f -s $1/ src
+
+      multiPackage:
+         src:
+            packageScript: |
+               rsync -a --delete $1/src/ .
+
+         coqoshv-guest-driver-src:
+            packageVars: [PKG_VERSION]
+            packageScript: |
+               rsync -L -a --delete $1/src/${PKG_VERSION}/bsp/linux/kernel/modules/coqoshv-guest-driver-linux/ .
+
+         coqoshv-abi:
+            packageVars: [PKG_VERSION]
+            packageScript: |
+               rsync -L -a --delete $1/src/${PKG_VERSION}/ixcf/coqoshv-abi/ .
+
+         vchar-src:
+            packageVars: [PKG_VERSION]
+            packageScript: |
+               rsync -L -a --delete $1/src/${PKG_VERSION}/ixcf/vchar/ .
+
+         vnet-src:
+            packageVars: [PKG_VERSION]
+            packageScript: |
+               rsync -L -a --delete $1/src/${PKG_VERSION}/ixcf/vnet/ .
+
+         virtio-blk-binary:
+            packageVars: [PKG_VERSION]
+            packageScript: |
+               rsync -L -a $1/src/${PKG_VERSION}/bsp/linux/usr-apps/coqos-virtio-blk-aarch64-linux-gnu-prebuilt/ .
+               buildSwupModule -n 'virtio-blk' -p "emmc.system.bsp" -o 'system.bsp:ext-opensynergy-blk' -f . -- \
+                      -U Depmod=true \
+                      -U "Partition=rootfs_ro"
+         virtio-gpu-binary:
+            packageVars: [PKG_VERSION]
+            packageScript: |
+               rsync -L -a $1/src/${PKG_VERSION}/bsp/linux/usr-apps/coqos-virtio-gpu-aarch64-linux-gnu-prebuilt/ .
+               buildSwupModule -n 'virtio-gpu' -p "emmc.system.bsp" -o 'system.bsp:ext-opensynergy-gpu' -f . -- \
+                      -U Depmod=true \
+                      -U "Partition=rootfs_ro"
+   target:
+      depends:
+        - system::bsp::ext-opensynergy-src
+        - system::bsp::ext-renesas-h3-android
+
+      buildVars: [COQOS_LICENSE_FILE, PKG_VERSION]
+      buildTools: [toolchain]
+      buildScript: |
+         rsync -a --delete ${BOB_DEP_PATHS["system::bsp::ext-opensynergy-src"]}/${PKG_VERSION}/ .
+
+         # TODO: add to tsd-config
+         cp $<<ext-opensynergy/config/coqoshv-guest-config-r8a7795-pcc-zr3.xml>> projects/prj-rcargen3-hwvirt-linux-android/integration/config/coqoshv-guest-config-r8a7795-pcc-zr3.xml
+         cp $<<ext-opensynergy/config/r8a7795-pcc-zr3-plat-model.xml>>  coqoshv/config/plat-capabilities/r8a7795-pcc-zr3-plat-model.xml
+         cp $<<ext-opensynergy/config/r8a7795-pcc-zr3-soc-model.xml>>  coqoshv/config/plat-capabilities/r8a7795-pcc-zr3-soc-model.xml
+         cp $<<ext-opensynergy/config/r8a7795-pcc-zr3-plat-model.xml>>  coqoshv/config/plat-capabilities/r8a7795-pcc-zr3-plat-model.xml
+
+
+         export COQOS_LICENSE_FILE=$<<ext-opensynergy/lic/NingboJoysenPrehCarConnectCoLtd__coqoshv_expires_20420331.lic>>
+
+         # TODO: move this to toolchain recipe.
+         TOOLCHAIN=gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu
+
+         make BOARD_VARIANT=r8a7795-pcc-zr3 \
+               JOBS=5 \
+               PROJECTS=projects/prj-rcargen3-hwvirt-linux-android \
+               SUBPROJECTS="integration" \
+               ${TOOLCHAIN}_PREFIX=aarch64-linux-gnu- \
+               ${TOOLCHAIN}_PATH=${BOB_TOOL_PATHS["toolchain"]} \
+               ${TOOLCHAIN}_TARGET=aarch64 \
+               ${TOOLCHAIN}_PLATFORM=linux \
+               ${TOOLCHAIN}_HOST=linux-x86_64 \
+               ${TOOLCHAIN}_VENDOR=linaro \
+               ${TOOLCHAIN}_ABI=gnu \
+               ${TOOLCHAIN}_LIBC=glibc \
+               ${TOOLCHAIN}_VERSION=5 \
+               ${TOOLCHAIN}_RELEASE="2017.05" \
+               TOOLCHAINS="${TOOLCHAIN}" \
+               configure install
+
+         mkdir -p build_result
+         rsync -a --delete projects/prj-rcargen3-hwvirt-linux-android/integration/boot/r8a7795-pcc-zr3/coqoshv.u build_result
+         rsync -a --delete projects/prj-rcargen3-hwvirt-linux-android/integration/boot/r8a7795-pcc-zr3/coqoshv.img build_result
+
+         mkdir -p tmp/usr/lib
+         mkdir -p tmp/usr/bin
+         rsync -a --delete coqoshv/dist/vmctrl/libvmctrl-coqoshv/libvmctrl-coqoshv.so tmp/usr/lib/libvmctrl-coqoshv.so
+         rsync -a --delete projects/prj-rcargen3-hwvirt-linux-android/linux1-apps/vmctrl-coqoshv tmp/usr/bin/vmctrl-coqoshv
+
+         mkdir -p tmp1/android-core
+         cp ${BOB_DEP_PATHS[system::bsp::ext-renesas-h3-android]}/android.kernel tmp1/android-core/android.kernel
+         cp ${BOB_DEP_PATHS[system::bsp::ext-renesas-h3-android]}/android.dtb tmp1/android-core/android.dtb
+
+      packageScript: |
+         rsync -a --delete $1/build_result/coqoshv.u $1/tools/periscope .
+         rsync -a --delete $1/build_result/coqoshv.img $1/tools/periscope .
+         bl2_compress coqoshv.img
+
+         buildSwupModule -n 'hypervisor-lib' -p "emmc.system.bsp" -o 'system.bsp:ext-opensynergy-lib' -f $1/tmp -- \
+                -U Depmod=true \
+                -U "Partition=rootfs_ro"
+         rm -rf tmp
+
+         buildSwupModule -n 'android-core' -p "emmc.system.bsp" \
+                -m 'fdbus,fdbus,0755,/android-core$'       \
+                -m 'fdbus,fdbus,0755,/android-core/.*'     \
+                -o 'system:bsp:ext-opensynergy' -f $1/tmp1 -- \
+                -U Depmod=true \
+                -U "Partition=rootfs_ro"
+
+         rm -rf tmp1

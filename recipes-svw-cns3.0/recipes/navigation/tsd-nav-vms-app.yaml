@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+  - system::ext-boost-dev
+  - system::ext-boost-system-dev
+  - navigation::ext-hitachi-vms-lib-dev
+  - navigation::tsd-nav-utils-api-dev
+  - navigation::tsd-nav-utils-dev
+  - navigation::tsd-nav-sdk-common-api-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - connectivity::usb::tsd-usb-api-dev
+  - use: []
+    depends:
+      - system::ext-boost-target
+      - navigation::ext-hitachi-vms-lib-target
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.vms.app.git
+   dir: tsd.nav.vms.app
+   branch: master_mqb_sop1_eu
+
+buildScript: |
+   build(){
+      buildenvBuildAll
+   }
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_werror_sanitize]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     target: # Executable
+        buildScript: |
+           build
+        packageScript: |
+           buildenvPackageTarget
+           d=$(mktemp -d)
+           rsync -a --delete --exclude ".debug" ./ $d
+           buildSwupModule -n "nav-vms-app" \
+              -p "emmc.navigation" \
+              -o "navigation:tsd-nav-vms-app " -f $d -- \
+              -U "Partition=rootfs_ro"
+           rm -rf $d
+        provideDeps: ['*-target']
+  unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

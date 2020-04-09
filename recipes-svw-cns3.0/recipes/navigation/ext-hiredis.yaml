@@ -1,0 +1,42 @@
+inherit: [install, make]
+
+metaEnvironment:
+   PKG_LICENSE: "BSD-3-Clause"
+   PKG_NAME: "freeiamge"
+   PKG_VERSION: "0.14.0"
+   PKG_RESPONSIBLE: "Navigation-Service Cloud"
+
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/redis/hiredis
+   dir: ext.hiredis
+   branch: master
+   tag: v0.14.0
+
+buildVars: [PKG_VERSION, LIBDIR, CC, AR, RANLIB]
+buildTools: [toolchain]
+buildScript: |
+   mkdir -p build install
+
+   pushd build
+   rsync -a --delete $1/ext.hiredis/ .
+   makeParallel AR=$AR CC=$CC RANLIB=$RANLIB
+   # Make sure we link against the shared lib #504648
+   #ln -sf hiredis.so.${PKG_VERSION} hiredis.so
+   makeParallel install PREFIX=${PWD}/../install/usr AR=$AR CC=$CC RANLIB=$RANLIB
+   popd
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         installPackageDev $1/install/
+         tsd-buildenv-create-shim.sh -p usr -L lib -l hiredis -l hiredis -I include ext.hiredis
+
+   target:
+      packageScript: |
+         rsync -r --links --delete $1/install/ .
+         shopt -s extglob
+         rm -rf usr/!(lib|lib64)
+         installStripAll usr

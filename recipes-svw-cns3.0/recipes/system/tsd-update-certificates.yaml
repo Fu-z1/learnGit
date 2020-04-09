@@ -1,0 +1,58 @@
+inherit: [packing-image]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "SAL and Security"
+
+environment:
+   UPDATE_PATH: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),developer,customer)"
+
+buildScript: |
+   rsync -a --delete $1/*/* .
+
+multiPackage:
+   android-auto:
+      environment:
+         ENCRYPTION_KEY: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),11,12)"
+      packageVars: [ENCRYPTION_KEY]
+      multiPackage:
+         clientCert:
+            checkoutSCM:
+               scm: url
+               url: ${DEFAULT_DOWNLOAD_SCM_URL}src/connect/android_auto/certificates/${UPDATE_PATH}/${ENCRYPTION_KEY}/AAClientCert.pem
+               dir: clientCert
+               digestSHA1: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),d154a5cf0cbf75b95c6d3307023e3fd0f923fd5c,b2c8d41f0111476e4a3e03f9823c7c24f4910951)"
+            packageScript: |
+               buildSwupImage \
+                  --packageName android-auto-clientCert \
+                  --file $1/AAClientCert.pem \
+                  -U "Destination=/run/tsd.authentic.fs/sal" \
+                  -U "Partition=.." \
+                  -U "Encryption=${ENCRYPTION_KEY}"
+
+         rootCert:
+            checkoutSCM:
+               scm: url
+               url: ${DEFAULT_DOWNLOAD_SCM_URL}src/connect/android_auto/certificates/${UPDATE_PATH}/${ENCRYPTION_KEY}/AARootCert.pem
+               dir: rootCert
+               digestSHA1: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),9aa386044a7b722db7f726ed0138702301e86296,c9c31ec1b678c387da758b233b3ebb24194a04b8)"
+            packageScript: |
+               buildSwupImage \
+                  --packageName android-auto-rootCert \
+                  --file $1/AARootCert.pem \
+                  -U "Destination=/run/tsd.authentic.fs/sal" \
+                  -U "Partition=.." \
+                  -U "Encryption=${ENCRYPTION_KEY}"
+
+         privateKey:
+            checkoutSCM:
+               scm: url
+               url: ${DEFAULT_DOWNLOAD_SCM_URL}src/connect/android_auto/certificates/${UPDATE_PATH}/${ENCRYPTION_KEY}/AAPrivateKey.key
+               dir: privateKey
+               digestSHA1: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer),5bd9fcb46f29b31d475c175d67ec9a24c3b01f42,57b2a48d1f07e632b403a28bcb011149b8e0bfad)"
+            packageScript: |
+               buildSwupImage \
+                  --packageName android-auto-privateKey \
+                  --file $1/AAPrivateKey.key \
+                  -U "Destination=/run/tsd.authentic.fs/sal" \
+                  -U "Partition=.." \
+                  -U "Encryption=${ENCRYPTION_KEY}"

@@ -1,0 +1,114 @@
+inherit: [install, make, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-only OR GPL-3.0-only)"
+   PKG_VERSION: "2.78"
+   #PKG_NAME: "dnsmasq"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#    PKG_VERSION: "v2.78"
+   PKG_NAME: "ext.dnsmasq"
+   PKG_INSTALL_DIR: "Install"
+
+depends:
+  - connectivity::networking::ext-libnetfilter-conntrack-dev
+  - use: []
+    depends:
+      # Runtime dependendies
+      - connectivity::networking::ext-libnetfilter-conntrack-target
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.dnsmasq.git
+    dir: ${PKG_NAME}
+    tag: v2.78_PCC1.6
+
+buildVars: [PKG_NAME, PKG_INSTALL_DIR, TARGET_OS, AR, CC, CXX, LD, CPP, LIBDIR]
+buildScript: |
+   # Definition of common stuff for building and installing the ISC DHCP server
+   TARGET_DIRS=(
+      dist/usr/bin
+   )
+
+   # Synching sources from source directory
+   rm -rf *
+   rsync -a --delete $1/${PKG_NAME}/* ${PWD}
+
+   # Preparing build and installation process
+   mkdir -p ${PKG_INSTALL_DIR}
+   # cp PCC/bind/* bind/
+
+
+   CFLAGS="${CFLAGS:+$CFLAGS}"
+   CXXFLAGS="${CXXFLAGS:+$CXXFLAGS}"
+   LDFLAGS="${LDFLAGS:+$LDFLAGS}"
+
+   # Gather all include and library paths.
+   for i in "${_AUTOTOOLS_DEP_PATHS[@]:1}" ; do
+       if [[ -d "$i/usr/include" ]] ; then
+          CFLAGS+=" -I$i/usr/include"
+          CXXFLAGS+=" -I$i/usr/include"
+       fi
+       if [[ -d "$i/${LIBDIR}" ]] ; then
+           if [[ ${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0} != 0 ]]; then
+               LDFLAGS+=" -L$i/${LIBDIR} -Wl,-rpath-link=$i/${LIBDIR},-rpath=$i/${LIBDIR} -Wl,--disable-new-dtags"
+           else
+               LDFLAGS+=" -L$i/${LIBDIR} -Wl,-rpath-link=$i/${LIBDIR}"
+           fi
+       fi
+       if [[ -d "$i/usr/${LIBDIR}" ]] ; then
+           if [[ ${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0} != 0 ]]; then
+               LDFLAGS+=" -L$i/usr/${LIBDIR} -Wl,-rpath-link=$i/usr/${LIBDIR},-rpath=$i/usr/${LIBDIR} -Wl,--disable-new-dtags"
+           else
+               LDFLAGS+=" -L$i/usr/${LIBDIR} -Wl,-rpath-link=$i/usr/${LIBDIR}"
+           fi
+       fi
+       if [[ -d "$i/usr/${LIBDIR}/pkgconfig" ]] ; then
+           PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/${LIBDIR}/pkgconfig"
+       fi
+       if [[ -d "$i/usr/share/pkgconfig" ]] ; then
+           PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}$i/usr/share/pkgconfig"
+       fi
+   done
+
+   [ -z "${CFLAGS:+true}" ] || export CFLAGS
+   [ -z "${CXXFLAGS:+true}" ] || export CXXFLAGS
+   [ -z "${LDFLAGS:+true}" ] || export LDFLAGS
+   [ -z "${PKG_CONFIG_PATH:+true}" ] || export PKG_CONFIG_PATH
+
+
+
+
+   # Configuring, patching and building the package
+   make clean
+   make PREFIX=$(pwd)/${PKG_INSTALL_DIR} CC=${CC} install
+
+   # Copying binaries to dist directory
+   mkdir -p "${TARGET_DIRS[@]}"
+   cp -R ${PKG_INSTALL_DIR}/sbin/* dist/usr/bin/
+
+   # Copying MIB3 specific configurations and pre-requisites
+   cp -R PCC/Configs/* dist/
+
+multiPackage:
+   dev:
+#      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         installPackageDev "$1/dist"
+#         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l dhcpctl -l omapi -I include ext.dhcp
+
+   target:
+      packageScript: |
+         installPackageTarget "$1/dist"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-dnsmasq" \
+            -p "emmc.connectivity.networking" \
+            -m 'networking,networking,0700,/var/lib/tsd.networking.mib3$' \
+            -m 'networking,networking,0700,/var/lib/tsd.networking.mib3/dhcpd.leases$' \
+            -o "connectivity.networking:ext-dnsmasq " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

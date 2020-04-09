@@ -1,0 +1,46 @@
+inherit: [buildenv, packing-module]
+
+#depends:
+
+checkoutVars: [PKG_NAME, PKG_LOCATION]
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/ext.autonavi.updatemanager.git
+   dir: ext.autonavi.updatemanager
+   branch: master
+
+buildScript: |
+   copy_shared_lib() {
+      mkdir -p dist/usr/${LIBDIR}
+      if [[ "${TARGET_TYPE}" != host ]]; then
+         cp $1/ext.autonavi.updatemanager/Linux/armv8/libUpdateManager.so*   dist/usr/${LIBDIR}/libUpdateManager.so
+      else
+         cp $1/ext.autonavi.updatemanager/Linux/X86-64/libUpdateManager.so*   dist/usr/${LIBDIR}/libUpdateManager.so
+      fi
+   }
+
+multiPackage:
+
+   dev:
+      buildVars: [TARGET_TYPE]
+      buildScript: |
+         mkdir -p dist/usr/include/
+         cp -ra $1/ext.autonavi.updatemanager/Include/*     dist/usr/include/
+         copy_shared_lib $@
+
+      packageTools: [buildenv]
+      packageScript: |
+         buildenvPackageDev install
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l UpdateManager -I include ext.autonavi.updatemanager
+   target:
+      buildVars: [TARGET_TYPE]
+      buildScript: copy_shared_lib $@
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-autonavi-updatemanager" \
+            -p "emmc.navigation" \
+            -o "navigation:ext-autonavi-updatemanager " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

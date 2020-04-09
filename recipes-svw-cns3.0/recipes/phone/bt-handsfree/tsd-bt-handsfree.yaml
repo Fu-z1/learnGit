@@ -1,0 +1,63 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - phone::bt-middleware::tsd-blueware-api-dev
+ - phone::tsd-parser-phonenumber-dev
+ - name: system::ext-boost-dev
+   if: $(ne,${TSD_BUILDENV_ENABLE_TEST_TARGETS:-0},0)
+ - system::tsd-common-dev
+ - libs::tsd-common-stm-dev
+ - phone::tsd-phone-common-dev
+ - system::tsd-threadmessages-dev
+ - system::tsd-clock-mib3-dev
+ - use: []
+   depends:
+    - phone::bt-middleware::tsd-blueware-api-target
+    - phone::tsd-parser-phonenumber-target
+    - system::ext-boost-target
+    - system::tsd-common-target
+    - libs::tsd-common-stm-target
+    - phone::tsd-phone-common-target
+    - system::tsd-threadmessages-target
+    - system::tsd-clock-mib3-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-telephony/tsd.bt.handsfree.git
+   dir: tsd.bt.handsfree
+#  tag: mqb_sop1_eu-1.61.4
+   branch: main/cns3.0_sop1.0_1520_dev
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "bt-handsfree" \
+            -p "emmc.phone.bt-handsfree" \
+            -o "phone.bt-handsfree:tsd-bt-handsfree " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

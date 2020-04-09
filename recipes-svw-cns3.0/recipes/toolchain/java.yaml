@@ -1,0 +1,25 @@
+environment:
+   TOOLCHAIN_NAME: "jre-8u151-linux-x64.tar.gz"
+   TOOLCHAIN_HASH: "7d146effe54a33cfa3cd2b1314c1f9234e0d9545"
+   URL:            "${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/java/"
+
+shared: True
+
+checkoutSCM:
+   scm: url
+   url: ${URL}${TOOLCHAIN_NAME}
+   digestSHA1: ${TOOLCHAIN_HASH}
+   extract: no
+
+buildVars: [TOOLCHAIN_NAME]
+buildScript: |
+   ln -sf $1/${TOOLCHAIN_NAME} .
+
+packageScript: |
+   tar xzf $1/${TOOLCHAIN_NAME}
+   mv jre*/* .
+
+
+provideTools:
+   java:
+      path: "bin"

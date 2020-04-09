@@ -1,0 +1,23 @@
+inherit: [make, packing-module]
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/bradfa/flashbench.git
+   branch: dev
+
+buildVars: [CC, CFLAGS, LDFLAGS]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ ${PWD}/
+   makeParallel
+
+packageScript: |
+   mkdir -p usr/bin
+   cp $1/flashbench usr/bin
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-flashbench" \
+      -p "emmc.test" \
+      -o "test:ext-flashbench " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

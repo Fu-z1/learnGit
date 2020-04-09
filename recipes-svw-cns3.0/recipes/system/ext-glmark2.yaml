@@ -1,0 +1,70 @@
+inherit: [packing-module]
+depends:
+  - libs::ext-libjpeg-dev
+  - libs::ext-libpng-dev
+  - libs::ext-libffi-dev
+  - libs::ext-zlib-dev
+  - system::ext-libcap-dev
+  - system::ext-libdrm-dev
+  - system::ext-systemd-dev
+  - system::ext-wayland-dev
+  - system::bsp::ext-gbm-dev
+  - system::bsp::ext-opengl-dev
+  - system::bsp::ext-wayland-kms-dev
+  - system::bsp::ext-weston-dev
+  - use: []
+    depends:
+      - libs::ext-libjpeg-target
+      - libs::ext-libpng-target
+      - libs::ext-libffi-target
+      - libs::ext-zlib-target
+      - system::ext-libcap-target
+      - system::ext-libdrm-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/glmark2.git
+   tag: 1.3.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [SYSROOT, CC, CXX, LIBDIR, CFLAGS, CXXFLAGS, LDFLAGS]
+buildTools: [toolchain, pkg-config]
+buildScript: |
+   export SYSROOT="${BOB_TOOL_PATHS[toolchain]}/${SYSROOT}"
+   for dep in "${BOB_DEP_PATHS[@]}" ; do
+      test -d "${dep}/usr/${LIBDIR}/pkgconfig" && PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}${dep}/usr/${LIBDIR}/pkgconfig"
+   done
+   export PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}${SYSROOT}/usr/lib/pkgconfig:${SYSROOT}/usr/share/pkgconfig"
+   export PKG_CONFIG_DIR=
+   PKG_CONFIG_LIBS="libpng libffi zlib libcap libdrm libudev wayland-kms wayland-server gbm egl glesv2 wayland-client weston"
+   export CXXFLAGS="$(${BOB_TOOL_PATHS[pkg-config]}/pkg-config --cflags ${PKG_CONFIG_LIBS})"
+   export CXXFLAGS="${CXXFLAGS} -I${BOB_DEP_PATHS[libs::ext-libjpeg-dev]}/usr/include"
+   export CXXFLAGS="${CXXFLAGS} -I${BOB_DEP_PATHS[system::bsp::ext-weston-dev]}/usr/include"
+   export CFLAGS="$(${BOB_TOOL_PATHS[pkg-config]}/pkg-config --cflags glesv2)"
+   export CFLAGS="${CFLAGS} -I${BOB_DEP_PATHS[libs::ext-libjpeg-dev]}/usr/include"
+   export CFLAGS="${CFLAGS} -I${BOB_DEP_PATHS[system::bsp::ext-weston-dev]}/usr/include"
+   export CPPFLAGS="-DEXT_LIBJPEG_DLLEXPORT="
+   LDFLAGS="$(${BOB_TOOL_PATHS[pkg-config]}/pkg-config --libs ${PKG_CONFIG_LIBS})"
+   export LDFLAGS="${LDFLAGS} -L${BOB_DEP_PATHS["system::bsp::ext-opengl-dev"]}/usr/${LIBDIR} -ltqvalidate -lIMGegl -lsrv_um -lusc -lglslcompiler"
+   export LDFLAGS="${LDFLAGS} -L${BOB_DEP_PATHS[libs::ext-libjpeg-dev]}/usr/${LIBDIR} -ljpeg"
+   export LDFLAGS="${LDFLAGS} -L${BOB_DEP_PATHS[system::bsp::ext-weston-dev]}/usr/${LIBDIR} -lwayland-ivi-application"
+   rsync --exclude=".git" -a --delete $1/ ${PWD}
+   rm -rf build
+   ./waf configure --with-flavors=wayland-glesv2
+   ./waf clean
+   ./waf
+
+packageScript: |
+   DIST_DIR=$PWD
+   pushd $1
+   ./waf install --destdir=$DIST_DIR
+   popd
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-glmark2" \
+      -p "emmc.system" \
+      -o "system:ext-glmark2 " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps: ["*-target"]

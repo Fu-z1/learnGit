@@ -1,0 +1,45 @@
+inherit: [packing-module, patch]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-Vorintegration"
+
+multiPackage:
+   high-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "high"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_REGION=rdw,SW_HMI_BRAND=sk,HW_DISPLAY_VARIANT=1280640,SW_HMI_PROJECT=MQB)"
+
+      checkoutSCM:
+         scm: url
+         url: ${DEFAULT_DOWNLOAD_SCM_URL}src/hmi/hmi_deliveries/HMI_H40.73.65/ext.skoda.rdw.high.tar.gz
+         digestSHA1: "68c720da872b7069b943d9d04b98e393ad58d4ea"
+
+   low-pkg:
+      privateEnvironment:
+         VARIANT_NAME: "low"
+         VARIANT_LIST: "$(getMatchingVariantStrings,SW_HMI_REGION=rdw,SW_HMI_BRAND=sk,HW_DISPLAY_VARIANT=800480,SW_HMI_PROJECT=MQB)"
+
+      checkoutSCM:
+         scm: url
+         url: ${DEFAULT_DOWNLOAD_SCM_URL}src/hmi/hmi_deliveries/HMI_H40.73.65/ext.skoda.rdw.low.tar.gz
+         digestSHA1: "8d1d8f557083416c1033a7b89630927ef2a11835"
+
+checkoutDeterministic: true
+
+buildScript: |
+   rm -rf *
+   ln -sf $1/* .
+
+packageVars: [VARIANT_NAME, VARIANT_LIST]
+packageScript: |
+   mkdir -p tmp/tsd
+   rsync -a --delete $1/ext.skoda.rdw.${VARIANT_NAME}/tsd/* tmp/tsd
+   mkdir -p tmp/var/lib/hmi
+   buildSwupModule -n "pcc-hmi-sk-rdw" -p "emmc.hmi" -v "${VARIANT_NAME}" \
+       -m 'display,display,0700,/var/lib/hmi$'    \
+       -m 'display,display,0700,/var/lib/hmi/.*'  \
+       -o 'hmi::pcc-hmi-sk-rdw' -f tmp -- \
+       --variantList $VARIANT_LIST \
+       --requiredBy '{"Packages":[{"PackageName":"prescripts.hmi-delete","Flags":"Selected"},{"PackageName":"scripts.set-hmi-files","Flags":"Selected"},{"PackageName":"emmc.hmi.ext-zulu","Flags":"Selected"}]}' \
+       -U "Partition=rootfs_ro"
+   rm -rf tmp

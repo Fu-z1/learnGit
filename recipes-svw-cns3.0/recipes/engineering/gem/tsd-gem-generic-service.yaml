@@ -1,0 +1,30 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::tsd-common-dev
+  - engineering::gem::tsd-gem-generic-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-gem/tsd.gem.generic.service.git
+   dir: tsd.gem.generic.service
+   tag: 1.2.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+         rsync -a --delete $1/tsd.gem.generic.service/depl/commonapi.ini dist/usr/bin/commonapi.ini
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

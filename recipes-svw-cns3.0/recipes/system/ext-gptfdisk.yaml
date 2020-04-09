@@ -1,0 +1,40 @@
+inherit: [autotools,patch]
+
+privateEnvironment:
+   PKG_VERSION: "1.0.3"
+
+depends:
+   - system::ext-libpopt-static-dev
+   - system::ext-libuuid
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-gptfdisk/gptfdisk-${PKG_VERSION}.tar.gz
+   digestSHA256: 89fd5aec35c409d610a36cb49c65b442058565ed84042f767bba614b8fc91b5c
+
+checkoutDeterministic: True
+checkoutScript: |
+   pushd gptfdisk-${PKG_VERSION}
+      patchApplySeries -p0 $<<ext-gptfdisk/gptfdisk-1.0.3.patch>>
+   popd
+
+buildVars: [CXX, CXXFLAGS, LD, LIBDIR]
+buildScript: |
+   rsync -a --delete $1/gptfdisk-${PKG_VERSION}/ .
+
+   export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS}"
+   CXXFLAGS+=" -I${BOB_DEP_PATHS[system::ext-libpopt-static-dev]}/usr/include"
+   CXXFLAGS+=" -I${BOB_DEP_PATHS[system::ext-libuuid]}/usr/include"
+   export LDFLAGS="${LDFLAGS:+$LDFLAGS}"
+   LDFLAGS+=" -L${BOB_DEP_PATHS[system::ext-libpopt-static-dev]}/usr/$LIBDIR"
+   LDFLAGS+=" -L${BOB_DEP_PATHS[system::ext-libuuid]}/usr/$LIBDIR"
+   LDFLAGS+=" -static -static-libstdc++"
+
+   make gdisk sgdisk
+
+   mkdir -p dist/sbin
+   cp gdisk sgdisk dist/sbin/
+
+packageScript: |
+   autotoolsPackageTarget $1

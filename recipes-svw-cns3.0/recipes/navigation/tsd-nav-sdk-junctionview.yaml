@@ -1,0 +1,53 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Kartendarstellung"
+
+depends:
+  - navigation::tsd-nav-sdk-junctionview-api-dev
+  - navigation::tsd-nav-sdk-svgrasterizer-dev
+  - navigation::tsd-nav-middleware-interface-dev
+  - navigation::tsd-nav-sdk-imageservices-dev
+  - use: []
+    depends:
+      - navigation::tsd-nav-middleware-interface-target
+  - if: "$(eq,${TSD_NAV_SDK_JUNCTIONVIEW_BUILD_APPS:-0},1)"
+    depends:
+      - libs::tsd-rasterimage-dev
+      - navigation::tsd-nav-sdk-mapdataservice-dev
+      - navigation::tsd-nav-sdk-mapdataservice-api-dev
+      - use: []
+        depends:
+          - navigation::tsd-nav-middleware-nds-2_5_2-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.junctionview.git
+   dir: tsd.nav.sdk.junctionview
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildScript: |
+   build(){
+   buildenvBuildAll \
+      -DTSD_BUILDENV_ENABLE_APP_TARGETS=TSD_NAV_SDK_JUNCTIONVIEW_BUILD_APPS \
+      -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=TSD_NAV_SDK_JUNCTIONVIEW_BUILD_APPS \
+      -DTSD_BUILDENV_TSD_NAV_SDK_JUNCTIONVIEW_BUILD_APPS=${TSD_NAV_SDK_JUNCTIONVIEW_BUILD_APPS:-0}
+   }
+
+multiPackage:
+   ? ""
+   :
+      inherit: [navi_compflags_werror_sanitize]
+      #inherit: [navi_compflags_sanitize]
+      multiPackage:
+       dev:
+          buildScript: build $@
+          packageScript: |
+             buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

@@ -1,0 +1,39 @@
+inherit: [packing-module]
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+environment:
+   PKG_DATE: "2018-02-06"
+   PKG_VERSION: "3_5_PCC_VW_MIB3_MQB_FinalDelivery"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-nuance/icc/${PKG_DATE}_ICC_${PKG_VERSION}.zip
+   digestSHA1: "0e69d5fc9dde8126f171017a8a197509d5acbece"
+
+buildVars: [PKG_DATE, PKG_VERSION]
+buildScript: |
+   rsync -a --delete $1/ .
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         mkdir -p ./usr/include
+         mkdir -p ./usr/lib
+         rsync -a --delete $1/header/ ./usr/include
+         rsync -a --delete $1/lib/ ./usr/lib
+         tsd-buildenv-create-shim.sh -p usr -L lib -l icc -I include ext.icc
+
+   target:
+      packageScript: |
+         mkdir -p ./usr/lib
+         rsync -a --delete $1/lib/ ./usr/lib
+         mkdir -p ./usr/share/audio/icc/
+         rsync -a --delete $1/parameter/ ./usr/share/audio/icc
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-icc" \
+            -p "emmc.audio.micprg" \
+            -o "audio.microphoneprocessing:ext-icc " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

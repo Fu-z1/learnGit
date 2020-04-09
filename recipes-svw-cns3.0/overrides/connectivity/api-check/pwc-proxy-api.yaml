@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-bsp/tsd.pwc-proxy.api.git"
+     del: [commit, tag]
+     set:
+        branch: "featurePwcProxyAPI08_09_17"
+        commit: "d47ec5ba0b1ebec5dcd561d735fa3a59d58d3d97"

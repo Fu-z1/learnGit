@@ -1,0 +1,46 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+   
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::ext-boost-dev
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - navigation::tsd-nav-diagnosis-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - use: []
+    depends:
+     - system::tsd-common-target
+     - system::tsd-common-daemon-target
+     - system::ext-boost-target
+     - communication::ext-commonapi-runtime-target
+     - communication::tsd-communication-binding-target
+     - navigation::tsd-nav-diagnosis-api-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.diagnosis.proxy.git
+    dir: tsd.nav.diagnosis.proxy
+    #tag: mqb_sop1_eu-150.0.1      #navi-src (part of the release)
+    branch: main/svw_cns3.0_1520_dev
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+
+   target: # Executable
+      inherit: [navi_compflags_werror_sanitize]
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "nav-diagnosis-proxy" \
+            -p "emmc.navigation" \
+            -o "navigation:tsd-nav-diagnosis-proxy " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

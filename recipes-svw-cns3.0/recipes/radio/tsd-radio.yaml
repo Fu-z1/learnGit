@@ -1,0 +1,262 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Application and Services"
+
+depends:
+  - hmi::tsd-dsi-cpp-dev
+  - hmi::tsd-dsi-haswrapper-dev
+  - hmi::tsd-i18n-mib3-dev
+  - radio::tsd-common-networksvr-dev
+  - radio::tsd-common-timer-dev
+  - radio::tsd-communication-modaptor-dev
+  - radio::tsd-radio-eventqueue-dev
+  - radio::tsd-stationdb-api-dev
+  - radio::tsd-radio-middleware-dev
+  - radio::tsd-radio-tss-api-dev
+  - radio::tsd-radio-vics-api-dev
+  - system::tsd-common-dev
+  - libs::tsd-common-stm-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-infotainmentrecorder-api-dev
+  - system::tsd-drivers-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-common-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+  - engineering::gem::tsd-gem-generic-api-dev
+  - media::pictureserver::tsd-media-picserver-dev
+  - media::mediaapplication::tsd-media-mib3-picturelink-dev
+  - media::mountingservice::tsd-media-mount-status-api-dev
+  - onlineservices::tsd-onlineservices-backendcomcore-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+  - libs::ext-libxml2-dev
+  - system::tsd-common-guid-dev
+  - system::tsd-dataformats-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - system::tsd-cppsqlite-dev
+  - onlineservices::tsd-onlineservices-framework-dev
+  - onlineservices::tsd-onlineservices-diagnosis-api-dev
+  - onlineservices::tsd-onlineservices-eso-clientsideswitching-dev
+  - connectivity::networking::tsd-networking-api-dev
+  - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - use: []
+    depends:
+      - hmi::tsd-dsi-cpp-target
+      - hmi::tsd-i18n-mib3-target
+      - radio::tsd-common-networksvr-target
+      - radio::tsd-common-timer-target
+      - radio::tsd-communication-modaptor-target
+      - radio::tsd-radio-eventqueue-target
+      - radio::tsd-stationdb-api-target
+      - radio::tsd-radio-middleware-target
+      - radio::tsd-radio-tss-api-target
+      - radio::tsd-radio-vics-api-target
+      - system::tsd-common-target
+      - libs::tsd-common-stm-target
+      - system::tsd-common-daemon-target
+      - system::tsd-infotainmentrecorder-api-target
+      - basic-services::rsi-library::tsd-rsi-client-target
+      - engineering::gem::tsd-gem-generic-api-target
+      - media::pictureserver::tsd-media-picserver-target
+      - media::mediaapplication::tsd-media-mib3-picturelink-target
+      - media::mountingservice::tsd-media-mount-status-api-target
+      - onlineservices::tsd-onlineservices-backendcomcore-target
+      - onlineservices::tsd-onlineservices-diagnosis-api-target
+      - onlineservices::tsd-onlineservices-eso-clientsideswitching-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+      - libs::ext-libxml2-target
+      - system::tsd-dataformats-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - system::tsd-cppsqlite-target
+      - onlineservices::tsd-onlineservices-framework-target
+      - connectivity::networking::tsd-networking-api-target
+      - audio::audiomanager::tsd-audio-sourcecontrol-mib3-api-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.adaption.mib3.git
+    dir: tsd.radio.adaption.mib3
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.rse.git
+    dir: tsd.radio.rse
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.app.git
+    dir: tsd.radio.app
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.action.git
+    dir: tsd.radio.core.action
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.announcement.git
+    dir: tsd.radio.core.announcement
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.bgwork.git
+    dir: tsd.radio.core.bgwork
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.database.git
+    dir: tsd.radio.core.database
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.datareceiver.git
+    dir: tsd.radio.core.datareceiver
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.decoder.fic.git
+    dir: tsd.radio.core.decoder.fic
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.decoder.rds.git
+    dir: tsd.radio.core.decoder.rds
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.engwork.git
+    dir: tsd.radio.core.engwork
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.fgwork.git
+    dir: tsd.radio.core.fgwork
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.frequencytable.git
+    dir: tsd.radio.core.frequencytable
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.grouping.git
+    dir: tsd.radio.core.grouping
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.linking.git
+    dir: tsd.radio.core.linking
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.linksource.git
+    dir: tsd.radio.core.linksource
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.mrcontrol.git
+    dir: tsd.radio.core.mrcontrol
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.online.git
+    dir: tsd.radio.core.online
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.online.types.git
+    dir: tsd.radio.core.online.types
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.stationlist.git
+    dir: tsd.radio.core.stationlist
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.utils.git
+    dir: tsd.radio.core.utils
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.observer.git
+    dir: tsd.radio.observer
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.strategy.git
+    dir: tsd.radio.strategy
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.communication.git
+    dir: tsd.radio.middleware.communication
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.middleware.communication.setup.git
+    dir: tsd.radio.middleware.communication.setup
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.types.git
+    dir: tsd.radio.core.types
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.slideshow.git
+    dir: tsd.radio.core.slideshow
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.traffic.vics.git
+    dir: tsd.radio.core.traffic.vics
+    branch: cns_mqb_sop1
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.core.system.git
+    dir: tsd.radio.core.system
+    branch: cns_mqb_sop1
+
+environment:
+   MARKET: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_TUNER_SETUP_REGION,EUROPE),'eu',\
+            $(if-then-else,$(flagIsSet,${VARIANTS},SW_TUNER_SETUP_REGION,JAPAN),'jp',\
+            $(if-then-else,$(flagIsSet,${VARIANTS},SW_TUNER_SETUP_REGION,KOREA),'kr',\
+            $(if-then-else,$(flagIsSet,${VARIANTS},SW_TUNER_SETUP_REGION,CHINA),'cn',\
+            $(if-then-else,$(flagIsSet,${VARIANTS},SW_TUNER_SETUP_REGION,TAIWAN),'cn',\
+            $(if-then-else,$(flagIsSet,${VARIANTS},SW_TUNER_SETUP_REGION,RDW1),'rdw',\
+            $(if-then-else,$(flagIsSet,${VARIANTS},SW_TUNER_SETUP_REGION,RDW2),'rdw',\
+            '')))))))"
+   BRAND: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_RADIO_CONFIGURATION,CONFIG_VW),'vw',\
+           $(if-then-else,$(flagIsSet,${VARIANTS},SW_RADIO_CONFIGURATION,CONFIG_SK),'skoda',\
+           ''))"
+   PROJECT: "$(if-then-else,$(or,$(flagIsSet,${VARIANTS},Region,CHINA), \
+                                 $(flagIsSet,${VARIANTS},Region,TAIWAN), \
+                                 $(flagIsSet,${VARIANTS},Region,HONGKONG_MACAO)),'CNS',\
+             $(if-then-else,$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,MQB),'MQB',\
+             $(if-then-else,$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W),'37W','')))"
+
+multiPackage:
+   target:
+      buildVars: [BRAND,MARKET,PROJECT]
+      buildScript: |
+         buildenvBuildAll -DPROJECT=${PROJECT}
+         mkdir -p $PWD/dist/etc/tsd.radio.app/configuration
+
+         rsync --exclude=".git*" -a --delete $1/tsd.radio.adaption.mib3/res/${PROJECT}/${MARKET}/${BRAND}/configuration/ $PWD/dist/etc/tsd.radio.app/configuration
+         if [[ $MARKET   == "jp" ]]; then
+           rsync --exclude=".git*" -a --delete $1/tsd.radio.adaption.mib3/res/vics/ $PWD/dist/etc/tsd.radio.app/vics;
+         fi
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p var/lib/tsd.radio.app
+         mkdir -p etc/tsd.radio.app
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "radio" \
+            -p "emmc.radio" \
+            -m 'radio,radio,0770,/var/lib/tsd.radio.app$'   \
+            -m 'radio,radio,0770,/var/lib/tsd.radio.app/.*' \
+            -m 'radio,radio,0770,/etc/tsd.radio.app$'   \
+            -m 'radio,radio,0770,/etc/tsd.radio.app/.*' \
+            -o "radio:tsd-radio " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildVars: [PROJECT]
+      buildScript: buildenvTestAll -DPROJECT=${PROJECT}
+      packageScript: buildenvPackageTests
+
+   swittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildVars: [PROJECT]
+      buildScript: buildenvTestTargets -DPROJECT=${PROJECT}
+         tsd.radio.core.decoder.fic.test.ModuleSwitSuite
+         tsd.radio.core.action.test.ModuleSwitSuite
+         tsd.radio.core.fgwork.test.ModuleSwitSuite
+         tsd.radio.adaption.mib3.test.ModuleSwitSuite
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

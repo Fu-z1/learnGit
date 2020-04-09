@@ -1,0 +1,24 @@
+inherit: [make, packing-module]
+
+checkoutSCM:
+   scm: git
+   url: https://github.com/mturquette/memtest.git
+
+buildVars: [CROSS_COMPILE, CC]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   make
+
+packageScript: |
+   mkdir -p ./tsd/tools
+   cp $1/mtest ./tsd/tools/
+   cp $1/fillmem ./tsd/tools/
+   cp $1/mmap* ./tsd/tools
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-memtest" \
+      -p "emmc.test" \
+      -o "test:ext-memtest " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

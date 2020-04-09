@@ -1,0 +1,57 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - system::ext-sqlite-dev
+  - system::tsd-common-dev
+  - basic-services::persistence::tsd-persistence-core-dev
+  - use: []
+    depends:
+      - system::ext-sqlite-target
+      - system::tsd-common-target
+      - basic-services::persistence::tsd-persistence-core-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.persistence.emmc.git
+   dir: tsd.persistence.emmc
+   tag: mqb_sop1_eu-3.0.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_PATH, SW_MANUFACTURING]
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} \
+                          -DTSD_PERSISTENCE_PATH=${TSD_PERSISTENCE_PATH} \
+                          -DSW_MANUFACTURING=${SW_MANUFACTURING:-0}
+
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_PATH, SW_MANUFACTURING]
+      buildScript: |
+         buildenvBuildAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} \
+                          -DTSD_PERSISTENCE_PATH=${TSD_PERSISTENCE_PATH} \
+                          -DSW_MANUFACTURING=${SW_MANUFACTURING:-0}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "persistence-emmc" \
+            -p "emmc.basic-svcs.persistence" \
+            -o "basic-services.persistence:tsd-persistence-emmc " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildVars: [TSD_PERSISTENCE_EMMC, TSD_PERSISTENCE_PATH]
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll -DTSD_PERSISTENCE_EMMC=${TSD_PERSISTENCE_EMMC:-0} -DTSD_PERSISTENCE_PATH=${TSD_PERSISTENCE_PATH:-0}
+      packageScript: buildenvPackageDoc

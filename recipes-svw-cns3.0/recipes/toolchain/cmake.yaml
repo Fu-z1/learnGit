@@ -1,0 +1,48 @@
+shared: True
+
+environment:
+   PKG_VERSION: "3.6.2"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/cmake/cmake-${PKG_VERSION}-Linux-x86_64.tar.gz
+   digestSHA1: dd9d8d57b66109d4bac6eef9209beb94608a185c
+   extract: no
+
+buildScript: |
+   ln -sf $1/*tar.gz .
+
+packageVars: [PKG_VERSION]
+packageScript: |
+   BUILDDIR=$1
+   if type -p cmake ; then
+      # get cmake version
+      V=$(cmake --version | head -n1 | cut '-d ' -f3)
+   else
+      # not found at all
+      V="0.0.0"
+   fi
+
+   # Version must be exactly $PKG_VERSION
+   mkdir -p bin
+   if [[ "$V" = "$PKG_VERSION" ]] ; then
+      echo "Correct cmake version found on system. Moving on..."
+      ln -sf "$(type -P cmake)" bin/cmake
+   else
+      # look for correct cmake in various places
+      shopt -s nullglob
+      set -- {/opt,~/opt,~/toolchains}/cmake-${PKG_VERSION}*
+      shopt -u nullglob
+      if [ $# -ge 1 ] ; then
+         ln -sf "$1/bin/cmake" bin/cmake
+      else
+         tar xzf $BUILDDIR/*tar.gz
+         ln -sf "../cmake-${PKG_VERSION}-Linux-x86_64/bin/cmake" bin/cmake
+      fi
+   fi
+
+
+
+provideTools:
+   cmake:
+      path: "bin"

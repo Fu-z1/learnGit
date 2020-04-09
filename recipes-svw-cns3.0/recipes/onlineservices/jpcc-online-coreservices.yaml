@@ -1,0 +1,108 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::ext-boost-dev
+  - system::ext-boost-regex-dev
+  - system::ext-boost-thread-dev
+  - system::ext-boost-system-dev
+  - system::tsd-dataformats-dev
+  - basic-services::common-base::common-base-dev
+  - basic-services::rsi-library::tsd-rsi-server-dev
+  - basic-services::rsi-library::tsd-rsi-common-dev
+  - basic-services::rsi-library::tsd-rsi-client-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-common-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - connectivity::networking::tsd-networking-api-dev
+  - connectivity::networking::tsd-networking-wlan-api-dev
+  - onlineservices::tsd-onlineservices-backendcomcore-dev
+  - onlineservices::jpcc-online-coreservices-api-dev
+  - hmi::tsd-hmi-language-client-mib3-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - use: []
+    depends: 
+       - system::tsd-common-target
+       - system::tsd-common-daemon-target
+       - system::ext-boost-target
+       #- system::ext-boost-regex-target
+       #- system::ext-boost-thread-target
+       #- system::ext-boost-system-target
+       - system::tsd-dataformats-target
+       - basic-services::rsi-library::tsd-rsi-server-target
+       - basic-services::rsi-library::tsd-rsi-common-target
+       - basic-services::rsi-library::tsd-rsi-client-target
+       - basic-services::rsi-library::tsd-vw-rsi-viwi-common-target
+       - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+       - basic-services::rsi-library::tsd-vw-rsi-viwi-server-target
+       - basic-services::persistence::tsd-persistence-client-mib3-target
+       - connectivity::networking::tsd-networking-api-target
+       - connectivity::networking::tsd-networking-wlan-api-target
+       - onlineservices::tsd-onlineservices-backendcomcore-target
+       - onlineservices::jpcc-online-coreservices-api-target
+       - hmi::tsd-hmi-language-client-mib3-target
+       - system::system-lifecycle::tsd-systemstate-manager-api-target
+       - if: "$(eq,${TARGET_TYPE},embedded)"
+         name: system::tsd-authentic-fs-iaa
+       - if: "$(eq,${TARGET_TYPE},embedded)"
+         name: system::tsd-authentic-fs-cs
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:onlineservice/jpcc.online.coreservices.git
+    dir: jpcc.online.coreservices
+    branch: develop
+
+
+multiPackage:
+   dev:
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript:  |
+         buildenvBuildAll  \
+          -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+          -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 
+
+         mkdir -p etc/jpcc.online.core/
+         mkdir -p etc/ca-certificates/
+         cp -r $1/jpcc.online.coreservices/depl/commonapi.ini etc/jpcc.online.core/
+         cp -r $1/jpcc.online.coreservices/depl/certificates/* etc/ca-certificates/
+
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p var/lib/jpcc.online.coreservices
+         cp -r $1/etc ${PWD}
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "jpcc-online-coreservices" \
+            -p "emmc.onlineservices" \
+            -m 'onlinecore,online,0775,/var/lib/jpcc.online.coreservices$'\
+            -m 'onlinecore,online,0775,/var/lib/jpcc.online.coreservices/.*'\
+            -m 'onlinecore,online,0775,/etc/jpcc.online.core$'\
+            -m 'onlinecore,online,0775,/etc/jpcc.online.core/.*'\
+            -m 'onlinecore,online,0775,/etc/ca-certificates$'\
+            -m 'onlinecore,online,0775,/etc/ca-certificates/.*'\
+            -o "onlineservices:jpcc-online-coreservices " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target", "system::tsd-authentic-fs-iaa", "system::tsd-authentic-fs-cs"]
+
+   apps:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            jpcc.online.coreservices.app 
+      packageScript: buildenvPackageTarget
+      provideDeps: ["*-dev"]
+    
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

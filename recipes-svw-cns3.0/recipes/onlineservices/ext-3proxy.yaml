@@ -1,0 +1,29 @@
+inherit: [make, install, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/ext.3proxy.git
+   tag: 0.8.10
+
+buildVars: [SYSROOT, CC]
+buildTools: [toolchain]
+buildScript: |
+   echo "SYSROOT":  $SYSROOT
+   rsync -a --delete $1/* ${PWD}
+   cat Makefile.Linux | sed s/"CC = gcc"/"#CC = gcc"/ | sed s/"LN = gcc"/"#LN = gcc"/ > Makefile.Linux.patched
+   mv Makefile.Linux.patched Makefile.Linux
+   LN=$CC make -f Makefile.Linux
+
+packageScript: |
+   mkdir -p usr/bin
+   rsync -a --delete $1/src/3proxy $1/src/proxy $1/src/socks usr/bin/
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-3proxy" \
+      -p "emmc.onlineservices" \
+      -o "onlineservices:ext-3proxy " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

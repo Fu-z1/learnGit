@@ -1,0 +1,64 @@
+inherit: [install, autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-2.0-only"
+   PKG_VERSION: "6.32"
+   #PKG_NAME: "ipset"
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+environment:
+#    PKG_VERSION: "v6.32"
+   PKG_NAME: "ext.ipset"
+   IPSET_MAX_SETS_CNT: "512"
+
+depends:
+  - name: connectivity::networking::ext-libmnl-dev
+  - use: []
+    depends:
+      # runtime dependencies
+      - connectivity::networking::ext-libmnl-target
+
+checkoutVars: [PKG_NAME]
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext-ipset.git
+    dir: ${PKG_NAME}
+    tag: v6.32_PCC1.0
+
+buildVars: [PKG_NAME, KERNEL_VERSION, IPSET_MAX_SETS_CNT, AR, CC, LD]
+buildTools: [autotools, toolchain]
+buildScript: |
+   # Definition of common stuff for building and installing the IPset package
+   CONF_OPTIONS=(
+      --sbindir=/usr/bin
+      --bindir=/usr/bin
+      --enable-settype-modules
+      --enable-ltdl-install
+      --with-maxsets=${IPSET_MAX_SETS_CNT}
+      --with-included-ltdl
+      --with-kmod=no
+   )
+
+   # Preparing build process (cleanup, synching etc.)
+   rsync -a --delete $1/${PKG_NAME}/ ${BOB_CWD}
+
+   # Configuring and building the ipset package
+   autotoolsBuild ${BOB_CWD} ${CONF_OPTIONS[@]}
+
+multiPackage:
+   dev:
+      packageScript: |
+         installPackageDev "$1/dist"
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         installPackageTarget "$1/dist"
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-ipset" \
+            -p "emmc.connectivity.networking" \
+            -o "connectivity.networking:ext-ipset " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

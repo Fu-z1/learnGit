@@ -1,0 +1,69 @@
+inherit: [buildenv, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - engineering::testmanager::tsd-testmanager-communication-dev
+  - engineering::testmanager::tsd-testmanager-common-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - system::tsd-pwc-mib3-api-dev
+  - system::system-lifecycle::tsd-pwc-proxy-api-dev
+  - carcom::tsd-peripheral-controller-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - basic-services::systeminfo::tsd-systeminformation-features-dev
+  - audio::audiomanager::tsd-audio-audiomgr-testclient-mib3-api-dev
+  - system::tsd-logging-mib3-testinterface-api-dev
+  - system::tsd-swupdate-testinterface-api-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - vehicle-connectivity::canstack::tsd-canstack-api-dev
+
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - system::tsd-common-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - system::tsd-pwc-mib3-api-target
+      - system::system-lifecycle::tsd-pwc-proxy-api-target
+      - carcom::tsd-peripheral-controller-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - audio::audiomanager::tsd-audio-audiomgr-testclient-mib3-api-target
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+      - system::tsd-logging-mib3-testinterface-api-target
+      - system::tsd-swupdate-testinterface-api-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - vehicle-connectivity::canstack::tsd-canstack-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-testsupport/tsd.testmanager.commandprocessing.common.git
+   dir: tsd.testmanager.commandprocessing.common
+   #tag: mqb_sop1_eu-4.0.0
+   branch: main/svw_cns3.0_1520_dev
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+      provideDeps:
+        - "*-target"
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget

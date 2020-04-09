@@ -1,0 +1,54 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - engineering::testmanager::tsd-testmanager-communication-dev
+  - engineering::testmanager::tsd-testmanager-common-dev
+  - engineering::testmanager::tsd-testmanager-commandprocessing-common-dev
+  - engineering::manufacturing::tsd-manufacturingapp-commandprocessing-dev
+
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+  - libs::ext-openssl-dev
+  - system::tsd-common-daemon-dev
+  - basic-services::systeminfo::tsd-systeminformation-common-dev
+  - basic-services::systeminfo::tsd-systeminformation-hardware-dev
+  - basic-services::systeminfo::tsd-systeminformation-features-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::tsd-communication-target
+      - libs::ext-openssl-target
+      - system::tsd-common-daemon-target
+      - basic-services::systeminfo::tsd-systeminformation-common-target
+      - basic-services::systeminfo::tsd-systeminformation-hardware-target
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-manufacturingsupport/tsd.manufacturingapp.git
+   dir: tsd.manufacturingapp
+   tag: mqb_sop1_eu-2.7.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [MS_VERSION_MAJOR, MS_VERSION_MINOR, MS_VERSION_BUGFIX]
+
+multiPackage:
+   target:
+      buildScript: |
+         buildenvBuildAll -DMS_VERSION_MAJOR=${MS_VERSION_MAJOR:-0} -DMS_VERSION_MINOR=${MS_VERSION_MINOR:-0} -DMS_VERSION_BUGFIX=${MS_VERSION_BUGFIX:-0}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "manufacturingapp" \
+            -p "emmc.engineering.manufacturing" \
+            -o "engineering.manufacturing:tsd-manufacturingapp " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"
+

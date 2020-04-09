@@ -1,0 +1,47 @@
+inherit: [buildenv, packing-module]
+
+depends:
+ - system::ext-jansson-dev
+ - system::ext-libarchive-dev
+ - system::ext-pkg-dev
+ - system::tsd-common-dev
+ - system::tsd-swupdate-client-dev
+   #- system::tsd-swupdate-common-dev
+ - use: []
+   depends:
+    - system::ext-jansson-target
+    - system::ext-libarchive-target
+    - system::ext-pkg-target
+    - system::tsd-common-target
+    - system::tsd-swupdate-client-target
+      #- system::tsd-swupdate-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:architecture/android_ota.git
+   dir: tsd.swupdate.client.android_ota
+   branch: main/svw_cns3.0_1413_dev
+
+buildVars: [CONFIG_OTA]
+
+buildScript: |
+   buildenvBuildAll -DSW_SWUP_OTA=${CONFIG_OTA:-0}
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-client-ota" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-client-ota " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+      provideDeps: ['*-target']

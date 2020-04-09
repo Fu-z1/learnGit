@@ -1,0 +1,83 @@
+inherit: [buildenv, werror, packing-module]
+
+depends:
+  - system::tsd-common-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-libs/tsd.system.displaymanager.git
+   dir: tsd.system.displaymanager
+   #tag: mqb_sop1_eu-2.17.0
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1480_dev
+
+multiPackage:
+   ? ""
+   :  depends:
+        - communication::tsd-communication-dev
+        - libs::ext-libpng-dev
+        - libs::ext-zlib-dev
+        - system::ext-opengles-dev
+        - system::bsp::ext-weston-dev
+        - system::tsd-ivi-shell-dev
+        - system::bsp::ext-mmngr-mmngr-dev
+        - system::bsp::ext-mmngr-mmngrbuf-dev
+        - system::bsp::ext-vspm-dev
+        - system::bsp::ext-wayland-kms-dev
+        - system::bsp::ext-linux-headers
+        - libs::ext-cairo-dev
+        - use: []
+          depends:
+            - communication::tsd-communication-target
+            - libs::ext-libpng-target
+            - libs::ext-zlib-target
+            - system::ext-opengles-target
+            - system::bsp::ext-weston-target
+            - system::tsd-ivi-shell-target
+            - system::tsd-common-target
+            - system::bsp::ext-mmngr-mmngr-target
+            - system::bsp::ext-mmngr-mmngrbuf-target
+            - system::bsp::ext-vspm-target
+            - system::bsp::ext-wayland-kms-target
+            - libs::ext-cairo-target
+      buildScript: |
+         # Until May 2017 all modules in tsd.system.displaymanager was build with buildenvBuildModules
+         # But adding a submodule with buildartifact none let this method failed because under cmake 3.6
+         # no make target is added for buildartifact none. Only the *.install target exists.
+         # Therefore what buildenvBuildModules do is splited into the separate steps.
+         buildenvConfigure -DCMAKE_BUILD_TYPE=MinSizeRel \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            -DTSD_SYSTEM_DISPLAYMANAGER_LINK_SHARED=1
+         makeParallel tsd.system.displaymanager tsd.system.displaymanager.app.stand-alone-window \
+            tsd.system.displaymanager.app.debug-ivi-hmicontroller \
+            tsd.system.displaymanager.app.pngviewer
+         buildenvInstall tsd.system.displaymanager.install tsd.system.displaymanager.definitions.install \
+            tsd.system.displaymanager.app.stand-alone-window.install \
+            tsd.system.displaymanager.app.debug-ivi-hmicontroller.install \
+            tsd.system.displaymanager.app.pngviewer.install
+      multiPackage:
+         dev:
+            packageScript: |
+               buildenvPackageDev
+            provideDeps: ['*-dev']
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "system-displaymanager" \
+                  -p "emmc.system" \
+                  -o "system:tsd-system-displaymanager " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ['*-target']
+   definitions:
+      buildScript: |
+         mkdir -p tsd.system.displaymanager.definitions/
+         rsync -a --delete $1/tsd.system.displaymanager/definitions/* tsd.system.displaymanager.definitions/
+         cp $1/CMakeLists.txt ${PWD}
+
+         buildenvBuildAll ${PWD}
+      packageScript: |
+         buildenvPackageDev

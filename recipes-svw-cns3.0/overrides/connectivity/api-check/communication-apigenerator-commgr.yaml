@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:tools/tsd.communication.apigenerator.commgr.git"
+     del: [commit, tag]
+     set:
+        branch: "hotfix/DEFECT-5276"
+        commit: "00417d83915f3d6c6a9d45285af24a18ea30425"

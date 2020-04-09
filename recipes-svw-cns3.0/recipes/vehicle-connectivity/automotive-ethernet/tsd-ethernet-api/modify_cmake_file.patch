@@ -1,0 +1,36 @@
+--- a/tsd.ethernet.api/CMakeLists.txt
++++ b/tsd.ethernet.api/CMakeLists.txt
+@@ -1,2 +1,31 @@
+-add_submodules(definition)
+-add_subdirectory(binding)
++cmake_minimum_required(VERSION 3.0)
++
++# Legacy API
++FILE (GLOB_RECURSE HEADERS "public/*.hpp")
++IF (TSD_BUILDENV_ENABLE_TEST_TARGETS)
++  FILE (GLOB_RECURSE TEST_DOUBLES "test_doubles/*.hpp")
++ELSE()
++   SET(TEST_DOUBLES "")
++ENDIF()
++
++BUILD_ARTIFACT(none)
++
++MODULE_INCLUDE_DIRECTORIES(
++   INTERFACE  "${CMAKE_CURRENT_LIST_DIR}/public"
++)
++
++if( TSD_BUILDENV_ENABLE_TEST_TARGETS )
++   MODULE_INCLUDE_DIRECTORIES(INTERFACE "${CMAKE_CURRENT_LIST_DIR}/test_doubles")
++endif()
++
++module_dependencies(
++   INTERFACE
++   tsd.common
++)
++
++# CAPI
++add_submodules(definition)
++add_subdirectory(binding)
++
++# Documentation
++CREATE_DOXYGEN_DOC(${MODULE_PATH}/src ${MODULE_PATH}/public)

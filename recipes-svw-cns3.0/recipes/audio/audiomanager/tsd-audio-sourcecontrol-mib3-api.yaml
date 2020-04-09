@@ -1,0 +1,69 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - system::tsd-common-dev
+  - basic-services::rsi-library::tsd-rsi-client-dev
+  - system::tsd-dataformats-dev
+  - use: []
+    depends:
+      - basic-services::rsi-library::tsd-rsi-client-target
+      - system::tsd-common-target
+      - system::tsd-dataformats-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.sourcecontrol.mib3.api.git
+   dir: tsd.audio.sourcecontrol.mib3.api
+#   tag: 1.1.8
+   branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=0
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   apps:
+      depends:
+        - basic-services::rsi-library::tsd-rsi-server-dev
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.audio.sourcecontrol.mib3.api \
+            tsd.audio.sourcecontrol.mib3.api.app
+      packageScript: |
+         buildenvPackageTarget
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=0
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "sourcecontrol-mib3-api" \
+            -p "emmc.audio.audiomgr" \
+            -o "audio.audiomanager:tsd-audio-sourcecontrol-mib3-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=0
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      depends:
+        - basic-services::rsi-library::tsd-rsi-server-dev
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

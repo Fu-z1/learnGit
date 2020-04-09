@@ -1,0 +1,53 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+
+depends:
+  - system::tsd-common-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - basic-services::car-function-management::tsd-carssw-api-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - basic-services::car-function-management::tsd-carssw-api-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/tsd.carssw.generaladapters.git
+    dir: tsd.carssw.generaladapters
+    tag: mqb_sop1_eu-1.3.0
+    branch: master_mqb_sop1_eu
+
+
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+      buildScript: |
+         buildenvBuildAll
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "carssw-generaladapters" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:tsd-carssw-generaladapters " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+      buildScript: |
+         buildenvBuildAll
+
+      inherit:
+        - packing-module
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

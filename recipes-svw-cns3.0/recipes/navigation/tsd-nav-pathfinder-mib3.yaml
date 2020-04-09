@@ -1,0 +1,65 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+# test mode variable
+privateEnvironment:
+   GPX_AUTO_PLAYBACK: "$(getUniqueFeatureFromList,${VARIANTS},SW_NAV_DEV_MaintenanceAccess)"
+
+depends:
+  - navigation::tsd-nav-cloud-comm-client-api-dev
+  - navigation::tsd-nav-mapdataservice-mib3-api-dev
+  - navigation::tsd-nav-traffic-mib3-api-dev
+  - navigation::tsd-nav-traffic-dev
+  - navigation::tsd-nav-imageservices-mib3-dev
+  - navigation::tsd-nav-pathfinder-dev
+  - navigation::tsd-nav-pathfinder-mib3-api-dev
+  - navigation::tsd-nav-positioning-mib3-api-dev
+  - navigation::tsd-nav-sdk-pathfinder-api-dev
+  - navigation::tsd-nav-sdk-pathfinder-dev
+  - navigation::tsd-nav-sdk-junctionview-api-dev
+  - navigation::tsd-nav-sdk-junctionview-dev
+  - navigation::tsd-nav-sdk-svgrasterizer-api-dev
+  - navigation::tsd-nav-sdk-namebuilder-dev
+  - navigation::tsd-nav-sdk-roadnumberbuilder-dev
+  - navigation::tsd-nav-utils-api-dev
+  - navigation::tsd-nav-utils-dev
+  - navigation::tsd-nav-configdata-dev
+  - navigation::tsd-nav-prednav-api-dev
+  - navigation::tsd-nav-rsi-viwi-dev
+  - navigation::tsd-nav-cdn-mib3-dev
+  - navigation::tsd-nav-memory-mib3-api-dev
+  - navigation::ext-tinyxml-dev
+  - navigation::tsd-nav-sdk-imageservices-dev
+  - libs::tsd-rasterimage-dev
+  - navigation::tsd-nav-rsi-services-mib3-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.pathfinder.mib3.git
+   dir: tsd.nav.pathfinder.mib3
+   tag: mqb_sop1_eu-152.0.2       #navi-src (src of the navigation)
+
+buildVars: [GPX_AUTO_PLAYBACK]
+buildScript: |
+   build(){
+      buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DENABLE_GPX_PLAYBACK=${GPX_AUTO_PLAYBACK}
+      mkdir -p dist/var/lib/nav/demoroute/
+      rsync -a --delete $1/tsd.nav.pathfinder.mib3/app/demomode/gpx/ dist/var/lib/nav/demoroute/  # NAVPATH_DEMOROUTE
+   }
+
+multiPackage:
+   ? ""
+   :
+      inherit: [navi_compflags_werror_sanitize]
+      #inherit: [navi_compflags_sanitize]
+      multiPackage:
+        dev:
+          buildScript: build $@
+          packageScript: buildenvPackageDev install
+          provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

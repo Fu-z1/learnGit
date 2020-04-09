@@ -1,0 +1,36 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - system::tsd-common-dev
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - navigation::tsd-nav-psd-v15-api-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - navigation::tsd-nav-psd-v15-api-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.psd.v15.client.git
+    dir: tsd.nav.psd.v15.client
+    branch: master_mqb_sop1_eu      #navi-tool (not a part of the release)
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   ? ""
+   :
+      inherit: [navi_compflags_werror_sanitize]
+      #inherit: [navi_compflags_sanitize]
+      multiPackage:
+       target: # Executable
+          packageScript: |
+             buildenvPackageTarget
+          provideDeps: ['*-target']

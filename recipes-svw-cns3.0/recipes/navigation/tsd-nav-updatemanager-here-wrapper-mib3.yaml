@@ -1,0 +1,40 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+depends:
+  - system::tsd-common-dev
+  - navigation::ext-here-ndsdm-dev
+  - navigation::tsd-nav-updatemanager-mib3-ext-api-dev
+  - tip::ext-icu-dev
+  - libs::ext-sqlite-nds-dev
+  - name: libs::ext-curl-dev
+    if: "$(eq,${TARGET_TYPE},embedded)"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.updatemanager.here.wrapper.mib3.git
+   dir: tsd.nav.updatemanager.here.wrapper.mib3
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildScript: |
+   build() {
+      buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1
+   }
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_werror_sanitize]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: build
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

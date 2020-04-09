@@ -1,0 +1,39 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.psd.v20.api.git
+   dir: tsd.nav.psd.v20.api
+   branch: master
+
+buildScript: |
+   build() {
+      buildenvBuildAll -DTSD_BUILDENV_ENABLE_APP_TARGETS=0
+   }
+
+packageVars: [LIBDIR]
+multiPackage:
+  ? ""
+  :
+     # this is generated code
+     #inherit: [navi_compflags_werror_sanitize]
+     inherit: [navi_compflags_sanitize]
+     multiPackage:
+       dev:
+          buildScript: build $@
+          packageScript: |
+             buildenvPackageDev install
+
+       target:
+          buildScript: build $@
+          packageScript: |
+             buildenvPackageTarget
+
+  unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

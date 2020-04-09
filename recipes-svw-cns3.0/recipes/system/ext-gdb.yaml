@@ -1,0 +1,60 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later OR LGPL-2.0-or-later OR GPL-3.0-or-later OR LGPL-3.0-or-later)"
+   PKG_VERSION: "7.12"
+   PKG_NAME: "gdb"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}/src/ext-gdb/linaro-gdb-${PKG_VERSION}.tar.gz
+   dir: gdb-${PKG_VERSION}
+   digestSHA1: "685ca64a7c0efab45ce3526fba6c32abd6914567"
+
+buildTools: [toolchain, host-toolchain]
+buildVars: [AUTOCONF_HOST, PKG_VERSION]
+buildScript: |
+   # Avoid let configure be called by autotools functions.
+   # We call it directly with our set of options.
+   echo "exit 0" >${BOB_CWD}/config.log
+
+   # Just let all include and library paths be gathered.
+   autotoolsConfigureOnly $1
+
+   # Don't build documentation. It takes up extra space / build time,
+   # and sometimes needs specific makeinfo versions to work. (buildroot)
+   echo '#!/bin/sh' >makeinfo
+   echo 'echo "makeinfo(GNU texinfo) 5.2"' >>makeinfo
+   chmod a+x makeinfo
+
+   $1/gdb-${PKG_VERSION}/configure \
+          ${AUTOCONF_HOST:+--host=${AUTOCONF_HOST}} \
+          --prefix="/usr" \
+          --libdir="/usr/${LIBDIR}" \
+          --sysconfdir="/etc" \
+          --localstatedir="/var" \
+          --disable-host-shared \
+          MAKEINFO=`realpath ./makeinfo`
+   makeParallel all-gdb
+   mkdir -p ${PWD}/dist
+   make install-gdb DESTDIR=${PWD}/dist
+
+packageScript: |
+   rm -rf tmp && mkdir -p tmp && pushd tmp
+   autotoolsPackageTarget
+   popd
+
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./tmp/ $d
+   buildSwupModule -n ext-gdb -p "emmc.system" -o 'system::ext-gdb' -f $d -- \
+                   -U "Partition=rootfs_ro"
+
+   tar zcf aarch64-gdb.tgz --exclude=.debug -C tmp .
+   cat << EOF > pcc.sh
+   #!/bin/sh
+   tar -xzf \$1/aarch64-gdb.tgz -C /
+   EOF
+   chmod +x ./pcc.sh
+   rm -rf tmp
+   rm -rf $d

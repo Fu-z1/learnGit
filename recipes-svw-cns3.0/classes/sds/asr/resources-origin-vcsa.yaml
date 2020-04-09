@@ -1,0 +1,9 @@
+depends:
+   - sds::asr::ext-nuance-vcsa-res
+
+buildScript: |
+
+   copyCommonResFromVCSA()
+   {
+      cp -rf ${BOB_DEP_PATHS[sds::asr::ext-nuance-vcsa-res]}/* common/
+   }

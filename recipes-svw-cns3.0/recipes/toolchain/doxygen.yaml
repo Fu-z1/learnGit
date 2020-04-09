@@ -1,0 +1,27 @@
+shared: True
+
+environment:
+   PKG_VERSION: "1.8.9.1"
+
+# to generate graphs, doxygen uses graphviz which might be introduced as a dependecy here later.
+# due to licensing i skipped that so far.
+
+checkoutSCM:
+   scm: url
+   # Version must be exactly $PKG_VERSION
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-doxygen/doxygen-${PKG_VERSION}.linux.bin.tar.gz
+   digestSHA1: 1fc5b0e56cd6a89936a6613f6be4e9a68d4b1213
+   extract: no
+
+buildScript: |
+   ln -s $1/*tar.gz
+
+packageVars: [PKG_VERSION]
+packageScript: |
+   mkdir -p bin
+   tar -xzf $1/*tar.gz
+   ln -sf "../doxygen-${PKG_VERSION}/bin/doxygen" bin/doxygen
+
+provideTools:
+   doxygen:
+      path: "bin"

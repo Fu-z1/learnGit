@@ -1,0 +1,24 @@
+inherit: [make]
+
+metaEnvironment:
+   PKG_LICENSE: "(Public Domain AND BSD-3-Clause)"
+   PKG_VERSION: "2018e"
+   PKG_NAME: "tzdata"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-tzdata/tzdb-${PKG_VERSION}.tar.gz
+    digestSHA1: "241a4847a91f9bccbe4bdb29e1c2108077373857"
+
+buildVars: [CC,PKG_VERSION]
+buildTools: [host-toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   pushd tzdb-${PKG_VERSION}
+   make DESTDIR=../dist install
+   popd
+
+packageScript: |
+   rsync -a --delete $1/dist/ .
+

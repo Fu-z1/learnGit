@@ -1,0 +1,37 @@
+inherit: [autotools]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0-or-later AND LGPL-2.1-or-later)"
+   PKG_VERSION: "1.27"
+   PKG_NAME: "libgpg-error"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libgpg-error/libgpg-error-${PKG_VERSION}.tar.bz2
+   digestSHA1: a428758999ff573e62d06892e3d2c0b0f335787c
+
+buildVars: [PKG_VERSION]
+buildTools: [host-toolchain]
+buildScript: |
+   rsync -a --delete $1/libgpg-error-${PKG_VERSION}/ .
+   if [[ "${AUTOCONF_HOST}" == "aarch64-poky-linux" ]]; then
+      cp -v src/syscfg/lock-obj-pub.aarch64-unknown-linux-gnu.h \
+         src/syscfg/lock-obj-pub.linux-gnu.h
+   fi
+   autotoolsBuild .
+
+multiPackage:
+   dev:
+      packageScript: |
+         autotoolsPackageDev $1
+   target:
+      packageScript: |
+         autotoolsPackageTarget $1
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libgpg-error" \
+            -p "emmc.system" \
+            -o "system::ext-libgpg-error" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

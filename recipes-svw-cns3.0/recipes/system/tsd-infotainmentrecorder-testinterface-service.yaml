@@ -1,0 +1,24 @@
+inherit: [buildenv]
+
+depends:
+  - system::tsd-common-dev
+  - system::tsd-infotainmentrecorder-testinterface-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.infotainmentrecorder.testinterface.service.git
+   dir: tsd.infotainmentrecorder.testinterface.service
+   tag: 1.1.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,26 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Middleware"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.updatemanager.mib3.ext.api.git
+   dir: tsd.nav.updatemanager.mib3.ext.api
+   tag: mqb_sop1_eu-150.0.1       #navi-api (internal only interface)
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_werror_sanitize]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: |
+           buildenvBuildAll
+        packageScript: |
+           buildenvPackageDev install
+
+  doc:
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

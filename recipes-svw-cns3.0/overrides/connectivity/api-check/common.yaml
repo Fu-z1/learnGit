@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.git"
+     del: [commit, tag]
+     set:
+        branch: "develop"
+        commit: "2b7d8b1dea918704cff38a64f2a97e3fb95eeeca"

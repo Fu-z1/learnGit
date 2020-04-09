@@ -1,0 +1,40 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+depends:
+   - navigation::tsd-nav-crypto-api-dev
+   - navigation::tsd-nav-crypto-pluginloader-dev
+   - navigation::tsd-nav-middleware-interface-dev
+   - navigation::tsd-nav-sdk-common-api-dev
+   - navigation::tsd-nav-sdk-mapdataservice-dev
+   - navigation::tsd-nav-sdk-pathfinder-dev
+   - navigation::tsd-nav-sdk-pathfinder-api-dev
+   - navigation::tsd-nav-utils-api-dev          # required for usage of the protobuf configuration
+   - navigation::tsd-nav-utils-dev              # required for usage of the protobuf configuration
+   - navigation::tsd-nav-core-admin-dev
+   - system::tsd-common-dev
+   - hmi::ext-wxwidgets-dev
+   - system::tsd-cppsqlite-nds-dev
+   - use: []
+     depends:
+       - navigation::tsd-nav-middleware-interface-target
+       - navigation::tsd-nav-middleware-nds-2_5_2-target
+       - system::tsd-common-target
+       - hmi::ext-wxwidgets-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mibmap.git
+   dir: tsd.nav.mibmap
+   branch: master     #navi-tool (not a part of the release)
+
+buildScript: |
+   buildenvBuildAll -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DCMAKE_INSTALL_PREFIX=/
+
+multiPackage:
+   target: # Executable
+      packageScript: |
+         buildenvPackageTarget
+      provideDeps: ['*-target']

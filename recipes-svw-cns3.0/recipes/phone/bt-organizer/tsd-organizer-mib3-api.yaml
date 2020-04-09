@@ -1,0 +1,66 @@
+inherit: [buildenv, packing-module, capigen, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Phone
+
+depends:
+ - communication::ext-commonapi-runtime-dev
+ - communication::tsd-communication-binding-dev
+ - system::tsd-common-dev
+
+ - use: []
+   depends:
+    - communication::ext-commonapi-runtime-target
+    - communication::tsd-communication-binding-target
+    - system::tsd-common-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.api.git
+   dir: tsd.organizer.mib3.api
+   branch: main/svw_cns3.0_1480_dev
+#  tag: mqb_sop1_eu-1.60.0
+# --- J. Fischer (start) ---
+# didnt dare drop these repos.  So I commented out them
+#  - if: ${CONFIG_CAPI_MOCKS:-0}
+#    scm: git
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.client.git
+#    dir: tsd.organizer.mib3.client
+#    branch: master
+#  - if: ${CONFIG_CAPI_MOCKS:-0}
+#    scm: git
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.service.git
+#    dir: tsd.organizer.mib3.service
+#    branch: master
+# --- J. Fischer (stop) ---
+
+checkoutScript: CapiGenProcessFIDLFiles tsd.organizer.mib3.api
+checkoutDeterministic: true
+
+buildVars: [LIBDIR]
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "organizer-mib3-api" \
+            -p "emmc.phone.bt-organizer" \
+            -o "phone.bt-organizer:tsd-organizer-mib3-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

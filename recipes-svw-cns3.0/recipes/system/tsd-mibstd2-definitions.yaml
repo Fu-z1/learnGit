@@ -1,0 +1,21 @@
+inherit: [buildenv]
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd-mibstd2-definitions.git
+   dir: tsd.mibstd2.definitions
+   tag: 6.0.0
+   branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildAll -DTSD_COMMON_LINK_SHARED=1
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']

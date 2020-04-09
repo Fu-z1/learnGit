@@ -1,0 +1,26 @@
+scmOverrides:
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic*.git"
+      del: [commit, tag, branch]
+      set:
+         branch: develop_mqb_sop1_eu
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.traffic*.git"
+       del: [commit, tag, branch]
+       set:
+          branch: develop_mqb_sop1_eu
+   -
+       match:
+          url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.clouddecoder*.git"
+       del: [commit, tag, branch]
+       set:
+          branch: develop # All *traffic.clouddecoder* modules have no sop1 branch, because we have only one clouddecoder online for all SOPs. Thats the plan.
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.apps.git"
+      del: [commit, tag, branch]
+      set:
+         branch: develop
+          

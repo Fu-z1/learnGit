@@ -1,0 +1,55 @@
+inherit: [autotools, packing-module]
+
+environment:
+   PKG_VERSION: "1.14.8"
+
+depends:
+  - libs::ext-libpng-dev
+  - libs::ext-zlib-dev
+  - libs::ext-pixman-dev
+  - hmi::ext-fontconfig-dev
+  - libs::ext-glib2-dev
+  - use: []
+    depends:
+      - libs::ext-libpng-target
+      - libs::ext-zlib-target
+      - libs::ext-pixman-target
+      - hmi::ext-fontconfig-target
+      - libs::ext-glib2-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-cairo/cairo-${PKG_VERSION}.tar.xz
+   digestSHA1: c6f7b99986f93c9df78653c3e6a3b5043f65145e
+
+buildVars: [PKG_VERSION, CAIRO_X11_OPTIONS]
+buildScript: |
+   export ax_cv_c_float_words_bigendian=no
+   autotoolsConfigureOnly $1/cairo-${PKG_VERSION} --enable-tee \
+      --disable-egl \
+      --disable-glesv2 \
+      --enable-trace=no \
+      ${CAIRO_X11_OPTIONS:-'--without-x  --disable-xlib --disable-xcb'} --disable-valgrind
+   autotoolsFixLibtool
+   autotoolsBuildOnly ${PWD}
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include -L $LIBDIR -l cairo \
+            -d ext.fontconfig -d ext.libpng ext.cairo
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-cairo" \
+            -p "emmc.libs" \
+            -o "libs:ext-cairo " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

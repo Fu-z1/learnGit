@@ -1,0 +1,81 @@
+inherit: [buildenv, packing-module, werror]
+
+depends:
+  - name: connectivity::networking::tsd-networking-api-dev
+    if: "$(eq,${SW_LOGGING_INETWORKING_SUPPORT:-1},1)"
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-logging-mib3-testinterface-api-dev
+  - system::tsd-activation-api-dev
+  - system::tsd-infotainmentrecorder-api-dev
+  - media::mountingservice::tsd-media-mount-status-api-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - carcom::tsd-carcom-api-mib3-dev
+  - system::tsd-tee-cpstate-dev
+  - use: []
+    depends:
+      - name: connectivity::networking::tsd-networking-api-target
+        if: "$(eq,${SW_LOGGING_INETWORKING_SUPPORT:-1},1)"
+      - system::tsd-common-target
+      - system::tsd-logging-mib3-testinterface-api-target
+      - system::tsd-activation-api-target
+      - system::tsd-infotainmentrecorder-api-target
+      - media::mountingservice::tsd-media-mount-status-api-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - carcom::tsd-carcom-api-mib3-target
+      - system::tsd-tee-cpstate-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.logging.mib3.git
+   dir: tsd.logging.mib3
+   #tag: mqb_sop1_eu-5.7.1
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1480_dev
+
+environment:
+   TRACING_ACTIVE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_TRACING_ACTIVE,1),1,0)"
+   PROJECT: "$(if-then-else,$(or,$(flagIsSet,${VARIANTS},Region,CHINA), \
+                                 $(flagIsSet,${VARIANTS},Region,TAIWAN), \
+                                 $(flagIsSet,${VARIANTS},Region,HONGKONG_MACAO), \
+                                 $(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W)),'37W','MQB')"
+
+multiPackage:
+   target:
+      buildVars: [SW_LOGGING_INETWORKING_SUPPORT, TRACING_ACTIVE, PROJECT]
+      buildScript: |
+         buildenvBuildAll -DFEATURE_SW_LOGGING_INETWORKING_SUPPORT=${SW_LOGGING_INETWORKING_SUPPORT:-1} \
+            -DFEATURE_SW_TRACING_ACTIVE=${TRACING_ACTIVE} \
+            -DPROJECT=${PROJECT} \
+            -DTSD_LOGGING_MIB3_USE_JOURNAL=OFF
+         mkdir -p dist/etc/logging
+         rsync -a --delete $1/tsd.logging.mib3/depl/commonapi.ini dist/etc/logging/commonapi.ini
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p var/lib/logging
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "logging-mib3" \
+            -p "emmc.system" \
+            -m 'logging,logging,0775,/var/lib/logging$'    \
+            -m 'logging,logging,0770,/var/lib/logging/.*'  \
+            -m 'logging,logging,0774,/var/lib/logging/logging.ini$' \
+            -o "system:tsd-logging-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildVars: [SW_LOGGING_INETWORKING_SUPPORT, TRACING_ACTIVE]
+      buildScript: |
+         buildenvTestAll -DFEATURE_SW_LOGGING_INETWORKING_SUPPORT=${SW_LOGGING_INETWORKING_SUPPORT:-1} -DFEATURE_SW_TRACING_ACTIVE=${TRACING_ACTIVE}
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildVars: [SW_LOGGING_INETWORKING_SUPPORT, TRACING_ACTIVE]
+      buildTools: [doxygen, dot]
+      buildScript: |
+         buildenvBuildDocAll -DFEATURE_SW_LOGGING_INETWORKING_SUPPORT=${SW_LOGGING_INETWORKING_SUPPORT:-1} -DFEATURE_SW_TRACING_ACTIVE=${TRACING_ACTIVE}
+      packageScript: buildenvPackageDoc
+

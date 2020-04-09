@@ -1,0 +1,27 @@
+inherit: [make, packing-module]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/ext.boot.tool.git
+   tag: 1.1.0
+   branch: master_mqb_sop1_eu
+
+buildVars: [OBJCPY]
+buildTools: [host-toolchain]
+buildScript: |
+   rsync -a --delete $1/ .
+   make all objcopy=$OBJCPY
+
+packageScript: |
+   mkdir -p bin
+   cp -f $1/mkslot bin
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-boot-tool" \
+      -p "emmc.system" \
+      -o "system:ext-boot-tool " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideTools:
+   mkslot: bin

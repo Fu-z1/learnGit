@@ -1,0 +1,89 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - audio::audiomanager::tsd-audio-common-dev
+  - audio::audiomanager::tsd-audio-common-mib3-dev
+  - audio::microphoneprocessing::tsd-audio-ec-mib3-dev
+  - audio::microphoneprocessing::tsd-audio-ec-mib3-validation-dev
+  - audio::microphoneprocessing::tsd-audio-icc-mib3-validation-dev
+  - audio::microphoneprocessing::tsd-audio-microphoneprocessing-mib3-api-dev
+  - audio::microphoneprocessing::tsd-audio-microphoneprocessing-am-mib3-api-dev
+  - audio::microphoneprocessing::tsd-audio-microphoneprocessing-asr-mib3-api-dev
+  - audio::microphoneprocessing::tsd-audio-microphoneprocessing-tuning-mib3-dev
+  - carcom::tsd-peripheral-controller-api-dev
+  - communication::tsd-communication-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - engineering::gem::tsd-gem-generic-api-dev
+  - system::tsd-activation-api-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+   # runtime dependencies
+  - use: []
+    depends:
+      - audio::audiomanager::tsd-audio-common-target
+      - audio::audiomanager::tsd-audio-common-mib3-target
+      - audio::microphoneprocessing::tsd-audio-ec-mib3-ld-target
+      - audio::microphoneprocessing::tsd-audio-ec-mib3-validation-target
+      - audio::microphoneprocessing::tsd-audio-icc-mib3-validation-target
+      - audio::microphoneprocessing::tsd-audio-microphoneprocessing-mib3-api-target
+      - audio::microphoneprocessing::tsd-audio-microphoneprocessing-am-mib3-api-target
+      - audio::microphoneprocessing::tsd-audio-microphoneprocessing-asr-mib3-api-target
+      - carcom::tsd-peripheral-controller-api-target
+      - communication::tsd-communication-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - engineering::gem::tsd-gem-generic-api-target
+      - system::tsd-activation-api-target
+      - system::tsd-common-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.miccontrol.mib3.git
+   dir: tsd.audio.miccontrol.mib3
+#   tag: 1.3.2
+   branch: release/cns_mqb
+
+privateEnvironment:
+   A2B_AVAILABLE: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_SPEAKER_LOCALIZATION,1),1,0)"
+
+buildVars: [A2B_AVAILABLE]
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll -DA2B_AVAILABLE=${A2B_AVAILABLE}
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   unittests:
+      buildScript: |
+         buildenvTestTargets tsd.audio.miccontrol.mib3.test
+      packageScript: |
+         buildenvPackageTests
+      provideDeps:
+        - '*-dev'
+
+   target:
+      buildScript: |
+         buildenvBuildAll -DA2B_AVAILABLE=${A2B_AVAILABLE}
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "miccontrol-mib3" \
+            -p "emmc.audio.micprg" \
+            -o "audio.microphoneprocessing:tsd-audio-miccontrol-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - '*-target'
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

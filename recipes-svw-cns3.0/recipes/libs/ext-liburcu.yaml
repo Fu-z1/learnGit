@@ -1,0 +1,40 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(LGPL-2.1-or-later AND MIT-like AND GPL-2.0+ AND GPL-3.0)"
+   PKG_VERSION: "0.9.3"
+   PKG_NAME: "userspace-rcu"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-liburcu/userspace-rcu-${PKG_VERSION}.tar.bz2
+   digestSHA1: 8bcba6af4414b69907a0ee9c8fdd11e969d1fd11
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   rsync -a --delete $1/userspace-rcu-${PKG_VERSION}/ ${PWD}
+   autogenOrConfigure ./configure
+
+   autotoolsFixLibtool
+   autotoolsBuildOnly
+
+multiPackage:
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-liburcu" \
+            -p "emmc.libs" \
+            -o "libs:ext-liburcu " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+
+   dev:
+      packageTools: [buildenv]
+      packageVars: [LIBDIR]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include -L ${LIBDIR} -l urcu ext.liburcu
+

@@ -1,0 +1,23 @@
+inherit: [buildenv, werror]
+
+depends:
+  - system::tsd-common-dev
+  - communication::tsd-communication-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.watchdog.mib3.api.git
+   dir: tsd.watchdog.mib3.api
+   tag: 1.2.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

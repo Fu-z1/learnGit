@@ -1,0 +1,49 @@
+inherit: [buildenv, packing-module, capigen]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+   PKG_ARTEFACT_TYPE: "API"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.swupdate.control.api.git
+   dir: tsd.swupdate.control.api
+   tag: mqb_sop1_eu-1.1.0
+   branch: master_mqb_sop1_eu
+
+checkoutDeterministic: true
+checkoutScript: CapiGenProcessFIDLFiles tsd.swupdate.control.api
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "swupdate-control-api" \
+            -p "emmc.system" \
+            -o "system:tsd-swupdate-control-api " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

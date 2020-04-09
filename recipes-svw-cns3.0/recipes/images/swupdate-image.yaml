@@ -1,0 +1,244 @@
+inherit: [rootfs, packing-image]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+
+environment:
+  CONFIG_TARGET: "swupdate"
+  SW_SWUP_HMI: "2"               # 0=None, 1=OEM, 2=Engineering
+  SW_SWUP_ONLINE_SUPPORT: "0"    # 0=Off,  1=On
+  SW_SWUP_CUSTOMER_UPDATE: "0"   # 0=Off,  1=On
+  SW_SWUP_ETHERNET_UPDATE: "1"   # 0=Off,  1=On
+  SW_SWUP_CAN_UPDATE: "1"        # 0=Off,  1=On
+  SW_SWUP_MAINUNIT_UPDATE: "1"   # 0=Off,  1=On
+  SW_SWUP_PERS_SPEC_PATH: "1"    # 0=Off,  1=On
+  SW_LOGGING_INETWORKING_SUPPORT: "0"
+  SW_ITR_INAVITR_SUPPORT: "0"
+
+depends:
+  - name: toolchain::aarch64-linux-gnu
+    use: [tools, environment]
+    forward: true
+
+  - system::bsp::ext-linux-modules
+  - system::ext-busybox-pam
+  - system::ext-systemd-target
+  - system::tsd-minijournald
+  - system::ext-e2fsprogs-target
+  - system::tsd-config-buildcfg
+  - system::tsd-config-gpio
+  - system::tsd-config-target
+  - system::tsd-ivi-shell-target
+  - system::tsd-root-mib3
+  - system::tsd-pam
+  - system::tsd-waitfor
+  - system::ext-parted-target
+  - libs::ext-readline-target
+
+  - name: system::ext-mtd-utils
+    if: "$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1)"
+
+  - name: hmi::tsd-keypanel-target
+    if: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,MQB)"
+  - name: hmi::tsd-keypanel-37w-target
+    if: "$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W)"
+
+  -
+    name: system::bsp::ext-kmod-glx
+    environment:
+      CONFIG_HYPERVISOR: "0"
+  - system::ext-minicoredumper-target
+  - system::tsd-clock-service-mib3-linux-pkg
+
+  - media::mountingservice::ext-tuxera-filesystems
+  - media::mountingservice::tsd-media-mount-status-service-mib3-target
+
+  - basic-services::persistence::tsd-persistence-service-mib3-target
+  - system::tsd-logging-mib3-target
+  - system::tsd-infotainmentrecorder-target
+  - system::tsd-swupdate-target
+  - system::ext-cryptsetup
+  - system::tsd-roothash-ta
+
+## may be deletable (tsd.networking.mib3 dependency)
+  - connectivity::networking::ext-iproute2-target
+  - connectivity::networking::ext-iptables-target
+  - connectivity::networking::ext-ipset-target
+#
+  - connectivity::networking::tsd-networking-mib3-swup
+  - connectivity::usb::tsd-usb-mib3-target
+
+  - vehicle-connectivity::automotive-ethernet::tsd-aeth-base-target
+  - vehicle-connectivity::automotive-ethernet::tsd-ethernet-middleware-target
+  - vehicle-connectivity::automotive-ethernet::ext-avbstack-cetitec-sja1105-abstraction
+
+  - system::tsd-authentic-fs-sal
+
+  - name: system::tsd-swupdate-aes-keys-developer-apps
+    if: "$(flagIsSet,${VARIANTS},SW_UPDATE_KEY,Developer)"
+
+checkoutSCM:
+  - if: $(ne,${SIGNING_EXTERNAL:-"False"},"True")
+    scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/4dummy_keys.git
+    dir: keypairs
+    branch: master
+
+  - if: $(eq,${SIGNING_EXTERNAL:-"False"},"True")
+    scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/jpcc.dummyrootkeyparis.cns3.csample
+    dir: keypairs
+    tag: cns3_rootkey-1.0.0
+
+buildTools: [openssl, signingtool]
+buildVars: [SIGNING_EXTERNAL]
+buildVarsWeak: [SIGNING_SERVER_IP]
+buildScript: |
+  if [ "${SIGNING_EXTERNAL:-"False"}" == "True" ]; then
+     if [ -z "$SIGNING_SERVER_IP" ]; then
+         echo "Please set signingserver IP!"
+         exit 1
+     fi
+  fi
+
+  declare -A tocopy
+  for key in ${!BOB_DEP_PATHS[@]}; do
+     tocopy[$key]=${BOB_DEP_PATHS[$key]}
+  done
+  unset tocopy[system::tsd-config-buildcfg]
+  unset tocopy[images::swupdate-image]
+
+  rm -rf tmp symbols flash
+  mkdir -p tmp symbols flash
+
+  # copy rootfs from SDK
+  copyFromFile ${BOB_DEP_PATHS["system::tsd-config-buildcfg"]}/rootfs-arm64.txt tmp
+
+  # copy target specific files without overwriting anything
+  shopt -s dotglob nullglob
+  for dep in "${tocopy[@]}" ; do
+     for i in ${dep}/* ; do
+        if [[ $i != *_swupdata ]]; then
+           cp -an --reflink=auto "$i" tmp/
+        fi
+     done
+  done
+  shopt -u dotglob nullglob
+
+  move_symbols tmp symbols
+
+  # find missing dependencies
+  checkSharedLibraries tmp
+
+  fakeroot bash <<- EOF
+  # inherit shell settings and traps
+  $(set +o)
+  $(trap -p)
+
+  rm -rf swupdate-image.img
+
+  # add default directories and special files
+  pushd tmp
+  mkdir -p boot
+  mkdir -p dev
+  mkdir -p dev/pts
+  mknod dev/console c 5 1
+  mkdir -p etc/init.d
+  mkdir -p home/user
+  mkdir -p media
+  mkdir -p lib
+  mkdir -p mnt/nfs
+  mkdir -p opt/bin
+  mkdir -p proc
+  mkdir -p root
+  mkdir -p run
+  mkdir -p sys
+  mkdir -p tmp
+  mkdir -p usr/lib
+  mkdir -p var/log
+  mkdir -p var/run
+  mkdir -p var/lib/nfs
+  mkdir -p cache
+  popd
+
+  mksquashfs tmp swupdate-image.img
+  EOF
+
+  if [ "${SIGNING_EXTERNAL:-"False"}" == "True" ]; then
+     # create signature file with dummy key
+     openssl dgst \
+        -sigopt rsa_padding_mode:pss \
+        -sigopt rsa_pss_saltlen:-1 \
+        -sigopt rsa_mgf1_md:sha256 \
+        -sign $<<../keys/sb_private.pem>> \
+        -binary \
+        -out swupdate-image.sig \
+        swupdate-image.img
+
+     # extract dgst, remove sig
+     openssl pkeyutl \
+        -inkey $<<../keys/sb_public.pem>> -pubin \
+        -pkeyopt rsa_padding_mode:none \
+        -in swupdate-image.sig \
+        -encrypt \
+        -out swupdate-image.dgst
+     rm swupdate-image.sig
+
+     mkdir -p sclient
+     pushd sclient
+     cp ${BOB_TOOL_PATHS[signingtool]}/bin/SigningClient.py .
+
+     cat > sign.py <<EOF
+  #!/usr/bin/env python3
+  import argparse
+  import sys
+  from SigningClient import *
+
+  parser = argparse.ArgumentParser()
+  parser.add_argument("DIGEST", type=argparse.FileType('rb'))
+  args = parser.parse_args()
+
+  sclient = SigningClient()
+  sclient.connect( "$SIGNING_SERVER_IP", 8008,"Jenkins")
+  signature = sclient.signHash(5 , args.DIGEST.read())
+  sclient.disconnect()
+  with open("../swupdate-image.sig", "wb") as handle:
+     handle.write(signature)
+  EOF
+     chmod 755 sign.py
+     ./sign.py ../swupdate-image.dgst
+     popd
+
+     rm -rf swupdate-image.dgst sclient
+  else
+     # create signature file
+     openssl dgst \
+        -sigopt rsa_padding_mode:pss \
+        -sigopt rsa_pss_saltlen:-1 \
+        -sigopt rsa_mgf1_md:sha256 \
+        -sign $1/keypairs/sb_keys/sb_private.pem \
+        -binary \
+        -out swupdate-image.sig \
+        swupdate-image.img
+  fi
+
+  # clean up
+  rm -rf tmp ramdisk devices.tab
+
+  tar cvzf swupimage.tgz swupdate-image.img swupdate-image.sig
+
+packageScript: |
+  mkdir -p _flashcontainer/flash
+  tar -xzf $1/swupimage.tgz -C _flashcontainer/flash
+
+  REQUIREDBY="{\"Packages\":[{\"PackageName\":\"boot.swupdate.*\",\"Flags\":\"Selected\"}]}"
+
+  buildSwupImage --packageName "image" \
+        --file $1/swupimage.tgz \
+        --requiredBy "${REQUIREDBY}" \
+        -U Installer=tar \
+        -U Destination='/tmp/install/swupimage' \
+        -U InstallMethod=1
+
+  tar -C $1/symbols -cvzf symbols.tgz .

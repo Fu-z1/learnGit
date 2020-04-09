@@ -1,0 +1,49 @@
+inherit: [buildenv, packing-module, werror]
+
+depends:
+  - system::tsd-common-dev
+  - system::system-lifecycle::tsd-pwc-proxy-api-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - system::system-lifecycle::tsd-pwc-proxy-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.logging.r7.git
+   dir: tsd.logging.r7
+   tag: 3.1.0
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "logging-r7" \
+            -p "emmc.system" \
+            -o "system:tsd-logging-r7 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

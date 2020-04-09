@@ -1,0 +1,67 @@
+
+environment:
+   PKG_NAME:   "android_20180718"
+
+metaEnvironment:
+   MODULE_VERSION: "1.0.0"
+   PACKAGE_VERSION: "1.0.0"
+
+checkoutSCM:
+  -
+    scm: url
+    #url: http://jenkins-system.carradio.technisat-digital/public/CNS/${PKG_NAME}.tar.gz
+    url: http://10.57.9.151:82/tools/${PKG_NAME}.tar.gz
+    #digestSHA1: 5c46f31ecd9991c296f76e4903a2bec884b932fa
+
+buildVars: [PKG_NAME]
+
+multiPackage:
+   all:
+      buildScript: |
+         ln -s $1/${PKG_NAME}.tar.gz android_rootfs.tar.gz
+      packageScript: |
+         cp -L $1/android_rootfs.tar.gz .
+   
+   vbmeta:
+      inherit: [packing-image]
+      buildScript: |
+         tar xfz $1/${PKG_NAME}.tar.gz ${PKG_NAME}/vbmeta.ext4
+      packageScript: |
+         buildSwupImage --packageName "vbmeta" \
+               --file $1/${PKG_NAME}/vbmeta.ext4 \
+               --hw_index "0" \
+               -U Installer=copyImage \
+               -U Destination='p3'
+
+   system:
+      inherit: [packing-image]
+      buildScript: |
+         tar xfz $1/${PKG_NAME}.tar.gz ${PKG_NAME}/system.ext4
+      packageScript: |
+         buildSwupImage --packageName "system" \
+               --file $1/${PKG_NAME}/system.ext4 \
+               --hw_index "0" \
+               -U Installer=copyImage \
+               -U Destination='p7'
+
+   vendor:
+      inherit: [packing-image]
+      buildScript: |
+         tar xfz $1/${PKG_NAME}.tar.gz ${PKG_NAME}/vendor.ext4
+      packageScript: |
+         buildSwupImage --packageName "vendor" \
+               --file $1/${PKG_NAME}/vendor.ext4 \
+               --hw_index "0" \
+               -U Installer=copyImage \
+               -U Destination='p8'
+
+#   userdata:
+#       inherit: [packing-image]
+#       buildScript: |
+#         tar xfz $1/${PKG_NAME}.tar.gz ${PKG_NAME}/userdata.ext4
+#       packageScript: |
+#         buildSwupImage --packageName "userdata" \
+#               --file $1/${PKG_NAME}/userdata.ext4 \
+#               --hw_index "0" \
+#               -U Installer=copyImage \
+#               -U Destination='p9'

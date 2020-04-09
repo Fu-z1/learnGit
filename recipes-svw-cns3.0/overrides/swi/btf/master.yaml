@@ -1,0 +1,50 @@
+scmOverrides:
+   # change branch for binarytest apps
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.radio.app.git
+      del: [commit, tag, branch]
+      set:
+         branch: binarytests
+
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mib3.git
+      del: [commit, tag, branch]
+      set:
+         branch: binarytests
+
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:tip-communication/tsd.communication.binding.git
+      del: [commit, tag, branch]
+      set:
+         branch: binarytests
+
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.phonemanager.git
+      del: [commit, tag, branch]
+      set:
+         branch: binarytests
+
+   # use develop branches of rsi stuff
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.vw.rsi.viwi.common.git
+      del: [commit, tag, branch]
+      set:
+         branch: feature/fixesAndPsoChanges
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.vw.rsi.viwi.server.git
+      del: [commit, tag, branch]
+      set:
+         branch: feature/fixesAndPsoChanges
+
+   -
+      match:
+         url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-communication/tsd.vw.rsi.viwi.client.git
+      del: [commit, tag, branch]
+      set:
+         branch: feature/fixesAndPsoChanges

@@ -1,0 +1,45 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+depends:
+   - libs::ext-protobuf-dev
+   - libs::tsd-rasterimage-dev
+   - libs::tsd-fontprocessor-dev
+   - navigation::tsd-nav-middleware-interface-dev
+   - navigation::tsd-nav-sdk-common-api-dev
+   - navigation::tsd-nav-sdk-mapdataservice-api-dev
+   - navigation::tsd-nav-sdk-namebuilder-dev
+   - navigation::tsd-nav-sdk-svgrasterizer-api-dev
+   - navigation::tsd-nav-sdk-svgrasterizer-dev
+   - navigation::tsd-nav-sdk-imageservices-dev
+   - system::ext-boost-dev
+   - system::tsd-common-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.roadnumberbuilder.git
+   dir: tsd.nav.sdk.roadnumberbuilder
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildTools: [protoc]
+
+multiPackage:
+  ? ""
+  :
+    inherit: [navi_compflags_protobuf]
+    #inherit: [navi_compflags_sanitize]
+    multiPackage:
+     dev:
+        buildScript: |
+           buildenvBuildAll
+        packageScript: |
+           buildenvPackageDev install
+        provideDeps: ['*-dev']
+
+  unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

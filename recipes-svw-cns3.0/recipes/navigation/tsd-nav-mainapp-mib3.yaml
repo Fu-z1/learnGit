@@ -1,0 +1,164 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-System"
+
+privateEnvironment:
+     INCLUDE_VICS_MODULE : "$(flagIsSet,${VARIANTS},SW_NAV_VICS_Backend,Hitachi)"
+     ICAS: "$(flagIsSet,${VARIANTS},SW_NAV_PSD20_Enabled,1)"
+     PCC_INTERN: "$(and,$(ne,${TARGET_ENVIRONMENT:-},icas),$(ne,${TARGET_ENVIRONMENT:-},lg))"
+     HW_RAM_VARIANTS: "$(queryVariantFlags,${VARIANTS},HW_RAM_VARIANT,Variant Info String)"
+
+
+depends:
+   - hmi::tsd-i18n-mib3-dev
+   - navigation::tsd-nav-cdn-mib3-dev
+   - navigation::tsd-nav-cloud-comm-client-dev
+   - navigation::tsd-nav-imageservices-mib3-dev
+   - navigation::tsd-nav-input-mib3-dev
+   - navigation::tsd-nav-logging-api-dev
+   - navigation::tsd-nav-mapdataservice-mib3-api-dev
+   - navigation::tsd-nav-mapdataservice-mib3-dev
+   - navigation::tsd-nav-mapdisplay-mib3-dev
+   - navigation::tsd-nav-memory-mib3-dev
+   - navigation::tsd-nav-pathfinder-mib3-dev
+   - navigation::tsd-nav-positioning-mib3-dev
+   - navigation::tsd-nav-prednav-api-dev
+   - navigation::tsd-nav-prednav-dev
+   - navigation::tsd-nav-psd-v15-dev
+   - navigation::tsd-nav-rsi-services-mib3-dev
+   - navigation::tsd-nav-sdk-common-api-dev
+   - navigation::tsd-nav-system-mib3-dev
+   - navigation::tsd-nav-traffic-mib3-dev
+   - navigation::tsd-nav-usersettings-mib3-dev
+   - navigation::tsd-nav-utils-api-dev
+   - navigation::tsd-nav-utils-dev
+   - navigation::tsd-nav-vehicle-mib3-dev
+   - system::tsd-common-daemon-dev
+   - system::tsd-common-dev
+   - if: "$(flagIsSet,${VARIANTS},SW_NAV_PSD20_Enabled,1)"
+     depends:
+        - navigation::tsd-nav-psd-v20-dev
+   - use: []
+     depends:
+        # runtime dependencies
+           - basic-services::persistence::tsd-persistence-client-mib3-target
+           - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+           - hmi::ext-freetype-target
+           - hmi::tsd-i18n-mib3-target
+           - libs::ext-cairo-target
+           - libs::ext-libpng-target
+           - libs::ext-protobuf-target
+           - navigation::ext-assimp-target
+           - navigation::ext-freeimage-target
+           - navigation::ext-geos-target
+           - navigation::ext-vw-prednavcore-target
+           - navigation::tsd-nav-logging-api-target
+           - navigation::tsd-nav-middleware-nds-2_5_2-target
+           - onlineservices::tsd-onlineservices-common-target
+           - onlineservices::tsd-onlineservices-framework-target
+           - system::tsd-common-daemon-target
+           - system::tsd-common-target
+           - if: "$(not,${TSD_NAV_DISABLE_UPDATE_MANAGER:-0})"
+             depends:
+               - if: "$(flagIsSet,${VARIANTS},SW_NAV_MapUpdateManager,AutoNavi)"
+                 depends:
+                   - navigation::ext-autonavi-updatemanager-target
+               - if: "$(flagIsSet,${VARIANTS},SW_NAV_MapUpdateManager,Here)"
+                 depends:
+                   - navigation::ext-here-ndsdm-target
+           - if: "${INCLUDE_VICS_MODULE:-0}"
+             depends:
+             - navigation::ext-hitachi-vms-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mainapp.mib3.git
+   dir: tsd.nav.mainapp.mib3
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+buildVars:
+  - TARGET_ENVIRONMENT
+  - INCLUDE_VICS_MODULE
+  - ICAS
+  - PCC_INTERN
+  - HW_RAM_VARIANTS
+
+buildScript: |
+   build(){
+      CXXFLAGS="${CXXFLAGS:-} -Wno-error=odr -Wno-error=maybe-uninitialized"
+      if [[ ${PCC_INTERN} == "True" ]]; then
+        CXXFLAGS="${CXXFLAGS:-} -Wno-error=lto-type-mismatch"
+      fi
+      IFS=';'
+      read -r -a RAM_VARIANTS <<< "$HW_RAM_VARIANTS"
+      unset IFS
+      for RAM_VARIANT in "${RAM_VARIANTS[@]}"; do
+         RAM_VARIANT_DIR=$(cut -d'#' -f1 <<< $RAM_VARIANT | cut -d'=' -f2)
+         VARIANT_INFO_STRING=$(cut -d'#' -f2 <<< $RAM_VARIANT|cut -d'=' -f2)
+         if [[ $RAM_VARIANT_DIR == 4 ]]; then
+            MEMORY_4G="True"
+         else
+            MEMORY_4G="False"
+         fi
+         mkdir -p dist
+         mkdir -p $RAM_VARIANT_DIR
+         pushd $RAM_VARIANT_DIR
+         if [ ! -s ../dist/$RAM_VARIANT_DIR/variants.txt ]; then
+            buildenvBuildAll -DTARGET_ENVIRONMENT=${TARGET_ENVIRONMENT:-} -DINCLUDE_VICS_MODULE=${INCLUDE_VICS_MODULE} -DICAS=${ICAS:-} -DMEMORY_4G="${MEMORY_4G:-False}"
+            rsync -a dist/ ../dist/$RAM_VARIANT_DIR
+         else
+            echo "RAM_VARIANT $RAM_VARIANT_DIR already built, skipping."
+         fi
+         echo $VARIANT_INFO_STRING >> ../dist/$RAM_VARIANT_DIR/variants.txt
+         popd
+      done
+
+   }
+
+multiPackage:
+  ? ""
+  :
+     inherit: [navi_compflags_werror_sanitize]
+     #inherit: [navi_compflags_sanitize]
+     multiPackage:
+      target: # Executable
+        buildScript: |
+           build
+        packageScript: |
+           buildenvPackageTarget
+           # 1 subfolder for each HW_RAM_VARIANT
+           for dir in $(ls -1); do
+              pushd $dir
+              variants=$(cat variants.txt)
+              variants=${variants//[^a-zA-Z0-9-]/,}
+              mkdir -p var/log/nav/pos
+              mkdir -p var/lib/nav/map/sds
+              mkdir -p var/lib/nav
+              # Important note: /var/lib/nav/map/sds must go before /var/lib/nav!
+              d=$(mktemp -d)
+              rsync -a --delete --exclude ".debug" ./ $d
+              popd
+              rsync -a  $dir/ --exclude ".debug" .
+              rsync -ab $dir/  --include=".debug/*" --include="*/" --exclude="*" .
+              buildSwupModule -n "nav-mainapp-mib3-$dir" \
+              -p "emmc.navigation" \
+              -m 'display,display,0770,/var/log/nav/pos$'                               \
+              -m 'display,display,0770,/var/log/nav/pos/.*'                             \
+              -m 'display,display,0775,/var/lib/nav/map/sds$'                           \
+              -m 'display,display,0775,/var/lib/nav/map/sds/.*'                         \
+              -m 'display,display,0771,/var/lib/nav$'      \
+              -m 'display,display,0771,/var/lib/nav/.*' \
+              -o "navigation:tsd-nav-mainapp-mib3 " -f $d -- \
+              --variantList "${variants}" \
+              -U "Partition=rootfs_ro"
+              rm -rf $d
+              rm -rf $dir
+           done
+        provideDeps: ["*-target"]
+
+  unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests

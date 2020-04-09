@@ -1,0 +1,15 @@
+--- a/tsd.audio.audiomgr.testclient.mib3.api/CMakeLists.txt
++++ b/tsd.audio.audiomgr.testclient.mib3.api/CMakeLists.txt
+@@ -1,2 +1,12 @@
++PROJECT(${MODULE_NAME})
++
++BUILD_ARTIFACT("none")
++
++MODULE_INCLUDE_DIRECTORIES(
++   INTERFACE "${MODULE_PATH}/definition/public"
++)
++
++ADD_SUBDIRECTORY(app)
++
+ add_submodules(definition)
+ add_subdirectory(binding)

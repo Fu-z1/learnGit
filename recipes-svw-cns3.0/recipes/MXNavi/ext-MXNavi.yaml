@@ -1,0 +1,91 @@
+inherit: [buildenv, packing-module]
+
+privateEnvironment:
+   SW_DEV_ACCESS: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_DEV_ACCESS,1),1,0)"
+
+checkoutSCM:
+#  - if: "$(eq,${FLAG_FULL_MAP:-0},0)" 
+#    scm: url
+#    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}MXNavi/CHN_1C_1809_SH2MESH_2.5.2_CNS3_05B.zip
+#    digestSHA1: "589d84fa1df03e55e70bc4213b06b2d60d3985d2"
+#    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}MXNavi/Data0718.zip
+#    digestSHA1: "7f98e21f35570d205b743fd32f6432d93f9018b5"
+#    extract: True
+  
+#  - if: "$(eq,${FLAG_FULL_MAP:-0},1)"
+#    scm: url
+#    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}MXNavi/CHN_1C_1809_China_2.5.2_CNS3_05B.zip
+#    digestSHA1: "94144b044eeefe5eec8492ddefb15494ea6a84c4"
+#    extract: True
+  - if: "$(eq,${SW_DEV_ACCESS:-0},1)"
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}MXNavi/VW.03.680303-20.19.49_02-CA.zip
+    digestSHA1: "2c639471ece8a9b4098517c0e8c8bfe0752bcc73"
+    extract: True
+
+  - if: "$(eq,${SW_DEV_ACCESS:-0},0)"
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}MXNavi/VW.03.680303-21.19.49_02-CA_0soft.zip
+    digestSHA1: "bc8599bbed4eb3a4098b28f95135aea11134bccd"
+    extract: True
+ 
+#  -
+#    scm: url
+#    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}MXNavi/VW.03.680303-00.19.38_02-CA.zip
+#    digestSHA1: "32379d1686df953f517c53fea64540ffb96064b2"
+#    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}MXNavi/VW.03.680303-00.60.28_02-CA.zip
+#    digestSHA1: "baaf440fc91aa4b8aeb5ef803d33de8adca2a171"
+#    digestSHA1: "ee27f7ab6db84b8d3ff9db36346ee7cd89f9f70c"
+#    url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}MXNavi/MXNavi0718.zip
+#    digestSHA1: "3d55ed7876fbec6bbb07e6aede178fe29eafa4d1"  
+#    extract: True
+
+buildScript: |
+      mkdir -p dist/var/MXNavi/NDS
+      mkdir -p dist/usr/bin
+      mkdir -p dist/usr/lib
+      cp -fr $1/var/MXNavi/* dist/var/MXNavi
+      cp -fr $1/usr/bin/* dist/usr/bin
+      chmod 755 dist/usr/bin/MXNavi dist/usr/bin/HWInfoWrapper
+      cp -fr $1/usr/lib/libmapconfig_7z.so dist/usr/lib
+      cp -fr $1/usr/lib/libplug_ins_project_2_0.so dist/usr/lib
+      chmod 755 dist/usr/lib/libplug_ins_project_2_0.so dist/usr/lib/libmapconfig_7z.so
+      rm -rf dist/var/MXNavi/NDS/
+#      cp -fr $1/Data/* dist/var/MXNavi/NDS/
+#      cp $1/MXNavi/libnds_lib_interface_mib3.so dist/usr/lib
+
+multiPackage:
+      dev:
+#         buildScript: |
+#            mkdir -p dist/var/MXNavi/NDS
+#            mkdir -p dist/usr/lib
+#            cp -fr $1/MXNavi/* dist/var/MXNavi
+#            chmod +x dist/var/MXNavi/MXNavi
+#            chmod +x dist/var/MXNavi/HWInfoWrapper
+#            cp -fr $1/Data/* dist/var/MXNavi/NDS/
+         packageScript: |
+            cmakePackageDev
+            buildSwupModule -n navi \
+                -p "emmc.MXNavi"    \ 
+                -m "display,display,0755,/var/MXNavi$"   \
+                -m "display,display,0755,/var/MXNavi/*"   \
+                -o 'MXNavi:navi' -f . -- \
+                -U "Partition=rootfs_ro" 
+      target:
+#         buildScript: |
+#            mkdir -p dist/var/MXNavi/NDS
+#            mkdir -p dist/usr/lib
+#            cp -fr $1/MXNavi/* dist/var/MXNavi
+#            chmod +x dist/var/MXNavi/MXNavi
+#            chmod +x dist/var/MXNavi/HWInfoWrapper
+#            cp -fr $1/Data/* dist/var/MXNavi/NDS/
+         packageScript: |
+            cmakePackageTarget --no-strip
+            buildSwupModule -n navi \
+                 -p "emmc.MXNavi" \
+                 -m "display,display,0755,/var/MXNavi$"  \
+                 -m "display,display,0755,/var/MXNavi/*" \
+                 -o 'MXNavi:navi' -f . -- \
+                 -U "Partition=rootfs_ro"
+
+

@@ -1,0 +1,34 @@
+scmOverrides:
+  -
+    match:
+      url: "git@*/tsd.sal.*.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@*/ext.apple.carplay.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@*/ext.google.gal.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+  -
+    match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.android.aoa.git"
+    del: [commit, tag]
+    set:
+      branch: develop_mqb_sop1_eu
+
+alias:
+   usb: "zr3/zr3-variant-VW_EU/connectivity::usb::tsd-usb-mib3-target"
+   sal: "zr3/zr3-variant-VW_EU//sal::tsd-sal-app-target"
+   pm:  "zr3/zr3-variant-VW_EU/phone::phonemanager::tsd-phonemanager-target"
+   viwi: "zr3/zr3-variant-VW_EU/sal::viwiproxy::tsd-sal-viwiproxy-target"
+   mirrorlink-host-dev: "host-linux/sal::tsd-sal-mirrorlink-mib3-dev"
+   sal-app-dev-host:    "host-linux/sal::tsd-sal-app-dev"
+

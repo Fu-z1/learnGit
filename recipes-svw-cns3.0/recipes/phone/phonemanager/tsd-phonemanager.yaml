@@ -1,0 +1,85 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "Application"
+
+depends:
+ - system::tsd-common-dev
+ - libs::tsd-common-stm-dev
+ - system::tsd-threadmessages-dev
+ - basic-services::persistence::tsd-persistence-client-mib3-dev
+ - phone::tsd-phone-callservice-api-dev
+ - communication::tsd-communication-dev
+ - system::tsd-common-daemon-dev
+ - connectivity::networking::tsd-networking-wlan-api-dev
+ - phone::bt-devicemanagement::tsd-bt-management-mib3-api-dev
+ - phone::bt-handsfree::tsd-bt-handsfree-mib3-api-dev
+ - hmi::tsd-dsi-cpp-dev
+ - media::libraries::tsd-media-mediainfo-api-dev
+ - sal::tsd-sal-api-dev
+ - sal::viwiproxy::tsd-sal-viwiproxy-api-dev
+ - basic-services::rsi-library::tsd-vw-rsi-viwi-server-dev
+ - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - libs::tsd-common-stm-target
+    - system::tsd-threadmessages-target
+    - basic-services::persistence::tsd-persistence-client-mib3-target
+    - phone::tsd-phone-callservice-api-target
+    - communication::tsd-communication-target
+    - system::tsd-common-daemon-target
+    - connectivity::networking::tsd-networking-wlan-api-target
+    - phone::bt-devicemanagement::tsd-bt-management-mib3-api-target
+    - phone::bt-handsfree::tsd-bt-handsfree-mib3-api-target
+    - hmi::tsd-dsi-cpp-target
+    - media::libraries::tsd-media-mediainfo-api-target
+    - sal::tsd-sal-api-target
+    - sal::viwiproxy::tsd-sal-viwiproxy-api-target
+    - basic-services::rsi-library::tsd-vw-rsi-viwi-server-target
+    - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.phonemanager.git
+   dir: tsd.phonemanager
+   branch: main/svw_cns3.0_1520_dev
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+
+         mkdir -p dist/etc/tsd.phonemanager
+         cp -au $1/tsd.phonemanager/depl/commonapi.ini dist/etc/tsd.phonemanager
+
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p var/lib/tsd.phonemanager
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "phonemanager" \
+            -p "emmc.phone" \
+            -m 'phone,phone,0770,/var/lib/tsd.phonemanager$'   \
+            -m 'phone,phone,0770,/var/lib/tsd.phonemanager/.*' \
+            -o "phone.phonemanager:tsd-phonemanager " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

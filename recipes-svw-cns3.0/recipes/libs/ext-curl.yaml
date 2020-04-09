@@ -1,0 +1,95 @@
+inherit: [autotools, patch, packing-module]
+
+environment:
+   PKG_VERSION: "7.61.0"
+   CURL: "$(if-then-else,${VARIANTS-0},$(if-then-else,$(flagIsSet,${VARIANTS-311001},SW_CURL,1),1,0),0)"
+
+depends:
+  - libs::ext-nghttp2-dev
+  - libs::ext-openssl-dev
+  - libs::ext-zlib-dev
+  - if: "$(eq,${CXXFLAGS_ADDRESS_SANITIZE:-},'')"
+    depends:
+      - libs::ext-c-ares-dev
+  - use: []
+    depends:
+      - libs::ext-nghttp2-target
+      - libs::ext-openssl-target
+      - libs::ext-zlib-target
+      - if: "$(eq,${CXXFLAGS_ADDRESS_SANITIZE:-},'')"
+        depends:
+          - libs::ext-c-ares-target
+
+checkoutVars: [PKG_VERSION]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libcurl/curl-${PKG_VERSION}.tar.gz
+   digestSHA1: "34c0f89e01c27070fe3b6f86371791390f464602"
+
+checkoutDeterministic: true
+checkoutScript: |
+   pushd curl-${PKG_VERSION}
+   patchApplySeries -p1 $<<ext-curl/*.patch>>
+   popd
+
+buildVars: [CURL_ARES_OPTION, LIBDIR, PKG_VERSION]
+buildScript: |
+
+   rsync -a --delete $1/curl-${PKG_VERSION}/ .
+   export CPPFLAGS="-I${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/include -I${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/include -I${BOB_DEP_PATHS["libs::ext-nghttp2-dev"]}/usr/include"
+   export LDFLAGS="-L${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/${LIBDIR} -L${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/${LIBDIR} -L${BOB_DEP_PATHS["libs::ext-nghttp2-dev"]}/usr/${LIBDIR}"
+   export LD_LIBRARY_PATH="${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-nghttp2-dev"]}/usr/${LIBDIR}"
+   export LT_SYS_LIBRARY_PATH="${BOB_DEP_PATHS["libs::ext-openssl-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-zlib-dev"]}/usr/${LIBDIR}:${BOB_DEP_PATHS["libs::ext-nghttp2-dev"]}/usr/${LIBDIR}"
+   export LIBS="-lssl -lcrypto -lz -lnghttp2"
+   export C_ARES_PATH="${BOB_DEP_PATHS["libs::ext-c-ares-dev"]:-}/usr/${LIBDIR}"
+
+   autotoolsBuild . \
+      --without-libpsl \
+      --disable-ldap \
+      --without-libidn \
+      --without-gnutls \
+      --without-polarssl \
+      --without-cyassl \
+      --without-nss \
+      --without-axtls \
+      --without-winssl \
+      --with-ssl \
+      --enable-http \
+      --enable-debug \
+      --disable-curldebug \
+      --with-ssl \
+      --with-zlib \
+      --enable-versioned-symbols \
+      --disable-symbol-hiding \
+      "${CURL_ARES_OPTION:---enable-ares="$C_ARES_PATH"}" \
+      --with-nghttp2 \
+   #dist/usr/bin/curl --version | grep -i ssl
+   #dist/usr/bin/curl --version | grep -i http2
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l curl -I include \
+            -d ext.openssl -d ext.zlib -d ext.nghttp2 ext.curl
+      provideDeps: ['*-dev']
+
+   target:
+      packageVars: [CURL]
+      packageScript: |
+         autotoolsPackageTarget
+
+         if [ ${CURL} -eq 0 ]
+         then
+            rm usr/bin/curl
+         fi
+
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-curl" \
+            -p "emmc.libs" \
+            -o "libs:ext-curl " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

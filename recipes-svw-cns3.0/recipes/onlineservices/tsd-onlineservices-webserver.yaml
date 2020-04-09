@@ -1,0 +1,64 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: Connect-Onlineservices
+
+depends:
+ - libs::ext-openssl-dev
+ - system::ext-h2o-dev
+ - system::ext-libuv-dev
+ - system::ext-wslay-dev
+ - system::tsd-common-dev
+ - use: []
+   depends:
+    - libs::ext-openssl-target
+    - system::ext-h2o-target
+    - system::ext-libuv-target
+    - system::ext-wslay-target
+    - system::tsd-common-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-onlineservices/tsd.onlineservices.webserver.git
+   dir: tsd.onlineservices.webserver
+   tag: mqb_sop1_eu-1.97.17
+buildVars: [AUTOCONF_HOST]
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+   target:
+      buildScript: |
+         buildenvBuildAll
+         rsync -a $1/tsd.onlineservices.webserver/certificate ${PWD}
+      packageScript: |
+         buildenvPackageTarget
+
+         mkdir -p var/lib/tsd.onlineservices.webapp.management
+         rsync -a --delete $1/certificate/* var/lib/tsd.onlineservices.webapp.management/
+
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "onlineservices-webserver" \
+            -p "emmc.onlineservices" \
+            -m 'wam,wam,0770,/var/lib/tsd.onlineservices.webapp.management$'   \
+            -m 'wam,wam,0400,/var/lib/tsd.onlineservices.webapp.management/localhost.crt$'   \
+            -m 'wam,wam,0400,/var/lib/tsd.onlineservices.webapp.management/localhost.key$'   \
+            -o "onlineservices:tsd-onlineservices-webserver " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

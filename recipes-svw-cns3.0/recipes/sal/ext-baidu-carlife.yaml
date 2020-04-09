@@ -1,0 +1,68 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "Apache License 2.0"
+   PKG_VERSION: "320.17"
+   PKG_NAME: "Baidu CarLife Communication Plug-in"
+   PKG_PATCH_VERSION: ""
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "SharedLib"
+
+depends:
+   # build dependencies
+   - system::tsd-common-dev
+   - libs::ext-openssl-dev
+   - libs::ext-protobuf-dev
+
+   # runtime dependencies
+   - use: []
+     depends:
+      - sal::tsd-sal-common-target 
+      - libs::ext-openssl-target 
+      - libs::ext-protobuf-target
+
+checkoutSCM:
+   -  scm: git
+      url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/ext.baidu.carlife.git
+      dir: ext.baidu.carlife
+      branch: feature/CNS_SOP1
+multiPackage:
+   "":
+      buildVars: [JPCC_BAIDU_CARLIFE_BUILD_APP, AUTOCONF_HOST]
+      buildTools: [toolchain, protoc]
+      buildScript: | 
+          buildenvBuildAll \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=${JPCC_BAIDU_CARLIFE_BUILD_APP:-0} \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=${JPCC_BAIDU_CARLIFE_BUILD_APP:-0}
+
+      multiPackage:
+         dev:
+            packageScript: |
+                buildenvPackageDev install
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "ext-baidu-carlife" \
+                  -p "emmc.sal" \
+                  -o "sal:ext-baidu-carlife " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   app:
+      buildScript: |
+         buildenvBuildModules \
+            -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 \
+            -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            jpcc.baidu.carlife.app.TestClient
+      packageScript: buildenvPackageTarget
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+

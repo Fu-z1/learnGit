@@ -1,0 +1,203 @@
+inherit: [packing-image]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.update.scripts.git
+   tag: mqb_sop1_eu-2.9.1
+   branch: master_mqb_sop1_eu
+
+buildVars: [MODULE_VERSION]
+
+multiPackage:
+   # include all scripts which will be executed after software update
+   nav-pkg:
+      buildScript: |
+         rsync -a --delete $1/post-scripts/nav.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "nav-delete-pso" \
+            --file $1/nav.sh \
+            -U Installer=script \
+            -U Destination='/tmp/nav.sh'
+
+   swupdate-pkg:
+      buildScript: |
+         rsync -a --delete $1/swupdate/ .
+
+      packageScript: |
+         REQUIREDBY="{\"Packages\":[{\"PackageName\":\"boot.swupdate.*\",\"Flags\":\"Selected\"},{\"PackageName\":\"swupdate.image\",\"Flags\":\"Selected\"}]}"
+
+         buildSwupImage --packageName "install" \
+            --file $1/installSwupdate.sh \
+            --requiredBy "${REQUIREDBY}" \
+            -U Installer=script \
+            -U Destination='/tmp/install/installSwupdate.sh'
+
+   swup-db-pkg:
+      buildScript: |
+         rsync -a --delete $1/pre-scripts/moveDatabases.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "swup-db" \
+            --file $1/moveDatabases.sh \
+            -U Installer=script \
+            -U Destination='/tmp/moveDatabases.sh'
+
+   hmi-pkg:
+      buildScript: |
+         rsync -a --delete $1/pre-scripts/hmi.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "hmi-delete" \
+            --file $1/hmi.sh \
+            -U Installer=script \
+            -U Destination='/tmp/hmi.sh'
+
+   secure-pkg:
+      buildScript: |
+         rsync -a --delete $1/post-scripts/secure.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "secure" \
+            --file $1/secure.sh \
+            -U Installer=script \
+            -U Destination='/tmp/secure.sh'
+
+   vkms-pkg:
+      privateEnvironment:
+         PROJECT: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W),37W,MQB)"
+      buildVars: [PROJECT]
+      buildScript: |
+         if [ ${PROJECT} == "37W" ]; then
+            rsync -a --delete $1/post-scripts/vkms_init_37w.sh vkms_init.sh
+         else
+            rsync -a --delete $1/post-scripts/vkms_init_mqb.sh vkms_init.sh
+         fi
+      packageScript: |
+         buildSwupImage --packageName "vkms" \
+            --file $1/vkms_init.sh \
+            -U Installer=script \
+            -U Destination='/tmp/vkms_init.sh'
+
+   ks-pkg:
+      buildScript: |
+         rsync -a --delete $1/post-scripts/ks_init.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "ks" \
+            --file $1/ks_init.sh \
+            -U Installer=script \
+            -U Destination='/tmp/ks_init.sh'
+
+   audio-pkg:
+      buildScript: |
+         rsync -a --delete $1/post-scripts/audio.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "audio" \
+            --file $1/audio.sh \
+            -U Installer=script \
+            -U Destination='/tmp/audio.sh'
+
+   aesKeys-pkg:
+      buildScript: |
+         rsync -a --delete $1/pre-scripts/aesInit.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "aesKeys" \
+            --file $1/aesInit.sh \
+            -U Installer=script \
+            -U Destination='/tmp/aesInit.sh'
+
+   map-pkg:
+      buildScript: |
+         rsync -a --delete $1/pre-scripts/map_delete.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "map-delete" \
+            --file $1/map_delete.sh \
+            -U Installer=script \
+            -U Destination='/tmp/map_delete.sh'
+   updatemanager-pkg:
+      buildScript: |
+         rsync -a --delete $1/pre-scripts/updatemanager_delete.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "updatemanager-delete" \
+            --file $1/updatemanager_delete.sh \
+            -U Installer=script \
+            -U Destination='/tmp/updatemanager_delete.sh'
+
+   crash-pkg:
+      buildScript: |
+         rsync -a --delete $1/pre-scripts/deleteCrash.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "delete-crash" \
+            --file $1/deleteCrash.sh \
+            -U Installer=script \
+            -U Destination='/tmp/deleteCrash.sh'
+
+   preloadFilesHmi-pkg:
+      buildScript: |
+         rsync -a --delete $1/post-scripts/preload_files_hmi.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "set-hmi-files" \
+            --file $1/preload_files_hmi.sh \
+            -U Installer=script \
+            -U Destination='/tmp/preload_files_hmi.sh'
+
+   activation-pkg:
+      privateEnvironment:
+         PROJECT: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_HMI_PROJECT,37W),37W,MQB)"
+      buildVars: [PROJECT]
+      buildScript: |
+         if [ ${PROJECT} == "MQB" ]; then
+            rsync -a --delete $1/post-scripts/swapsf_reinit.sh activation.sh
+         else
+            cat > activation.sh <<EOF
+         #!/bin/sh
+         :
+         EOF
+         fi
+
+      packageScript: |
+         buildSwupImage --packageName "activation" \
+            --file $1/activation.sh \
+            -U Installer=script \
+            -U Destination='/tmp/activation.sh'
+
+   radio-pkg:
+      buildScript: |
+         rsync -a --delete $1/post-scripts/radio.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "radio" \
+            --file $1/radio.sh \
+            -U Installer=script \
+            -U Destination='/tmp/radio.sh'
+
+   webapp-pkg:
+      buildScript: |
+         rsync -a --delete $1/post-scripts/webapps.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "webapp" \
+            --file $1/webapps.sh \
+            -U Installer=script \
+            -U Destination='/tmp/webapps.sh'
+
+   reset-webapps-pkg:
+      buildScript: |
+         rsync -a --delete $1/pre-scripts/reset_webapps.sh .
+
+      packageScript: |
+         buildSwupImage --packageName "reset-webapps" \
+            --file $1/reset_webapps.sh \
+            --requiredBy '{"Packages":[{"PackageName":"emmc.onlineservices.ext-preloaded-webapps","Flags":"Selected"}]}' \
+            -U Installer=script \
+            -U Destination='/tmp/reset_webapps.sh'

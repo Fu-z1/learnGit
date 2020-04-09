@@ -1,0 +1,177 @@
+# All overrides for owned modules of tsd.bt.phone.mib3
+# All Common API related modules are commented out and should be used on a tag
+# corresponding to used target software instead.
+scmOverrides:
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.phone.mib3.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+# phone::bt-middleware::tsd-blueware-mib3-bluego-dev
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.bluego.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.bluego.mock.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.blueware.api.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.blueware.bluego.git 
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.blueware.mib3.bluego.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.blueware.mib3.bluego.api.git
+#  set:
+#    branch: develop_mqb_sop1_eu
+# phone::bt-handsfree::tsd-bt-handsfree-mib3-dev
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-telephony/tsd.bt.handsfree.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.bt.handsfree.mib3.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+# phone::bt-devicemanagement::tsd-bt-management-mib3-dev
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.bt.management.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.management.mib3.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.management.mib3.api.git
+#  set:
+#    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnecttsd.bt.management.mib3.client.git
+#  set:
+#    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.management.mib3.service.git
+#  set:
+#    branch: develop_mqb_sop1_eu
+# phone::bt-mediacontroller::tsd-bt-media-mib3-dev
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.bt.media.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.client.git	
+#  set:
+#    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.api.git
+#  set:
+#    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.service.git
+#  set:
+#    branch: develop_mqb_sop1_eu
+# phone::bt-messaging::tsd-bt-messaging-mib3-dev
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-telephony/tsd.bt.messaging.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.messaging.mib3.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+# phone::bt-organizer::tsd-organizer-mib3-dev
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-telephony/tsd.organizer.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.api.git
+#  set:
+#    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.client.git
+#  set:
+#    branch: develop_mqb_sop1_eu
+#- match:
+#    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.service.git
+#  set:
+#    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.parser.phonenumber.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.parser.vobject.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.parser.vobject.api.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+# phonemanager
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.phonemanager.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+#NFC
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.nfc.mib3.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.nfc.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+#tsd.phone.common
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-telephony/tsd.phone.common.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+- match:
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.phone.common.mib3.git
+  del: [commit, tag]
+  set:
+    branch: develop_mqb_sop1_eu
+
+alias:
+   phone: "zr3/zr3-variant-VW_EU/images::rootfs/phone::bt-phone::tsd-bt-phone-mib3-target"
+   pm:  "zr3/zr3-variant-VW_EU/images::rootfs/phone::phonemanager::tsd-phonemanager-target"

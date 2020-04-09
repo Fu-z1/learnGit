@@ -1,0 +1,41 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-3.0-or-later"
+   PKG_VERSION: "4.8.19"
+   PKG_NAME: "mc"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-ncurses-dev
+  - libs::ext-glib2-dev
+  - libs::ext-readline-dev
+  - use: []
+    depends:
+      - libs::ext-ncurses-target
+      - libs::ext-glib2-target
+      - libs::ext-readline-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-mc/mc-${PKG_VERSION}.tar.bz2
+   digestSHA1: "569f92b1de17e92f3d86dac00e7a12f0b649fea3"
+
+buildVars: [CROSS_COMPILE, SYSROOT, CC, CPP, LIBDIR, AUTOCONF_HOST, TARGET_TYPE, PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -av $1/mc-${PKG_VERSION}/ .
+   LDFLAGS+=" -ltinfo"
+   autotoolsBuild . --with-screen=ncurses
+
+packageScript: |
+   autotoolsPackageTarget --include-shared
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-mc" \
+      -p "emmc.system" \
+      -o "system:ext-mc " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+provideDeps: ["*-target"]

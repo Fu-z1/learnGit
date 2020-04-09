@@ -1,0 +1,703 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soc-capabilities xmlns="http://www.opensynergy.com/xml/coqoshv-configuration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.opensynergy.com/xml/coqoshv-configuration ../schema/coqoshv-configuration.xsd"
+	model-version="v0.1"
+	parent-capabilities="arch-model-armv8.xml"
+	name="r8a7795-pcc-zr3">
+	<core-capabilities irqc-version="gic-v2" timer-version="arm-generic-timer">
+		<cpu name="Cortex-A57" count="4">
+			<mmu host-phys-addr-bits="48" hv-va-bits-min="8" hv-va-bits-max="15">
+				<supported-granule log2="12"/>
+				<supported-granule log2="14"/>
+				<supported-granule log2="16"/>
+				<guest-phys-addr-bits log2="32"/>
+			</mmu>
+		</cpu>
+		<cpu name="Cortex-A53" count="4">
+			<mmu host-phys-addr-bits="48" hv-va-bits-min="8" hv-va-bits-max="15">
+				<supported-granule log2="12"/>
+				<supported-granule log2="14"/>
+				<supported-granule log2="16"/>
+				<guest-phys-addr-bits log2="32"/>
+			</mmu>
+		</cpu>
+	</core-capabilities>
+
+	<device name="gic-vcpu-interface">
+		<register-region base-paddr="0xf1060000" size="0x20000"/>
+	</device>
+
+	<device compat="sh" name="serial@e6e60000">
+		<register-region base-paddr="0xe6e60000" size="0x1000"/>
+		<irq-line active="high" int-no="0xb8" type="level"/>
+	</device>
+
+	<device name="serial_pwc@e6e88000">
+		<register-region base-paddr="0xe6e88000" size="0x1000"/>
+		<irq-line active="high" int-no="0xc4" type="level"/>
+	</device>
+
+	<device name="sd@ee160000">
+		<register-region base-paddr="0xee160000" size="0x2000"/>
+		<irq-line active="high" int-no="0xc8" type="level"/>
+	</device>
+
+	<device name="fcp@fea27000">
+		<register-region base-paddr="0xfea27000" size="0x1000"/>
+	</device>
+
+	<device name="i2c@e60b0000">
+		<register-region base-paddr="0xe60b0000" size="0x1000"/>
+		<irq-line active="high" int-no="0xcd" type="level"/>
+	</device>
+
+	<device name="mfis@e6260000">
+		<register-region base-paddr="0xe6260000" size="0x1000"/>
+		<!-- irq-line active="high" int-no="0xd4" type="level"/-->
+		<irq-line active="high" int-no="0x100" type="level"/>
+		<irq-line active="high" int-no="0x101" type="level"/>
+		<irq-line active="high" int-no="0x102" type="level"/>
+		<irq-line active="high" int-no="0x103" type="level"/>
+		<irq-line active="high" int-no="0x104" type="level"/>
+		<irq-line active="high" int-no="0x105" type="level"/>
+		<irq-line active="high" int-no="0x106" type="level"/>
+		<irq-line active="high" int-no="0x107" type="level"/>
+	</device>
+
+	<device name="vcp4@fe8df000">
+		<register-region base-paddr="0xfe8df000" size="0x1000"/>
+	</device>
+
+	<device name="system-controller@e6180000">
+		<register-region base-paddr="0xe6180000" size="0x1000"/>
+	</device>
+
+	<device name="usb@ee0c0000">
+		<register-region base-paddr="0xee0c0000" size="0x1000"/>
+		<irq-line active="high" int-no="0x91" type="level"/>
+	</device>
+
+	<device name="usb@e6590000">
+		<register-region base-paddr="0xe6590000" size="0x1000"/>
+		<irq-line active="high" int-no="0x8b" type="level"/>
+	</device>
+
+	<device name="pwm@e6e32000">
+		<register-region base-paddr="0xe6e32000" size="0x1000"/>
+	</device>
+
+	<device name="csi2@feaa0000">
+		<register-region base-paddr="0xfeaa0000" size="0x10000"/>
+		<irq-line active="high" int-no="0x116" type="level"/>
+	</device>
+
+	<device name="adsp@ec800000">
+		<register-region base-paddr="0xec800000" size="0x9000"/>
+		<register-region base-paddr="0xece60000" size="0x10000"/>
+		<register-region base-paddr="0xece78000" size="0x8000"/>
+		<register-region base-paddr="0xece80000" size="0x10000"/>
+		<register-region base-paddr="0xece90000" size="0x10000"/>
+		<irq-line active="high" int-no="0x10d" type="level"/>
+	</device>
+	<device name="adsp-fifo@ec460000">
+		<register-region base-paddr="0xec460000" size="0x2000"/>
+	</device>
+
+	<device name="fcp@fea2f000">
+		<register-region base-paddr="0xfea2f000" size="0x1000"/>
+	</device>
+
+	<device name="vcp4@fe8d0000">
+		<register-region base-paddr="0xfe8d0000" size="0x1000"/>
+		<irq-line active="high" int-no="0x19c" int-no-range-end="0x19d" type="level"/>
+		<irq-line active="high" int-no="0xff" type="level"/>
+	</device>
+
+	<device name="fdpm@fe944000">
+		<register-region base-paddr="0xfe944000" size="0x3000"/>
+		<register-region base-paddr="0xfe951000" size="0x1000"/>
+		<irq-line active="high" int-no="0x127" type="level"/>
+	</device>
+
+	<device name="video@e6ef5000">
+		<register-region base-paddr="0xe6ef5000" size="0x1000"/>
+		<irq-line active="high" int-no="0xcf" type="level"/>
+	</device>
+
+	<device name="gpio@e6055000-400-800">
+		<register-region base-paddr="0xe6055000" size="0x1000"/>
+		<irq-line active="high" int-no="0x29" type="level"/>
+		<!-- irq from "gpio@e6055400" -->
+		<irq-line active="high" int-no="0x2a" type="level"/>
+		<!-- irq from "gpio@e6055800" -->
+		<irq-line active="high" int-no="0x2b" type="level"/>
+	</device>
+
+	<device name="vspm1">
+		<!-- vspbd -->
+		<irq-line active="high" int-no="0x12a" type="level"/>
+		<register-region base-paddr="0xfe960000" size="0x8000"/>
+		<register-region base-paddr="0xfe96f000" size="0x1000"/>
+
+		<!-- vspi0 -->
+		<irq-line active="high" int-no="0x1dc" type="level"/>
+		<register-region base-paddr="0xfe9a0000" size="0x8000"/>
+		<register-region base-paddr="0xfe9af000" size="0x1000"/>
+	</device>
+
+	<device name="vspm2">
+		<!-- vspbc -->
+		<irq-line active="high" int-no="0x1f1" type="level"/>
+		<register-region base-paddr="0xfe920000" size="0x8000"/>
+		<register-region base-paddr="0xfe92f000" size="0x1000"/>
+
+		<!-- vspi1 -->
+		<irq-line active="high" int-no="0x1dd" type="level"/>
+		<register-region base-paddr="0xfe9b0000" size="0x8000"/>
+		<register-region base-paddr="0xfe9bf000" size="0x1000"/>
+	</device>
+
+	<device name="vsp@fea20000">
+		<register-region base-paddr="0xfea20000" size="0x4000"/>
+		<irq-line active="high" int-no="0x1f2" type="level"/>
+	</device>
+
+	<device name="vsp@fea28000">
+		<register-region base-paddr="0xfea28000" size="0x4000"/>
+		<irq-line active="high" int-no="0x1f3" type="level"/>
+	</device>
+
+	<device name="vsp@fea30000">
+		<register-region base-paddr="0xfea30000" size="0x4000"/>
+		<irq-line active="high" int-no="0x1f4" type="level"/>
+	</device>
+
+	<device name="vsp@fea38000">
+		<register-region base-paddr="0xfea38000" size="0x4000"/>
+		<irq-line active="high" int-no="0x1f5" type="level"/>
+	</device>
+
+	<device name="dma-controller@ec700000">
+		<register-region base-paddr="0xec700000" size="0x10000"/>
+		<irq-line active="high" int-no="0x17e" type="level"/>
+		<irq-line active="high" int-no="0x160" int-no-range-end="0x16f" type="level"/>
+	</device>
+
+	<device name="fcp@fea37000">
+		<register-region base-paddr="0xfea37000" size="0x1000"/>
+	</device>
+
+	<device name="video@e6ef2000">
+		<register-region base-paddr="0xe6ef2000" size="0x1000"/>
+		<irq-line active="high" int-no="0xde" type="level"/>
+	</device>
+
+	<device name="gpio@e6052000">
+		<register-region base-paddr="0xe6052000" size="0x1000"/>
+		<irq-line active="high" int-no="0x26" type="level"/>
+	</device>
+
+	<device name="serial@e6e68000">
+		<register-region base-paddr="0xe6e68000" size="0x1000"/>
+		<irq-line active="high" int-no="0xb9" type="level"/>
+	</device>
+
+	<device name="clock-controller@e6150000">
+		<register-region base-paddr="0xe6150000" size="0x1000"/>
+	</device>
+
+  	<device name="doc0@feba0000">
+  		<register-region base-paddr="0xfeba0000" size="0x18000"/>
+  	</device>
+
+  	<device name="doc1@febb8000">
+  		<register-region base-paddr="0xfebb8000" size="0x18000"/>
+  	</device>
+
+	<device name="chipid@fff00044">
+		<register-region base-paddr="0xfff00000" size="0x1000"/>
+	</device>
+
+	<device name="vcp4@fe90f000">
+		<register-region base-paddr="0xfe90f000" size="0x1000"/>
+	</device>
+
+	<device name="pwm@e6e31000">
+		<register-region base-paddr="0xe6e31000" size="0x1000"/>
+	</device>
+
+	<device name="ethernet@e6800000">
+		<register-region base-paddr="0xe6800000" size="0x1000"/>
+		<register-region base-paddr="0xe6a00000" size="0x10000"/>
+		<irq-line active="high" int-no="0x47" int-no-range-end="0x5f" type="level"/>
+	</device>
+
+	<device name="hdmi0@fead0000">
+		<register-region base-paddr="0xfead0000" size="0x10000"/>
+		<irq-line active="high" int-no="0x1a5" type="level"/>
+	</device>
+
+	<device name="csi2@fea80000">
+		<register-region base-paddr="0xfea80000" size="0x10000"/>
+		<irq-line active="high" int-no="0xd8" type="level"/>
+	</device>
+
+	<device name="sound@ec500000">
+		<register-region base-paddr="0xec500000" size="0x1000"/>
+		<register-region base-paddr="0xec5a0000" size="0x1000"/>
+		<register-region base-paddr="0xec540000" size="0x2000"/>
+		<register-region base-paddr="0xec740000" size="0x1000"/>
+		<irq-line active="high" int-no="0x180" int-no-range-end="0x19b" type="level"/>
+	</device>
+
+	<device name="vcp4@fe8a0000">
+		<register-region base-paddr="0xfe8a0000" size="0x1000"/>
+		<irq-line active="high" int-no="0xc0" type="level"/>
+	</device>
+
+	<device name="sd@ee100000">
+		<register-region base-paddr="0xee100000" size="0x2000"/>
+		<irq-line active="high" int-no="0xc5" type="level"/>
+	</device>
+
+	<device name="thermal@0xe6198000">
+		<!-- Actual size 0x5c -->
+		<register-region base-paddr="0xe6198000" size="0x1000"/>
+		<irq-line active="high" int-no="0x63" int-no-range-end="0x65" type="level"/>
+	</device>
+
+	<device name="fcp@fea3f000">
+		<register-region base-paddr="0xfea3f000" size="0x1000"/>
+	</device>
+
+	<device name="interrupt-controller@e61c0000">
+		<register-region base-paddr="0xe61c0000" size="0x1000"/>
+		<irq-line active="high" int-no="0x20" int-no-range-end="0x23" type="level"/>
+		<irq-line active="high" int-no="0x32" type="level"/>
+		<irq-line active="high" int-no="0xc1" type="level"/>
+	</device>
+
+	<device name="sd@ee140000">
+		<register-region base-paddr="0xee140000" size="0x2000"/>
+		<irq-line active="high" int-no="0xc7" type="level"/>
+	</device>
+
+	<device name="i2c@e6510000">
+		<register-region base-paddr="0xe6510000" size="0x1000"/>
+		<irq-line active="high" int-no="0x13e" type="level"/>
+	</device>
+
+	<device name="usb@ee0a0000">
+		<register-region base-paddr="0xee0a0000" size="0x1000"/>
+		<irq-line active="high" int-no="0x90" type="level"/>
+
+   </device>
+
+	<device name="rpc@ee200000">
+		<register-region base-paddr="0xee200000" size="0x1000"/>
+	</device>
+
+	<device name="pfc@e6060000">
+		<register-region base-paddr="0xe6060000" size="0x1000"/>
+	</device>
+
+	<device name="vcp4@fe900000">
+		<register-region base-paddr="0xfe900000" size="0x1000"/>
+		<irq-line active="high" int-no="0x110" int-no-range-end="0x111" type="level"/>
+	</device>
+
+	<device name="vcp4@fe8ff000">
+		<register-region base-paddr="0xfe8ff000" size="0x1000"/>
+	</device>
+
+	<device name="video@e6ef7000">
+		<register-region base-paddr="0xe6ef7000" size="0x1000"/>
+		<irq-line active="high" int-no="0xcb" type="level"/>
+	</device>
+
+    <device name="busmon@e67e0000">
+         <register-region base-paddr="0xe67e0000" size="0x20000"/>
+	 </device>
+
+    <device name="dbmon@e6790000">
+          <register-region base-paddr="0xe6790000" size="0x4000"/>
+	</device>
+
+    <device name="busmoniUsed@feb8d000">
+          <register-region base-paddr="0xfeb8d000" size="0x1000"/>
+    </device>
+
+
+	<device name="pmu_a57">
+		<irq-line active="high" int-no="0x68" int-no-range-end="0x6b" type="level"/>
+	</device>
+
+	<device name="video@e6ef4000">
+		<register-region base-paddr="0xe6ef4000" size="0x1000"/>
+		<irq-line active="high" int-no="0xce" type="level"/>
+	</device>
+
+	<device name="fdpm@fe940000">
+		<register-region base-paddr="0xfe940000" size="0x3000"/>
+		<register-region base-paddr="0xfe950000" size="0x1000"/>
+		<irq-line active="high" int-no="0x126" type="level"/>
+	</device>
+
+	<device name="gpio@e6054000">
+		<register-region base-paddr="0xe6054000" size="0x1000"/>
+		<irq-line active="high" int-no="0x28" type="level"/>
+	</device>
+
+	<device name="thermal@0xe61a0000">
+		<register-region base-paddr="0xe61a0000" size="0x1000"/>
+		<irq-line active="high" int-no="0x63" int-no-range-end="0x65" type="level"/>
+	</device>
+
+	<device name="dma-controller@e7300000">
+		<register-region base-paddr="0xe7300000" size="0x10000"/>
+		<irq-line active="high" int-no="0xfc" type="level"/>
+		<irq-line active="high" int-no="0xf8" int-no-range-end="0xfb" type="level"/>
+		<irq-line active="high" int-no="0x154" int-no-range-end="0x15f" type="level"/>
+	</device>
+
+	<device name="watchdog@e6020000">
+		<register-region base-paddr="0xe6020000" size="0x1000"/>
+	</device>
+
+	<device name="video@e6ef1000">
+		<register-region base-paddr="0xe6ef1000" size="0x1000"/>
+		<irq-line active="high" int-no="0xdd" type="level"/>
+	</device>
+
+	<device name="gpio@e6051000">
+		<register-region base-paddr="0xe6051000" size="0x1000"/>
+		<irq-line active="high" int-no="0x25" type="level"/>
+	</device>
+
+	<device name="sata@ee300000">
+		<register-region base-paddr="0xee300000" size="0x2000"/>
+		<irq-line active="high" int-no="0x89" type="level"/>
+	</device>
+
+	<device name="dma-controller@e6700000">
+		<register-region base-paddr="0xe6700000" size="0x10000"/>
+		<irq-line active="high" int-no="0xe7" int-no-range-end="0xf7" type="level"/>
+	</device>
+
+	<device name="generic-timer-el1-physical-nonsecure">
+		<irq-line type="level" int-no="0x1e" active="low"/>
+	</device>
+	<device name="generic-timer-el1-physical-secure">
+		<irq-line type="level" int-no="0x1d" active="low"/>
+	</device>
+	<device name="generic-timer-el1-virtual">
+		<irq-line type="level" int-no="0x1b" active="low"/>
+	</device>
+	<device name="generic-timer-el2-physical">
+		<irq-line type="level" int-no="0x1a" active="low"/>
+	</device>
+
+	<device name="dma-controller@e65a0000">
+		<register-region base-paddr="0xe65a0000" size="0x1000"/>
+		<irq-line active="high" int-no="0x8d" type="level"/>
+	</device>
+
+	<device name="dma-controller@e6460000">
+		<register-region base-paddr="0xe6460000" size="0x1000"/>
+		<irq-line active="high" int-no="0x42" type="level"/>
+	</device>
+
+	<device name="dma-controller@e6470000">
+		<register-region base-paddr="0xe6470000" size="0x1000"/>
+		<irq-line active="high" int-no="0x43" type="level"/>
+	</device>
+
+	<device name="interrupt-controller@f1010000">
+		<register-region base-paddr="0xf1010000" size="0x1000"/>
+		<register-region base-paddr="0xf1020000" size="0x60000"/>
+		<irq-line active="high" int-no="0x19" type="level"/>
+	</device>
+
+	<device name="vcp4@fe8f0000">
+		<register-region base-paddr="0xfe8f0000" size="0x1000"/>
+		<irq-line active="high" int-no="0x122" int-no-range-end="0x123" type="level"/>
+	</device>
+
+	<device name="pmu_a53">
+		<irq-line active="high" int-no="0x74" int-no-range-end="0x77" type="level"/>
+	</device>
+
+	<device name="reset-controller@e6160000">
+		<register-region base-paddr="0xe6160000" size="0x1000"/>
+	</device>
+
+	<device name="dma-controller@ec720000">
+		<register-region base-paddr="0xec720000" size="0x10000"/>
+		<irq-line active="high" int-no="0x17f" type="level"/>
+		<irq-line active="high" int-no="0x170" int-no-range-end="0x17d" type="level"/>
+		<irq-line active="high" int-no="0x19e" int-no-range-end="0x19f" type="level"/>
+	</device>
+
+	<device name="usb@ee000000">
+		<register-region base-paddr="0xee000000" size="0x1000"/>
+		<irq-line active="high" int-no="0x86" type="level"/>
+	</device>
+
+	<device name="usb@ee020000">
+		<register-region base-paddr="0xee020000" size="0x1000"/>
+		<irq-line active="high" int-no="0x88" type="level"/>
+	</device>
+
+	<device name="vcp4@fe910000">
+		<register-region base-paddr="0xfe910000" size="0x1000"/>
+		<irq-line active="high" int-no="0x124" int-no-range-end="0x125" type="level"/>
+	</device>
+	<device name="display0@feb00000">
+		<register-region base-paddr="0xfeb00000" size="0x40000"/>
+		<irq-line active="high" int-no="0x120" type="level"/>
+		<irq-line active="high" int-no="0x12c" type="level"/>
+	</device>
+	<device name="display2@feb40000">
+		<register-region base-paddr="0xfeb40000" size="0x40000"/>
+		<irq-line active="high" int-no="0x12d"  int-no-range-end="0x12e" type="level"/>
+	</device>
+	<device name="display-id@0xfeb90000">
+		<register-region base-paddr="0xfeb90000" size="0x1000"/>
+	</device>
+
+	<device name="dma-controller@e7310000">
+		<register-region base-paddr="0xe7310000" size="0x10000"/>
+		<irq-line active="high" int-no="0x1c0" int-no-range-end="0x1cf" type="level"/>
+		<irq-line active="high" int-no="0x1ad" type="level"/>
+	</device>
+
+	<device name="usb@ee080000">
+		<register-region base-paddr="0xee080000" size="0x1000"/>
+		<irq-line active="high" int-no="0x8c" type="level"/>
+	</device>
+
+	<device name="fdpm@fe948000">
+		<register-region base-paddr="0xfe948000" size="0x3000"/>
+		<register-region base-paddr="0xfe952000" size="0x1000"/>
+		<irq-line active="high" int-no="0x128" type="level"/>
+	</device>
+
+	<device name="thermal@0xe61a8000">
+		<register-region base-paddr="0xe61a8000" size="0x1000"/>
+		<irq-line active="high" int-no="0x63" int-no-range-end="0x65" type="level"/>
+	</device>
+
+	<device name="pcie@ee800000">
+		<!-- base address of PCIe controller registers -->
+		<register-region base-paddr="0xee800000" size="0x80000"/>
+		<!-- ranges for the PCI memory and I/O regions -->
+		<register-region base-paddr="0xee900000" size="0x00300000"/>
+		<register-region base-paddr="0xc0000000" size="0x10000000"/>
+		<irq-line active="high" int-no="0xb4" int-no-range-end="0xb6" type="level"/>
+	</device>
+
+	<device name="video@e6ef6000">
+		<register-region base-paddr="0xe6ef6000" size="0x1000"/>
+		<irq-line active="high" int-no="0xd0" type="level"/>
+	</device>
+
+	<device name="i2c@e66d8000">
+		<register-region base-paddr="0xe66d8000" size="0x1000"/>
+		<irq-line active="high" int-no="0x33" type="level"/>
+	</device>
+
+	<device name="video@e6ef3000">
+		<register-region base-paddr="0xe6ef3000" size="0x1000"/>
+		<irq-line active="high" int-no="0xdf" type="level"/>
+	</device>
+
+	<device name="gpio@e6053000">
+		<register-region base-paddr="0xe6053000" size="0x1000"/>
+		<irq-line active="high" int-no="0x27" type="level"/>
+	</device>
+
+	<device name="pcie@fe000000">
+		<!-- base address of PCIe controller registers -->
+		<register-region base-paddr="0xfe000000" size="0x80000"/>
+		<!-- ranges for the PCI memory and I/O regions -->
+		<register-region base-paddr="0xfe100000" size="0x00300000"/>
+		<register-region base-paddr="0x30000000" size="0x10000000"/>
+		<irq-line active="high" int-no="0x94" int-no-range-end="0x96" type="level"/>
+	</device>
+
+	<device name="gsx@fd000000">
+		<!-- Overlaps with gsx@fd010000 -->
+		<register-region base-paddr="0xfd000000" size="0x40000"/>
+		<irq-line active="high" int-no="0x97" type="level"/>
+	</device>
+
+	<device name="gsx@fd010000">
+		<register-region base-paddr="0xfd010000" size="0x10000"/>
+		<irq-line active="high" int-no="0x97" type="level"/>
+	</device>
+
+	<device name="video@e6ef0000">
+		<register-region base-paddr="0xe6ef0000" size="0x1000"/>
+		<irq-line active="high" int-no="0xdc" type="level"/>
+	</device>
+
+	<device name="gpio@e6050000">
+		<register-region base-paddr="0xe6050000" size="0x1000"/>
+		<irq-line active="high" int-no="0x24" type="level"/>
+	</device>
+
+	<device name="dma-controller@e65b0000">
+		<register-region base-paddr="0xe65b0000" size="0x1000"/>
+		<irq-line active="high" int-no="0x8e" type="level"/>
+	</device>
+
+	<device name="hdmi1@feae0000">
+		<register-region base-paddr="0xfeae0000" size="0x10000"/>
+		<irq-line active="high" int-no="0x1d4" type="level"/>
+	</device>
+
+	<device name="avs">
+		<register-region base-paddr="0xe60a0000" size="0x1000"/>
+	</device>
+
+	<device name="serial@e6c40000">
+		<!-- Actual size 0x40 -->
+		<register-region base-paddr="0xe6c40000" size="0x1000"/>
+		<irq-line int-no="0x30" type="level" active="high"/>
+	</device>
+
+	<device name="serial@e6f30000">
+		<!-- Actual size 0x40 -->
+		<register-region base-paddr="0xe6f30000" size="0x1000"/>
+		<irq-line int-no="0x31" type="level" active="high"/>
+	</device>
+
+	<device name="i2c@e66e0000">
+		<!-- Actual size 0x40 -->
+		<register-region base-paddr="0xe66e0000" size="0x1000"/>
+		<irq-line int-no="0x34" type="level" active="high"/>
+	</device>
+
+	<device name="i2c@e66e8000">
+		<!-- Actual size 0x40 -->
+		<register-region base-paddr="0xe66e8000" size="0x1000"/>
+		<irq-line int-no="0x35" type="level" active="high"/>
+	</device>
+	
+	<device name="serial@e6c50000">
+		<!-- Actual size 0x40 -->
+		<register-region base-paddr="0xe6c50000" size="0x1000"/>
+		<irq-line int-no="0x37" type="level" active="high"/>
+	</device>
+
+	<device name="usb@ee0400000">
+		<!-- Actual size 0xc00 -->
+		<register-region base-paddr="0xee040000" size="0x1000"/>
+		<irq-line int-no="0x82" type="level" active="high"/>
+	</device>
+
+	<device name="serial@e6560000">
+		<!-- Actual size 0x60 -->
+		<register-region base-paddr="0xe6560000" size="0x1000"/>
+		<irq-line int-no="0xb0" type="level" active="high"/>
+	</device>
+
+	<device name="serial@e66a0000">
+		<!-- Actual size 0x60 -->
+		<register-region base-paddr="0xe66a0000" size="0x1000"/>
+		<irq-line int-no="0xb1" type="level" active="high"/>
+	</device>
+
+	<device name="serial@e66b0000">
+		<!-- Actual size 0x60 -->
+		<register-region base-paddr="0xe66b0000" size="0x1000"/>
+		<irq-line int-no="0xb2" type="level" active="high"/>
+	</device>
+
+	<device name="serial@e6540000">
+		<!-- Actual size 0x60 -->
+		<register-region base-paddr="0xe6540000" size="0x1000"/>
+		<irq-line int-no="0xba" type="level" active="high"/>
+	</device>
+
+	<device name="serial@e6550000">
+		<!-- Actual size 0x60 -->
+		<register-region base-paddr="0xe6550000" size="0x1000"/>
+		<irq-line int-no="0xbb" type="level" active="high"/>
+	</device>
+
+	<device name="spi@e6e90000">
+		<!-- Actual size 0x64 -->
+		<register-region base-paddr="0xe6e90000" size="0x1000"/>
+		<irq-line int-no="0xbc" type="level" active="high"/>
+	</device>
+
+	<device name="spi@e6ea0000">
+		<!-- Actual size 0x64 -->
+		<register-region base-paddr="0xe6ea0000" size="0x1000"/>
+		<irq-line int-no="0xbd" type="level" active="high"/>
+	</device>
+
+	<device name="spi@e6c00000">
+		<!-- Actual size 0x64 -->
+		<register-region base-paddr="0xe6c00000" size="0x1000"/>
+		<irq-line int-no="0xbe" type="level" active="high"/>
+	</device>
+
+	<device name="spi@e6c10000">
+		<!-- Actual size 0x64 -->
+		<register-region base-paddr="0xe6c10000" size="0x1000"/>
+		<irq-line int-no="0xbf" type="level" active="high"/>
+	</device>
+
+	<device name="sd@ee120000">
+		<register-region base-paddr="0xee120000" size="0x00002000"/>
+		<irq-line int-no="0xc6" type="level" active="high"/>
+	</device>
+
+	<device name="csi2@fea90000">
+		<register-region base-paddr="0xfea90000" size="0x10000"/>
+		<irq-line int-no="0xd9" type="level" active="high"/>
+	</device>
+
+	<device name="can@e6c30000">
+		<register-region base-paddr="0xe6c30000" size="0x1000"/>
+		<irq-line int-no="0xda" type="level" active="high"/>
+	</device>
+
+	<device name="can@e6c38000">
+		<register-region base-paddr="0xe6c38000" size="0x1000"/>
+		<irq-line int-no="0xdb" type="level" active="high"/>
+	</device>
+
+	<device name="mmu@e67b0000">
+		<register-region base-paddr="0xe67b0000" size="0x1000"/>
+		<irq-line int-no="0xe4" type="level" active="high"/>
+		<irq-line int-no="0xe5" type="level" active="high"/>
+	</device>
+
+	<device name="csi2@feab0000">
+		<register-region base-paddr="0xfeab0000" size="0x10000"/>
+		<irq-line int-no="0x117" type="level" active="high"/>
+	</device>
+
+	<device name="i2c@e6500000">
+		<!-- Actual size 0x40 -->
+		<register-region base-paddr="0xe6500000" size="0x1000"/>
+		<irq-line int-no="0x13f" type="level" active="high"/>
+	</device>
+
+	<device name="i2c@e6508000">
+		<!-- Actual size 0x40 -->
+		<register-region base-paddr="0xe6508000" size="0x1000"/>
+		<irq-line int-no="0x140" type="level" active="high"/>
+	</device>
+
+	<device name="i2c@e66d0000">
+		<!-- Actual size 0x40 -->
+		<register-region base-paddr="0xe66d0000" size="0x1000"/>
+		<irq-line int-no="0x142" type="level" active="high"/>
+	</device>
+
+</soc-capabilities>

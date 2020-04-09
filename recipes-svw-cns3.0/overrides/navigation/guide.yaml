@@ -1,0 +1,20 @@
+scmOverrides:
+#zielfuehrung
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.pathfinder*"
+   del: [commit, tag]
+   set:
+      branch: develop_mqb_sop1_eu
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.sdk.pathfinder*"
+   del: [commit, tag]
+   set:
+      branch: develop_mqb_sop1_eu
+-
+   match:
+      url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.mibmap.git"
+   del: [commit, tag]
+   set:
+      branch: develop

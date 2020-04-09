@@ -1,0 +1,30 @@
+inherit: [make, strip, packing-module]
+
+
+depends:
+   - system::bsp::ext-opensynergy-coqoshv-guest-driver-src
+   -
+      name: system::bsp::ext-linux-headers
+      use: [result, environment]
+
+buildVars: [CROSS_COMPILE, ARCH, SYSROOT, KERNEL_VERSION, CC, CXX, CPP]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a --delete ${BOB_DEP_PATHS["system::bsp::ext-opensynergy-coqoshv-guest-driver-src"]}/* .
+
+   make M=${PWD} -C ${BOB_DEP_PATHS["system::bsp::ext-linux-headers"]}/lib/modules/${KERNEL_VERSION}/build  modules
+
+packageVars: [STRIP]
+packageScript: |
+   DIR="lib/modules/${KERNEL_VERSION}/extra"
+   mkdir -p "${DIR}"
+   cp -rf $1/*.ko ${DIR}
+   stripAllKernelModules "${DIR}" "${STRIP}"
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-kmod-coqoshv-gt-dvr" \
+                   -p "emmc.system.bsp" \
+                   -o "system.bsp:ext-kmod-coqoshv-guest-driver" -f $d -- \
+                   -U Depmod=true \
+                   -U "Partition=rootfs_ro"
+   rm -rf $d

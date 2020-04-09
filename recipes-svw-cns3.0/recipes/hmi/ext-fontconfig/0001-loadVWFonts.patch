@@ -1,0 +1,33 @@
+diff --git a/src/fcfreetype.c b/src/fcfreetype.c
+old mode 100755
+new mode 100644
+index b4d926d..902ba50
+--- a/src/fcfreetype.c
++++ b/src/fcfreetype.c
+@@ -1373,6 +1373,7 @@ FcFreeTypeQueryFace (const FT_Face  face,
+ #ifdef TT_NAME_ID_WWS_FAMILY
+ 		case TT_NAME_ID_WWS_FAMILY:
+ #endif
++#ifndef TSD_HACK_FONTCONFIG
+ 		case TT_NAME_ID_PREFERRED_FAMILY:
+ 		case TT_NAME_ID_FONT_FAMILY:
+ #if 0	
+@@ -1389,6 +1390,7 @@ FcFreeTypeQueryFace (const FT_Face  face,
+ 		    np = &nfamily;
+ 		    nlangp = &nfamily_lang;
+ 		    break;
++#endif
+ 		case TT_NAME_ID_MAC_FULL_NAME:
+ 		case TT_NAME_ID_FULL_NAME:
+ 		    if (FcDebug () & FC_DBG_SCANV)
+@@ -1478,9 +1480,7 @@ FcFreeTypeQueryFace (const FT_Face  face,
+     {
+ 	if (FcDebug () & FC_DBG_SCANV)
+ 	    printf ("using FreeType family \"%s\"\n", face->family_name);
+-	if (!FcPatternAddString (pat, FC_FAMILY, (FcChar8 *) face->family_name))
+-	    goto bail1;
+-	if (!FcPatternAddString (pat, FC_STYLELANG, (FcChar8 *) "en"))
++   if (!FcPatternAddString (pat, FC_FAMILY, file))
+ 	    goto bail1;
+ 	++nfamily;
+     }

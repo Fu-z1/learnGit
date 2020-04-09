@@ -1,0 +1,40 @@
+inherit: [autotools, make, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(Apache-2.0 And Zlib)"
+   PKG_VERSION: "2.4"
+   PKG_NAME: "pigz"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-zlib-dev
+  - use: []
+    depends:
+      - libs::ext-zlib-target
+
+provideDeps: ["*-target"]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-pigz/pigz-${PKG_VERSION}.tar.gz
+   digestSHA1: "92d4a8f3917865acca2c7c368cf0ed10d20d0612"
+
+buildVars: [CC, LIBDIR, PKG_VERSION]
+buildTools: [toolchain]
+buildScript: |
+   rsync -a $1/pigz-${PKG_VERSION}/ .
+   sed -i "s%CC=gcc%CC=$CC%g" Makefile
+   sed -i "s%CFLAGS=-O3 -Wall -Wextra -Wno-unknown-pragmas%CFLAGS=-O3 -Wall -Wextra -Wno-unknown-pragma -I${BOB_DEP_PATHS['libs::ext-zlib-dev']}/usr/include%g" Makefile
+   sed -i "s%LDFLAGS=%LDFLAGS=-L${BOB_DEP_PATHS['libs::ext-zlib-dev']}/usr/${LIBDIR}%g" Makefile
+   makeParallel pigz
+   mkdir -p dist/usr/bin
+   cp pigz dist/usr/bin
+
+packageScript: |
+   autotoolsPackageTarget
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-pigz" \
+      -p "emmc.system" \
+      -o "system:ext-pigz" -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

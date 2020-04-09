@@ -1,0 +1,21 @@
+shared: True
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_JPCC_GIT_SERVER}:architecture/ota_from_target_files.git
+   commit: 1a53f07fb6650a29a597399c7215b319e9d3a844
+   #branch: main/svw_cns3.0_1170_dev
+   dir: bin 
+
+buildScript: |
+   rm -rf bin 
+   cp -rf $1/bin ./
+
+
+packageScript: |
+   rm -rf bin 
+   cp -rf $1/bin ./
+
+provideTools:                                                                                                                                                                                               
+   build_ota.sh:
+         path: "bin/"

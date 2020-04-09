@@ -1,0 +1,229 @@
+diff -ru wxWidgets-3.1.0_org/include/wx/richtext/richtextbuffer.h wxWidgets-3.1.0/include/wx/richtext/richtextbuffer.h
+--- wxWidgets-3.1.0_org/include/wx/richtext/richtextbuffer.h	2016-11-11 17:40:17.705089739 +0100
++++ wxWidgets-3.1.0/include/wx/richtext/richtextbuffer.h	2016-11-21 09:37:09.849539195 +0100
+@@ -2686,7 +2686,7 @@
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse);
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     /**
+         Exports this object directly to the given stream, bypassing the creation of a wxXmlNode hierarchy.
+         This method is considerably faster than creating a tree first. However, both versions of ExportXML must be
+@@ -2696,7 +2696,7 @@
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     /**
+         Exports this object to the given parent node, usually creating at least one child node.
+         This method is less efficient than the direct-to-stream method but is retained to allow for
+@@ -3258,11 +3258,11 @@
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse) wxOVERRIDE;
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler) wxOVERRIDE;
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxXmlNode* parent, wxRichTextXMLHandler* handler) wxOVERRIDE;
+ #endif
+ 
+@@ -4736,11 +4736,11 @@
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse) wxOVERRIDE;
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler) wxOVERRIDE;
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxXmlNode* parent, wxRichTextXMLHandler* handler) wxOVERRIDE;
+ #endif
+ 
+@@ -5015,11 +5015,11 @@
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse) wxOVERRIDE;
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler) wxOVERRIDE;
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxXmlNode* parent, wxRichTextXMLHandler* handler) wxOVERRIDE;
+ #endif
+ 
+@@ -6043,11 +6043,11 @@
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse) wxOVERRIDE;
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler) wxOVERRIDE;
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxXmlNode* parent, wxRichTextXMLHandler* handler) wxOVERRIDE;
+ #endif
+ 
+diff -ru wxWidgets-3.1.0_org/interface/wx/richtext/richtextbuffer.h wxWidgets-3.1.0/interface/wx/richtext/richtextbuffer.h
+--- wxWidgets-3.1.0_org/interface/wx/richtext/richtextbuffer.h	2016-11-11 17:40:17.725089738 +0100
++++ wxWidgets-3.1.0/interface/wx/richtext/richtextbuffer.h	2016-11-21 09:38:42.125539184 +0100
+@@ -2514,7 +2514,7 @@
+     */
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse);
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     /**
+         Exports this object directly to the given stream, bypassing the creation of a wxXmlNode hierarchy.
+         This method is considerably faster than creating a tree first. However, both versions of ExportXML must be
+@@ -2524,7 +2524,7 @@
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     /**
+         Exports this object to the given parent node, usually creating at least one child node.
+         This method is less efficient than the direct-to-stream method but is retained to allow for
+@@ -3092,11 +3092,11 @@
+ 
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse);
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxXmlNode* parent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+@@ -4557,11 +4557,11 @@
+ 
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse);
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxXmlNode* parent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+@@ -4821,11 +4821,11 @@
+ 
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse);
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxXmlNode* parent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+@@ -5843,11 +5843,11 @@
+ 
+     virtual bool ImportFromXML(wxRichTextBuffer* buffer, wxXmlNode* node, wxRichTextXMLHandler* handler, bool* recurse);
+ 
+-#if wxRICHTEXT_HAVE_DIRECT_OUTPUT
++#if wxRICHTEXT_HAVE_DIRECT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxOutputStream& stream, int indent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+-#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT
++#if wxRICHTEXT_HAVE_XMLDOCUMENT_OUTPUT && wxUSE_XML
+     virtual bool ExportXML(wxXmlNode* parent, wxRichTextXMLHandler* handler);
+ #endif
+ 
+diff -ru wxWidgets-3.1.0_org/Makefile.in wxWidgets-3.1.0/Makefile.in
+--- wxWidgets-3.1.0_org/Makefile.in	2016-11-11 17:40:16.717089756 +0100
++++ wxWidgets-3.1.0/Makefile.in	2016-11-21 09:39:06.273539181 +0100
+@@ -14713,7 +14713,9 @@
+ 	$(INSTALL_DIR) $(DESTDIR)$(bindir)
+ 	$(INSTALL_DIR) $(DESTDIR)$(libdir)/wx/config
+ 	$(INSTALL_PROGRAM) lib/wx/config/$(TOOLCHAIN_FULLNAME) $(DESTDIR)$(libdir)/wx/config
+-	(cd $(DESTDIR)$(bindir) && rm -f wx-config && $(LN_S) $(libdir)/wx/config/$(TOOLCHAIN_FULLNAME) wx-config || cp -p $(DESTDIR)$(libdir)/wx/config/$(TOOLCHAIN_FULLNAME) wx-config)
++# PATCH TSD, absolute symlinks are evil, be simple, just copy it, on linux cd $(DESTDIR) && ln -sr ./$(libdir)/wx/config/$(TOOLCHAIN_FULLNAME) ./$(bindir)/wx-config can do the job, to calculate relative symlinks to DESTDIR, buts non portable
++	(cd $(DESTDIR)$(bindir) && rm -f wx-config && cp -p $(DESTDIR)$(libdir)/wx/config/$(TOOLCHAIN_FULLNAME) wx-config)
++# PATCH TSD END
+ 
+ locale_install: 
+ 	$(INSTALL_DIR) $(DESTDIR)$(datadir)/locale
+diff -ru wxWidgets-3.1.0_org/wx-config.in wxWidgets-3.1.0/wx-config.in
+--- wxWidgets-3.1.0_org/wx-config.in	2016-11-11 17:40:17.041089750 +0100
++++ wxWidgets-3.1.0/wx-config.in	2016-11-21 09:39:06.321539181 +0100
+@@ -42,7 +42,7 @@
+ {
+     cat 1>&2 <<EOF
+ 
+- wx-config [--prefix[=DIR]] [--exec-prefix[=DIR]] [--release] [--version-full]
++ wx-config [--prefix[=DIR]] [--exec-prefix[=DIR]] [--release] [--version-full] [--libdir[=DIR]]
+            [--list] [--selected-config] [--host=HOST] [--toolkit=TOOLKIT]
+            [--universal[=yes|no]] [--unicode[=yes|no]] [--static[=yes|no]]
+            [--debug[=yes|no]] [--version[=VERSION]] [--basename] [--cc] [--cxx]
+@@ -120,7 +120,7 @@
+ wxconfig_schema="host toolkit widgetset chartype debugtype flavour version linkage"
+ 
+ # Options that are expected to generate some output.
+-wxconfig_output_options="prefix exec_prefix
++wxconfig_output_options="prefix exec_prefix libdir
+                          list
+                          release version version_full
+                          basename
+@@ -135,7 +135,7 @@
+ 
+ # Options that permit the user to supply hints that may affect the output.
+ # These options all accept arbitrary values, to interpret as they please.
+-wxconfig_input_options="prefix exec_prefix utility $wxconfig_schema"
++wxconfig_input_options="prefix exec_prefix libdir utility $wxconfig_schema"
+ 
+ # Input options that accept only a yes or no argument.
+ #
+@@ -402,7 +402,11 @@
+ # Determine the base directories we require.
+ prefix=${input_option_prefix-${this_prefix:-@prefix@}}
+ exec_prefix=${input_option_exec_prefix-${input_option_prefix-${this_exec_prefix:-@exec_prefix@}}}
+-wxconfdir="@libdir@/wx/config"
++# PATCH TSD
++#wxconfdir="@libdir@/wx/config"
++wxconfdir=${input_option_libdir-${this_libdir:-@libdir@/wx/config}}
++libdir=${input_option_libdir-${this_libdir:-@libdir@}}
++# PATCH TSD END
+ 
+ installed_configs=`cd "$wxconfdir" 2> /dev/null && ls | grep -v "^inplace-"`
+ 
+@@ -938,12 +942,16 @@
+ exec_prefix=${this_exec_prefix-$exec_prefix}
+ 
+ includedir="@includedir@"
+-libdir="@libdir@"
++# PATCH TSD
++libdir=${this_libdir-$libdir}
++#libdir="@libdir@"
++# PATCH TSD END
+ bindir="@bindir@"
+ 
+ # Trivial queries we can answer now.
+ [ -z "$output_option_prefix"        ] || echo $prefix
+ [ -z "$output_option_exec_prefix"   ] || echo $exec_prefix
++[ -z "$output_option_libdir"        ] || echo $libdir
+ [ -z "$output_option_release"       ] || echo "@WX_RELEASE@"
+ [ -z "$output_option_version"       ] || echo "@WX_VERSION@"
+ [ -z "$output_option_version_full"  ] || echo "@WX_SUBVERSION@"

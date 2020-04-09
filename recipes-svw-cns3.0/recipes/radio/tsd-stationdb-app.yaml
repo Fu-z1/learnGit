@@ -1,0 +1,55 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Radio Application and Services"
+
+depends:
+  - hmi::tsd-dsi-cpp-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - system::tsd-cppsqlite-dev
+  - system::tsd-swupdate-control-api-dev
+  - media::pictureserver::tsd-media-picserver-dev
+  - radio::tsd-stationdb-api-dev
+  - use: []
+    depends:
+      - hmi::tsd-dsi-cpp-target
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+      - system::tsd-cppsqlite-target
+      - system::tsd-swupdate-control-api-target
+      - media::pictureserver::tsd-media-picserver-target
+      - radio::tsd-stationdb-api-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_JPCC_MODIFY_GIT_SERVER}:mib3-media/tsd.stationdb.app.git
+    dir: tsd.stationdb.app
+    branch: develop_cns_mqb_sop1_cn
+
+multiPackage:
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         mkdir -p var/lib/tsd.stationdb.app
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "stationdb-app" \
+            -p "emmc.radio" \
+            -m 'stationdb,stationdb,0770,/var/lib/tsd.stationdb.app$'                 \
+            -m 'stationdb,stationdb,0770,/var/lib/tsd.stationdb.app/.*'               \
+            -o "radio:tsd-stationdb-app " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - '*-target'
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

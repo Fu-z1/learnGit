@@ -1,0 +1,119 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Basisfunktion"
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - engineering::testmanager::tsd-testmanager-communication-dev
+  - engineering::testmanager::tsd-testmanager-commandprocessing-common-dev
+  - engineering::testmanager::tsd-testmanager-common-dev
+  - hmi::tsd-dsi-cpp-dev
+  - system::tsd-infotainmentrecorder-testinterface-api-dev
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - navigation::tsd-nav-testinterface-api-dev
+  - connectivity::networking::tsd-networking-api-dev
+  - connectivity::networking::tsd-networking-wlan-api-dev
+  - phone::bt-middleware::tsd-blueware-mib3-bluego-api-dev
+  - phone::bt-devicemanagement::tsd-bt-management-mib3-api-dev
+  - radio::tsd-radio-tss-api-dev
+  - basic-services::systeminfo::tsd-systeminformation-common-dev
+  - basic-services::systeminfo::tsd-systeminformation-features-dev
+  - basic-services::systeminfo::tsd-systeminformation-hardware-dev
+  - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-dev
+  - sds::asr::tsd-sds-asr-api-dev
+  - media::mediaapplication::tsd-media-mib3-gem-api-dev
+  - connectivity::usb::tsd-usb-api-dev
+  - basic-services::rsi-library::tsd-vw-rsi-viwi-client-dev
+  - sal::tsd-sal-api-dev
+  - phone::bt-handsfree::tsd-bt-handsfree-mib3-api-dev
+  - phone::bt-organizer::tsd-organizer-mib3-api-dev
+  - onlineservices::tsd-onlineservices-remoteupdate-api-dev
+  - sds::tts::tsd-sds-tts-api-dev
+  - navigation::tsd-nav-pos-gps-api-dev
+  - onlineservices::jpcc-online-coreservices-api-dev
+  - MXNavi::tsd-nav-production-api-dev
+
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - system::tsd-common-target
+      - hmi::tsd-dsi-cpp-target
+      - basic-services::rsi-library::tsd-vw-rsi-viwi-client-target
+      - system::tsd-infotainmentrecorder-testinterface-api-target
+      - communication::ext-commonapi-runtime-target
+      - communication::tsd-communication-binding-target
+      - navigation::tsd-nav-testinterface-api-target
+      - connectivity::networking::tsd-networking-api-target
+      - connectivity::networking::tsd-networking-wlan-api-target
+      - phone::bt-middleware::tsd-blueware-mib3-bluego-api-target
+      - phone::bt-devicemanagement::tsd-bt-management-mib3-api-target
+      - radio::tsd-radio-tss-api-target
+      - basic-services::systeminfo::tsd-systeminformation-common-target
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+      - basic-services::systeminfo::tsd-systeminformation-hardware-target
+      - vehicle-connectivity::automotive-ethernet::tsd-ethernet-api-target
+      - sds::asr::tsd-sds-asr-api-target
+      - media::mediaapplication::tsd-media-mib3-gem-api-target
+      - connectivity::usb::tsd-usb-api-target
+      - sal::tsd-sal-api-target
+      - phone::bt-handsfree::tsd-bt-handsfree-mib3-api-target
+      - phone::bt-organizer::tsd-organizer-mib3-api-target
+      - onlineservices::tsd-onlineservices-remoteupdate-api-target
+      - sds::tts::tsd-sds-tts-api-target
+      - navigation::tsd-nav-pos-gps-api-target
+      - onlineservices::jpcc-online-coreservices-api-target
+      - MXNavi::tsd-nav-production-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-testsupport/tsd.testmanager.commandprocessing.git
+   dir: tsd.testmanager.commandprocessing
+   #tag: mqb_sop1_eu-4.8.0
+   #branch: master_mqb_sop1_eu
+   branch: main/svw_cns3.0_1480_dev
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps:
+        - "*-dev"
+
+   target:
+      buildScript: |
+         buildenvBuildAll
+         mkdir -p dist/etc/tsd.testmanager.commandprocessing
+         rsync -a --delete $1/tsd.testmanager.commandprocessing/depl/commonapi.ini dist/etc/tsd.testmanager.commandprocessing/commonapi.ini
+         rsync -a --delete $1/tsd.testmanager.commandprocessing/depl/TestPNG_1920x860.png dist/etc/tsd.testmanager.commandprocessing/TestPNG_1920x860.png
+         rsync -a --delete $1/tsd.testmanager.commandprocessing/depl/TestPNG_1560x700.png dist/etc/tsd.testmanager.commandprocessing/TestPNG_1560x700.png
+         rsync -a --delete $1/tsd.testmanager.commandprocessing/depl/TestPNG_1280x640.png dist/etc/tsd.testmanager.commandprocessing/TestPNG_1280x640.png
+         rsync -a --delete $1/tsd.testmanager.commandprocessing/depl/TestPNG_800x480.png dist/etc/tsd.testmanager.commandprocessing/TestPNG_800x480.png
+         rsync -a --delete $1/tsd.testmanager.commandprocessing/depl/Philips_PM5544_1280x960.png dist/etc/tsd.testmanager.commandprocessing/Philips_PM5544_1280x960.png
+         rsync -a --delete $1/tsd.testmanager.commandprocessing/depl/Philips_PM5544_1024x768.png dist/etc/tsd.testmanager.commandprocessing/Philips_PM5544_1024x768.png
+         rsync -a --delete $1/tsd.testmanager.commandprocessing/depl/Philips_PM5544_800x600.png dist/etc/tsd.testmanager.commandprocessing/Philips_PM5544_800x600.png
+         rsync -a --delete $1/tsd.testmanager.commandprocessing/depl/Philips_PM5544_640x480.png dist/etc/tsd.testmanager.commandprocessing/Philips_PM5544_640x480.png
+
+
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "testmgr_commandprg" \
+            -p "emmc.engineering" \
+            -o "engineering.testmanager:tsd-testmanager-commandprocessing " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps:
+        - "*-target"
+
+   unittests:
+      buildScript: |
+         buildenvTestAll
+      packageScript: |
+         buildenvPackageTests
+         buildenvPackageTarget

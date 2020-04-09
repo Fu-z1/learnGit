@@ -1,0 +1,9 @@
+archive:
+   -
+      backend: http
+      url: "http://10.30.157.204:8081/artifactory/list/develop_artifactory_connectivity/archive"
+      flags: [download]
+   -
+      backend: shell
+      upload: "jfrog rt u ${BOB_LOCAL_ARTIFACT} develop_artifactory_connectivity/archive/${BOB_REMOTE_ARTIFACT}"
+      flags: [upload]

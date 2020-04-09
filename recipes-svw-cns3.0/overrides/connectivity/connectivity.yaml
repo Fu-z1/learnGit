@@ -1,0 +1,205 @@
+scmOverrides:
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.nfc.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.nfc.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.bt.management.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.management.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.management.mib3.api.git"
+      del: [commit, tag]
+      set:
+         branch: "master"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-telephony/tsd.bt.handsfree.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.bt.handsfree.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.api.git"
+      del: [commit, tag]
+      set:
+         branch: "master"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.bt.media.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.client.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.api.git"
+      del: [commit, tag]
+      set:
+         branch: "master"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.media.mib3.service.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-telephony/tsd.bt.messaging.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.messaging.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.bt.messaging.mib3.api.git"
+      del: [commit, tag]
+      set:
+         branch: "master"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.bluego.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.bluego.mock.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.blueware.api.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.blueware.bluego.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.blueware.mib3.bluego.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.blueware.mib3.bluego.api.git"
+      del: [commit, tag]
+      set:
+         branch: "master"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-telephony/tsd.organizer.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.api.git"
+      del: [commit, tag]
+      set:
+         branch: "master"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-telephony/tsd.organizer.mib3.client.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.phone.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.libphonenumber.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.phonemanager.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.parser.phonenumber.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.parser.vobject.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.parser.vobject.api.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.phone.callservice.api.git"
+      del: [commit, tag]
+      set:
+         branch: "master"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.threadmessages.git"
+      del: [commit, tag]
+      set:
+         branch: "master"

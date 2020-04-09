@@ -1,0 +1,49 @@
+inherit: [make, install, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "(GPL-2.0 OR BSD-3-Clause)"
+   PKG_VERSION: "2.25"
+   PKG_NAME: "libcap"
+   PKG_RESPONSIBLE: "System-System"
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libcap/libcap-${PKG_VERSION}.tar.gz
+   digestSHA1: "0d6e242d70e80c243a7abeb787e007835b3f0d3d"
+   extract: false
+
+buildTools: [toolchain, host-toolchain]
+buildVars: [AR, CC, LIBDIR, RANLIB, PKG_VERSION]
+buildScript: |
+   rm -rf *
+   tar -xzf $1/libcap-${PKG_VERSION}.tar.gz
+   mkdir -p install/
+   makeParallel -C libcap-${PKG_VERSION} \
+       prefix=/usr \
+       lib=$LIBDIR \
+       AR=$AR \
+       CC=$CC \
+       BUILD_CC=gcc \
+       RANLIB=$RANLIB \
+       SBINDIR=${PWD}/install/sbin \
+       RAISE_SETFCAP=no \
+       DESTDIR=${PWD}/install \
+       SBINDIR=/sbin \
+       PAM_CAP=no \
+       BUILD_GPERF=no \
+       install
+
+multiPackage:
+   dev:
+      packageScript: installPackageDev $1/install
+   target:
+      packageScript: |
+         installPackageTarget $1/install
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libcap" \
+              -p "emmc.system" \
+              -o "system:ext-libcap" -f $d -- \
+              -U "Partition=rootfs_ro"
+         rm -rf $d
+

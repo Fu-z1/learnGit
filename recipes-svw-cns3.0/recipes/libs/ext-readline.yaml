@@ -1,0 +1,52 @@
+inherit: [autotools, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "GPL-3.0-or-later"
+   PKG_VERSION: "6.3"
+   PKG_NAME: "readline"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - libs::ext-ncurses-dev
+  - use: []
+    depends:
+      - libs::ext-ncurses-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-readline/readline-${PKG_VERSION}.tar.gz
+   digestSHA1: "017b92dc7fd4e636a2b5c9265a77ccc05798c9e1"
+
+buildVars: [PKG_VERSION]
+buildScript: |
+   export bash_cv_func_sigsetjmp=yes
+   export bash_cv_wcwidth_broken=no
+   LDFLAGS+=" -ltinfo"
+   autotoolsBuild $1/readline-${PKG_VERSION} \
+      --with-curses
+   chmod u+w dist/usr/$LIBDIR/*
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -I include -L $LIBDIR \
+            -l readline ext.readline
+         tsd-buildenv-create-shim.sh -p usr -I include -L $LIBDIR \
+            -l history ext.history
+      provideDeps: ["*-dev"]
+      provideVars:
+         READLINE_VERSION: "${PKG_VERSION}"
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-readline" \
+            -p "emmc.libs" \
+            -o "libs:ext-readline " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

@@ -1,0 +1,32 @@
+inherit: [buildenv]
+
+#metaEnvironment:
+   #MODULE_VERSION:  "2.1.0"
+   #PACKAGE_VERSION: "2.1.0"
+
+environment:
+   ZIP: CNS3.0_SDS_Delivery_BINCFG-1.2.37-20191121193356.tar.gz
+
+checkoutVars: [ZIP]
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_JPCC_URL}SDS/MQB/${ZIP}
+   digestSHA1: "14f6159c41d09dab009f7d08ead436c8292ad023"
+   extract: False
+
+buildVars: [TARGET_OS, ARCH, LIBDIR, ZIP]
+
+buildScript: |
+      mkdir -p dist/
+      
+      cd  dist/
+      tar zxvf $1/${ZIP} ./
+
+multiPackage:
+      dev:
+         packageScript: |
+            cmakePackageDev
+      target:
+         packageScript: |
+            cmakePackageTarget
+   

@@ -1,0 +1,33 @@
+inherit: [autotools, buildenv, packing-module]
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:stefan.leihkauf/ext-libupnp.git
+    dir: ext.libupnp
+    branch: develop
+
+buildVars: [SYSROOT]
+buildTools: [toolchain]
+buildScript: |
+   autoreconf -i -f "$1/ext.libupnp"
+   autotoolsBuild "$1/ext.libupnp"
+
+multiPackage:
+   dev:
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l ixml -l threadutil -l upnp \
+         -I include ext.libupnp
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libupnp" \
+            -p "emmc.sal" \
+            -o "sal:ext-libupnp " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

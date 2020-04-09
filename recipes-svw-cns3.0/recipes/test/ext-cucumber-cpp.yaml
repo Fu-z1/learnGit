@@ -1,0 +1,34 @@
+inherit: [buildenv]
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:paul.peschel/ext.cucumber.git
+   dir: ext.cucumber.cpp
+
+depends:
+   - system::ext-cppunit-google-mock-dev   
+   - system::ext-boost-thread-dev
+   - system::ext-boost-system-dev
+   - system::ext-boost-filesystem-dev
+   - system::ext-boost-regex-dev
+   - system::ext-boost-program-options-dev
+   - system::ext-boost-date-time-dev
+   - tip::ext-icu-dev
+       
+
+multiPackage:
+   target:
+      buildScript: |
+         buildenvBuildAll -DCUKE_DISABLE_GTEST=1
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]   
+   dev:
+      #depends:
+         #- tip::ext-icu-dev
+      buildScript: |
+         buildenvBuildAll -DCUKE_DISABLE_GTEST=1 -DCMAKE_CXX_FLAGS=-DBOOST_ASIO_ENABLE_OLD_SERVICES=1
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]   
+

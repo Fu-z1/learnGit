@@ -1,0 +1,42 @@
+inherit: [buildenv]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Zielfuehrung"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.pos.tools.git
+   dir: tsd.pos.tools
+   branch: master      #navi-tool (not a part of the release)
+
+
+multiPackage:
+   target:
+      depends:
+        - navigation::tsd-nav-sdk-common-api-dev
+        - navigation::tsd-nav-middleware-interface-dev
+        - navigation::tsd-nav-sdk-mapdataservice-dev
+        - navigation::tsd-nav-sdk-positioning-dev
+        - navigation::tsd-nav-sdk-mapmatching-api-dev
+        - navigation::tsd-nav-crypto-dev
+        - navigation::tsd-nav-middleware-nds-2_5_2-dev
+        - navigation::tsd-nav-core-admin-dev
+        - system::tsd-common-dev
+        - libs::ext-zlib-dev
+      buildScript: |
+         buildenvBuildAll
+   compare-target:
+      depends:
+        - navigation::tsd-nav-sdk-common-api-dev
+        - navigation::tsd-nav-middleware-interface-dev
+        - navigation::tsd-nav-sdk-mapdataservice-dev
+        - navigation::tsd-nav-crypto-dev
+        - navigation::tsd-nav-middleware-nds-2_5_2-dev
+        - navigation::tsd-nav-core-admin-dev
+        - system::tsd-common-dev
+        - libs::ext-zlib-dev
+      buildScript: |
+         buildenvBuildAll -Dpos-tools-compare=1
+
+packageScript: |
+   buildenvPackageTarget

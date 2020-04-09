@@ -1,0 +1,102 @@
+inherit: [buildenv, packing-module]
+
+environment:
+   DIAGNOSIS_PLATFORM_UNKOWN: "0"
+   DIAGNOSIS_PLATFORM_MQB: "1"
+   DIAGNOSIS_PLATFORM_37W: "2"
+   DIAGNOSIS_PLATFORM_CNS: "3"
+   DIAGNOSIS_PLATFORM: "$(if-then-else,$(flagIsSet,${VARIANTS},SW_DIAGNOSIS_PLATFORM,MQB),1,$(if-then-else,$(flagIsSet,${VARIANTS},SW_DIAGNOSIS_PLATFORM,MQB2020),2,$(if-then-else,$(flagIsSet,${VARIANTS},SW_DIAGNOSIS_PLATFORM,CNS_MQB),3,0)))"
+
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+  - system::tsd-common-dev
+  - engineering::diagnostic-management::tsd-uds-dev
+  - engineering::diagnostic-management::tsd-uds-api-dev
+  - engineering::diagnostic-management::tsd-uds-api-mib3-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - vehicle-connectivity::canstack::tsd-canstack-mib3-dev
+  - basic-services::persistence::tsd-persistence-client-mib3-dev
+  - basic-services::systeminfo::tsd-systeminformation-features-dev
+  - system::system-lifecycle::tsd-systemstate-manager-api-dev
+  - system::system-lifecycle::tsd-systemstate-guard-api-mib3-dev
+
+  - use: []
+    depends:
+      - system::tsd-common-target
+      - engineering::diagnostic-management::tsd-uds-target
+      - engineering::diagnostic-management::tsd-uds-api-target
+      - engineering::diagnostic-management::tsd-uds-api-mib3-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - vehicle-connectivity::canstack::tsd-canstack-mib3-target
+      - basic-services::persistence::tsd-persistence-client-mib3-target
+      - basic-services::systeminfo::tsd-systeminformation-features-target
+      - system::system-lifecycle::tsd-systemstate-manager-api-target
+      - system::system-lifecycle::tsd-systemstate-guard-api-mib3-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.mib3.git
+    dir: tsd.uds.mib3
+    branch: develop_mqb_sop1_cns
+    #tag: mqb_sop1_eu-5.9.1
+    #branch: master_mqb_sop1_eu
+    #commit: 6bc8292e82507569c55cc6f83a7d9c4be2ed1207
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.mib3.mqb.git
+    dir: tsd.uds.mib3.mqb
+    branch: develop_mqb_sop1_cns
+    #tag: mqb_sop1_eu-7.8.0
+    #branch: master_mqb_sop1_eu
+    #commit: 053d6603da5c6e1d76854c52fef8381961bcc1f5
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleconnect/tsd.uds.common.mib3.git
+    dir: tsd.uds.common.mib3
+    branch: develop_mqb_sop1_cns
+    #tag: mqb_sop1_eu-1.9.0
+    #branch: master_mqb_sop1_eu
+
+buildVars: [DIAGNOSIS_PLATFORM, DIAGNOSIS_PLATFORM_UNKOWN, DIAGNOSIS_PLATFORM_MQB,
+   DIAGNOSIS_PLATFORM_37W, DIAGNOSIS_PLATFORM_CNS]
+buildScript: |
+   build()
+   {
+      buildenvBuildAll -DDIAGNOSIS_PLATFORM=${DIAGNOSIS_PLATFORM} \
+                       -DDIAGNOSIS_PLATFORM_UNKOWN=${DIAGNOSIS_PLATFORM_UNKOWN} \
+                       -DDIAGNOSIS_PLATFORM_MQB=${DIAGNOSIS_PLATFORM_MQB} \
+                       -DDIAGNOSIS_PLATFORM_37W=${DIAGNOSIS_PLATFORM_37W} \
+                       -DDIAGNOSIS_PLATFORM_CNS=${DIAGNOSIS_PLATFORM_CNS}
+   }
+
+multiPackage:
+   dev:
+      buildScript: build $1
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: build $1
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "uds-mib3" \
+            -p "emmc.engineering.diagnostic-management" \
+            -o "engineering.diagnostic-management:tsd-uds-mib3 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

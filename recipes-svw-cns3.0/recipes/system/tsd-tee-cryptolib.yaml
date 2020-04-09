@@ -1,0 +1,114 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::ext-optee::os-dev
+  - system::ext-optee::client-dev
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - system::ext-optee::client-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.tee.cryptolib.git
+   dir: tsd.tee.cryptolib
+   branch: master
+
+buildVars: [ARCH, CC, CROSS_COMPILE, TA_NAME, TA_UUID, CRYPTOLIB_MAX_KEYS]
+buildTools: [toolchain]
+buildScript: |
+   function renameAppBinaries()
+   {
+      for FILE in $(find dist -name "tsd.tee.cryptolib.app*"); do
+         mv ${FILE} ${FILE/.app/.$1.app}
+      done
+   }
+   export TA_DEV_KIT_DIR=${BOB_DEP_PATHS["system::ext-optee::os-dev"]}
+
+packageScript: |
+   function buildSwupModuleCryptolib()
+   {
+      mkdir -p lib/optee_armtz
+      find $2/tsd.tee.cryptolib/ -name "*.ta" -type f -exec cp {} lib/optee_armtz/ \; -printf "Copy %P to lib/optee_armtz/\n"
+      buildenvPackageTarget
+      d=$(mktemp -d)
+      rsync -a --delete --exclude ".debug" ./ $d
+      buildSwupModule -n "tee-cryptolib-$1" \
+         -p "emmc.system" \
+         -o "system:tsd-tee-cryptolib-$1 " -f $d -- \
+         -U "Partition=rootfs_ro"
+      rm -rf $d
+   }
+
+multiPackage:
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   testing:
+      privateEnvironment:
+         TA_NAME: "testing"
+         TA_UUID: 71a208b5-cafe-d00d-baad-a629772c5b0c
+      multiPackage:
+         ? ""
+         : &commonDevTarget
+            buildScript: buildenvBuildAll
+            multiPackage:
+               dev:
+                  packageScript: buildenvPackageDev install
+                  provideDeps: ["*-dev"]
+               target:
+                  packageScript: buildSwupModuleCryptolib ${TA_NAME} $1
+                  provideDeps: ['*-target']
+         apps:
+            <<: &commonApps
+               buildScript: |
+                  buildenvBuildModules -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+                     tsd.tee.cryptolib.app.test \
+                     tsd.tee.cryptolib.app.tools
+                  renameAppBinaries ${TA_NAME}
+               packageScript: buildenvPackageTarget
+               provideDeps: ['*-target']
+            depends:
+              - system::tsd-tee-cryptolib-testing-target
+
+   swupdate:
+      privateEnvironment:
+         TA_NAME: "swupdate"
+         TA_UUID: 8f14d2e8-3659-48ed-b158-328a63c56733
+         CRYPTOLIB_MAX_KEYS: "20"
+      multiPackage:
+         ? ""
+         : *commonDevTarget
+         apps:
+            <<: *commonApps
+            depends:
+              - system::tsd-tee-cryptolib-swupdate-target
+
+   media:
+      privateEnvironment:
+         TA_NAME: "media"
+         TA_UUID: 11cb3bb7-c6ee-4e43-b5e1-231f9d989726
+      multiPackage:
+         ? ""
+         : *commonDevTarget
+         apps:
+            <<: *commonApps
+            depends:
+              - system::tsd-tee-cryptolib-media-target
+
+   networking:
+      privateEnvironment:
+         TA_NAME: "networking"
+         TA_UUID: ffd00a59-41ac-46e4-acf0-285d16e2c9ae
+      multiPackage:
+         ? ""
+         : *commonDevTarget
+         apps:
+            <<: *commonApps
+            depends:
+              - system::tsd-tee-cryptolib-networking-target
+

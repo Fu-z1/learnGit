@@ -1,0 +1,50 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+ - system::tsd-common-dev
+ - phone::ext-libphonenumber-dev
+ - use: []
+   depends:
+    - system::tsd-common-target
+    - phone::ext-libphonenumber-target
+
+checkoutSCM:
+ - scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.parser.phonenumber.git
+   dir: tsd.parser.phonenumber
+   branch: main/svw_cns3.0_1413_dev
+#  tag: mqb_sop1_eu-1.44.1
+buildVars: [AUTOCONF_HOST]
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ['*-dev']
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "parser-phonenumber" \
+            -p "emmc.phone" \
+            -o "phone:tsd-parser-phonenumber " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: '1'
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

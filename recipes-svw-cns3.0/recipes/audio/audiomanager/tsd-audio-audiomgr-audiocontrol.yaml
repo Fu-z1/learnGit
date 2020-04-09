@@ -1,0 +1,52 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "AMB-Audio"
+
+depends:
+  - audio::audiomanager::ext-lmx-dev
+  - audio::audiomanager::tsd-audio-common-dev
+  - audio::audiorouter::tsd-audio-audiorouter-service-api-dev
+  - communication::tsd-communication-dev
+  - communication::tsd-communication-runtime-dev
+  - system::tsd-common-dev
+  - libs::tsd-common-stm-dev
+   # runtime deps
+  - use: []
+    depends:
+       # target
+      - audio::audiomanager::ext-lmx-target
+      - audio::audiomanager::tsd-audio-common-target
+      - audio::audiorouter::tsd-audio-audiorouter-service-api-target
+      - communication::tsd-communication-target
+      - communication::tsd-communication-runtime-target
+      - system::tsd-common-target
+      - libs::tsd-common-stm-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-audio/tsd.audio.audiomgr.audiocontrol.git
+    dir: tsd.audio.audiomgr.audiocontrol
+#    tag: 2.1.34
+    branch: release/cns_mqb
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ['*-dev']
+
+   unittests:
+      depends:
+        - audio::audiomanager::tsd-audio-common-test-dev
+      buildScript: |
+         buildenvTestTargets tsd.audio.audiomgr.audiocontrol.test
+      packageScript: |
+         buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

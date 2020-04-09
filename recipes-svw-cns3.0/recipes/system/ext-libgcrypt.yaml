@@ -1,0 +1,42 @@
+inherit: [autotools]
+
+metaEnvironment:
+   PKG_LICENSE: "LGPL-2.1-or-later"
+   PKG_VERSION: "1.8.1"
+   PKG_NAME: "libgcrypt"
+   PKG_RESPONSIBLE: "System-System"
+
+depends:
+  - system::ext-libgpg-error-dev
+  - use: []
+    depends:
+      - system::ext-libgpg-error-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-libgcrypt/libgcrypt-${PKG_VERSION}.tar.bz2
+   digestSHA1: dd35f00da45602afe81e01f4d60c40bbdd826fe6
+
+buildVars: [PKG_VERSION]
+buildTools: [host-toolchain]
+buildScript: |
+   rsync -a --delete $1/libgcrypt-${PKG_VERSION}/ .
+   autotoolsBuild  . \
+      --with-libgpg-error-prefix=${BOB_DEP_PATHS['system::ext-libgpg-error-dev']}/usr
+
+multiPackage:
+   dev:
+      provideDeps: ['*-dev']
+      packageScript: |
+         autotoolsPackageDev $1
+   target:
+      provideDeps: ['*-target']
+      packageScript: |
+         autotoolsPackageTarget $1
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-libgcrypt" \
+            -p "emmc.system" \
+            -o "system::ext-libgcrypt" -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d

@@ -1,0 +1,10 @@
+include:
+#- overrides/connectivity/api-check/bt-media-mib3-api
+# - overrides/connectivity/api-check/bt-management-mib3-api
+#- bt-management-mib3-api
+#- bt-organizer-mib3-api
+#- overrides/connectivity/api-check/canstack-api
+#- overrides/connectivity/api-check/common
+#- overrides/connectivity/api-check/communication-apigenerator-commgr
+# - overrides/connectivity/api-check/radio-tss-api
+#- overrides/connectivity/api-check/sal-api

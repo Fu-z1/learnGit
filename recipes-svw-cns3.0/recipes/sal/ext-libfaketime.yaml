@@ -1,0 +1,31 @@
+inherit: [make, buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:stefan.leihkauf/ext-libfaketime.git
+    dir: ext.libfaketime
+    branch: develop
+
+buildVars: [SYSROOT]
+buildTools: [toolchain]
+buildScript: |
+   make install -C $1/ext.libfaketime DESTDIR=$PWD
+
+packageTools: [buildenv]
+packageVars: [LIBDIR]
+packageScript: |
+   mkdir -p ./usr/$LIBDIR
+   cp -au $1/usr/local/lib/faketime/* ./usr/$LIBDIR
+
+   mkdir -p ./usr/bin
+   cp -au $1/usr/local/bin/* ./usr/bin
+   d=$(mktemp -d)
+   rsync -a --delete --exclude ".debug" ./ $d
+   buildSwupModule -n "ext-libfaketime" \
+      -p "emmc.sal" \
+      -o "sal:ext-libfaketime " -f $d -- \
+      -U "Partition=rootfs_ro"
+   rm -rf $d

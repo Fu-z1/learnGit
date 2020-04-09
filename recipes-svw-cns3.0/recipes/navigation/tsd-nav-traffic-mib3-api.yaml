@@ -1,0 +1,25 @@
+inherit: [buildenv, navi_compflags_werror_sanitize]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Datendienste"
+
+depends:
+  - navigation::tsd-nav-sdk-common-api-dev
+  - navigation::tsd-nav-traffic-dev
+  - navigation::tsd-nav-utils-api-dev
+  - navigation::tsd-nav-pathfinder-mib3-api-dev
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-navigation/tsd.nav.traffic.mib3.api.git
+   dir: tsd.nav.traffic.mib3.api
+   tag: mqb_sop1_eu-150.0.1       #navi-src (src of the navigation)
+
+multiPackage:
+   dev:
+      buildScript: |
+         buildenvBuildAll
+
+      packageScript: |
+         buildenvPackageDev install
+      provideDeps: ['*-dev']

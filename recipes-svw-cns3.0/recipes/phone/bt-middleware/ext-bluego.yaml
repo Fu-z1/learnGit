@@ -1,0 +1,165 @@
+inherit: [cmake, patch, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+   PKG_NAME: "blueGO"
+   PKG_LICENSE: "proprietary AND MIT"
+   PKG_VERSION: "2.11.0"
+   PKG_ARTEFACT_TYPE: "Library"
+
+depends:
+ - name: connectivity::usb::ext-libusb-dev
+   if: $(eq,${TARGET_TYPE},host)
+ - use: []
+   depends:
+    - name: connectivity::usb::ext-libusb-target
+      if: $(eq,${TARGET_TYPE},host)
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/ext.bluego.git
+   tag: mqb_sop1_eu-1.145.2
+
+privateEnvironment:
+   IsHciTraceDisabled: "$(flagIsSet,${VARIANTS},SW_TRACING_ACTIVE,0)"
+   BCM_FirmwareFile: "BCM4349B1_002.002.014.0120.0192.hcd"
+
+buildTools: [buildenv]
+buildVars: [AUTOCONF_HOST, TARGET_TYPE, IsHciTraceDisabled, BCM_FirmwareFile]
+buildScript: |
+   OPTIONS=(
+      -DAUDIO_INTEGRATION_TYPE:STRING=Disable
+      -DBGCALL:BOOL=ON
+      -DBGCALL_NUMBER_OF_CHANNELS:STRING=3
+      -DBGCALL_WBS_MODE:STRING=Vendor_Specific
+      -DBGCTN:BOOL=ON
+      -DBGCTN_NUMBER_OF_CHANNELS:STRING=2
+      -DBGFILE:BOOL=ON
+      -DBGLE:BOOL=OFF
+      -DBGLES:BOOL=OFF
+      -DBGLES_NUMBER_OF_CHANNELS:STRING=10
+      -DBGLE_NUMBER_OF_CHANNELS:STRING=10
+      -DBGMEDIA:BOOL=ON
+      -DBGMESSAT:BOOL=OFF
+      -DBGMSG:BOOL=ON
+      -DBGMSG_NUMBER_OF_CHANNELS:STRING=2
+      -DBGNETWORK:BOOL=ON
+      -DBGPIM:BOOL=ON
+      -DBGPIMAT:BOOL=OFF
+      -DBGPIM_NUMBER_OF_CHANNELS:STRING=2
+      -DBGSPP:BOOL=ON
+      -DBGSYNCML:BOOL=OFF
+      -DBLUEGOPP:BOOL=OFF
+      -DCMAKE_BUILD_TYPE:STRING=
+      -DCMAKE_INSTALL_PREFIX:PATH=/usr/local
+      -DENABLE_DEBUG:BOOL=ON
+      -DENABLE_PARSER_LIBRARIES:BOOL=ON
+      -DENABLE_TESTAPP:STRING=None
+      -DENABLE_OS_PLATFORM:STRING=Linux
+      -DINCLUDE_ASSERTIONS:BOOL=OFF
+      -DINQUIRY_PROTECTION:BOOL=OFF
+      -DOPTION_METHOD:STRING=CONST_OPTIONS
+      -DOPTION_SCO_ENCODING:STRING=LINEAR
+      -DOUTPUT_DIR:STRING=./
+      -DSCHEDULING_METHOD:STRING=OS_Default
+      -DSCO_AUDIO_MODE:STRING=Disable_Stack_Audio
+      -DTIMEBOMB:BOOL=OFF
+      -DOPTION_USB_DEVICE_ADDRESS:STRING=
+   )
+
+   case $AUTOCONF_HOST in
+      aarch64*-linux*)
+         OPTIONS+=(
+            -DENABLE_HW_ARCH:STRING=Embedded_Mike
+            -DENABLE_RADIO:STRING=BCM
+            -DOPTION_FW_NAME:STRING=/lib/firmware/brcm/${BCM_FirmwareFile}
+            -DOPTION_PORT_SPEED:STRING=4000000
+            -DOPTION_RADIO_TRANSPORT:STRING=UART
+            -DOPTION_UART_PORT_NAME:STRING=/dev/ttySC1
+         )
+         ;;
+      x86_64-linux-*|i[34567]86*-linux*)
+         OPTIONS+=(
+            -DENABLE_HW_ARCH:STRING=x86
+            -DENABLE_RADIO:STRING=Generic
+            -DOPTION_FW_NAME:STRING=
+            -DOPTION_PORT_SPEED:STRING=0
+            -DOPTION_RADIO_TRANSPORT:STRING=USB
+            -DOPTION_UART_PORT_NAME:STRING=
+            -DCMAKE_C_FLAGS="-fPIC -I${BOB_DEP_PATHS["connectivity::usb::ext-libusb-dev"]}/usr/include"
+         )
+         ;;
+   esac
+
+
+   if [[ ${IsHciTraceDisabled} == "True" ]]; then
+      OPTIONS+=(
+         -DHCI_SNIFFER:STRING=Disable
+      )
+   else
+      OPTIONS+=(
+         -DHCI_SNIFFER:STRING=SnoopSnifferAlwaysOn
+         -DHCI_SNIFFER_SNOOP_TCP:String=Enabled
+      )
+   fi
+
+   function checkForDefect32232Changes()
+   {
+      local file="${1}/config/bgconf.h"
+      local search=(
+                     "\#define BLUEGO_TIMEOUT_PAGE_TO_DEFAULT[[:space:]]*0x2580"
+                     "\#define BLUEGO_TIMEOUT_PAGE_TO_INQUIRY[[:space:]]*0x2580"
+                  )
+      for i in "${search[@]}"; do
+         if [ 1 -ne $(egrep "${i}" "${file}" | wc -l) ]; then
+            echo -e "\e[38;5;196mCouldn't find change for DEFECT-32232, aborting!\e[0m"
+            echo -e "\e[38;5;196m   ${i}\e[0m"
+            exit 3
+         fi
+      done
+   }
+
+   mkdir -p build
+   pushd build
+   CMAKE_SRC_PATH="$1/src"
+   checkForDefect32232Changes "${CMAKE_SRC_PATH}"
+   cmakeConfigure "${OPTIONS[@]}"
+   makeParallel
+   popd
+
+   # no install target available m(
+   mkdir -p dist/usr/local/lib
+   mkdir -p dist/usr/local/include
+   find build/ -type f -name "*.a" -exec cp -au {} dist/usr/local/lib \;
+   rsync -a --delete $1/src/bluego_api dist/usr/local/include/
+   rsync -a --delete $1/src/config dist/usr/local/include/
+   rsync -a --delete build/config/configen.h dist/usr/local/include/config/
+   pushd dist
+   tsd-buildenv-create-shim.sh -I include/bluego_api -I include/config \
+      -f -Wl,--start-group -l libbluego -l libbluesdk -l libparsers -l libportal -f -Wl,--end-group \
+      ext.bluego
+
+   tsd-buildenv-create-shim.sh -I include/bluego_api -I include/config ext.bluego.header
+   popd
+
+   #install bluego firmware
+   mkdir -p dist/lib/firmware/brcm
+   cp -a $1/firmware/${BCM_FirmwareFile} dist/lib/firmware/brcm/
+
+multiPackage:
+   dev:
+      packageScript: |
+         cmakePackageDev
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         cmakePackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-bluego" \
+            -p "emmc.phone.bt-middleware" \
+            -o "phone.bt-middleware:ext-bluego " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']

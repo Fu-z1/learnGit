@@ -1,0 +1,45 @@
+inherit: [packing-module]
+
+metaEnvironment:
+  PKG_RESPONSIBLE: "AMB-Media"
+
+environment:
+   RESOURCES_INSTALL_PATH: "etc/tsd.media.mib3/"
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-media/tsd.media.mib3.resources.git
+   tag: mqb_sop1_eu-1.0.2
+
+packageVars: [VARIANT_NAME, VARIANT_LIST]
+packageScript: |
+   rsync -a --delete $1/ $PWD/
+   d=$(mktemp -d)
+   rsync -a --delete ./ $d
+   buildSwupModule -n "mib3-res" \
+      -p "emmc.media.mediaapp" \
+      -v ${VARIANT_NAME} \
+      -o "media.mediaapplication:tsd-media-mib3-resources " -f $d -- \
+      --variantList ${VARIANT_LIST} \
+      -U "Partition=rootfs_ro"
+   rm -rf $d
+
+multiPackage:
+   low-pkg:
+      environment:
+         VARIANT_NAME: "low"
+         VARIANT_RES: "800480"
+         VARIANT_LIST: "$(getMatchingVariantStrings,HW_DISPLAY_VARIANT=800480,SW_HMI_PROJECT=MQB)"
+      buildVars: [RESOURCES_INSTALL_PATH, VARIANT_RES]
+      buildScript: |
+         mkdir -p $PWD/${RESOURCES_INSTALL_PATH}
+         rsync --exclude=".git*" -a --delete $1/${VARIANT_RES}/ $PWD/${RESOURCES_INSTALL_PATH}
+   high-pkg:
+      environment:
+         VARIANT_NAME: "high"
+         VARIANT_RES: "1280640"
+         VARIANT_LIST: "$(getMatchingVariantStrings,HW_DISPLAY_VARIANT=1280640,SW_HMI_PROJECT=MQB)"
+      buildVars: [RESOURCES_INSTALL_PATH, VARIANT_RES]
+      buildScript: |
+         mkdir -p $PWD/${RESOURCES_INSTALL_PATH}
+         rsync --exclude=".git*" -a --delete $1/${VARIANT_RES}/ $PWD/${RESOURCES_INSTALL_PATH}

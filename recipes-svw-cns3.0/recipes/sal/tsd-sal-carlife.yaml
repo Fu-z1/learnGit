@@ -1,0 +1,64 @@
+inherit: [buildenv, packing-module, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Smartphone Integration"
+   PKG_ARTEFACT_TYPE: "StaticLib"
+
+depends:
+  # build dependencies
+  - sal::ext-baidu-carlife-dev
+  - sal::tsd-android-aoa-dev
+  - sal::tsd-sal-common-dev
+  - system::ext-boost-dev
+  - system::tsd-threadmessages-dev
+  - sal::tsd-sal-video-dev
+  - sal::tsd-sal-audio-dev
+  - hmi::tsd-dsi-cpp-dev
+
+  - use: []
+    depends:
+       # runtime dependencies
+       - sal::ext-baidu-carlife-target
+       - sal::tsd-android-aoa-target
+       - sal::tsd-sal-common-target
+       - sal::tsd-sal-video-target
+       - system::ext-boost-target
+       - system::tsd-threadmessages-target
+       - sal::tsd-sal-audio-target
+       - hmi::tsd-dsi-cpp-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-ceconnect/tsd.sal.carlife.git
+    dir: tsd.sal.carlife
+    branch: main/svw_cns3.0_1480_dev
+
+multiPackage:
+   ? ""
+   :  buildVars: [AUTOCONF_HOST]
+      buildScript: buildenvBuildAll
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "sal-carlife" \
+                  -p "emmc.sal" \
+                  -o "sal:tsd-sal-carlife " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   unittests:
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

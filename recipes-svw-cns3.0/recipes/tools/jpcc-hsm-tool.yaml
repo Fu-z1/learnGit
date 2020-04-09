@@ -1,0 +1,22 @@
+root: True
+
+depends:
+   -
+      name: toolchain::openjdk
+      use: [tools]
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_JPCC_GIT_SERVER}:cns3-security/HSMTool.git
+    branch: master
+
+buildTools: [openjdk]
+buildScript: |
+
+    ${BOB_TOOL_PATHS[openjdk]}/bin/javac -version
+    rsync -a $1/ .
+    make all JAVA_HOME=${BOB_TOOL_PATHS[openjdk]}     
+packageScript: |
+
+    cp $1/HSMTool.jar ./
+

@@ -1,0 +1,68 @@
+inherit: [autotools, patch, packing-module]
+
+metaEnvironment:
+   PKG_LICENSE: "LGPL-2.0-or-later"
+   PKG_VERSION: "2.56.1"
+   PKG_NAME: "glib"
+   PKG_PATCH_VERSION: "0001"
+   PKG_RESPONSIBLE: "System-System"
+   MAKE_JOBS: "1"
+
+depends:
+  - libs::ext-libffi-dev
+  - libs::ext-zlib-dev
+  - use: []
+    depends:
+      - libs::ext-libffi-target
+      - libs::ext-zlib-target
+
+checkoutSCM:
+   scm: url
+   url: ${DEFAULT_DOWNLOAD_SCM_URL}src/ext-glib/glib-${PKG_VERSION}.tar.xz
+   digestSHA1: "4db098c15b9d57c37bb504a6f58ebe717994e6f2"
+
+checkoutVars: [PKG_VERSION]
+checkoutDeterministic: true
+checkoutScript: |
+   cd glib-${PKG_VERSION}
+   patchApplySeries $<<ext-glib2/*.patch>>
+
+buildScript: |
+   export glib_cv_long_long_format=ll
+   export glib_cv_stack_grows=no
+   export glib_cv_uscore=no
+
+   rsync -a --delete $1/glib-${PKG_VERSION}/ ${PWD}
+   autoreconf -f -i
+   autotoolsBuild . \
+      --disable-libmount \
+      --without-pcre
+
+multiPackage:
+   dev:
+      packageVars: [LIBDIR]
+      packageTools: [buildenv]
+      packageScript: |
+         autotoolsPackageDev
+         tsd-buildenv-create-shim.sh -p usr -L ${LIBDIR} -l glib-2.0 -I 'include/glib-2.0/' -I "${LIBDIR}/glib-2.0/include" ext.glib2
+      provideDeps: ['*-dev']
+
+   target:
+      packageScript: |
+         autotoolsPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-glib2" \
+            -p "emmc.libs" \
+            -o "libs:ext-glib2 " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   tool:
+      packageScript: |
+         autotoolsPackageTarget
+
+      provideTools:
+         mkenums:
+            path: "usr/bin"

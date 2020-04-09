@@ -1,0 +1,62 @@
+metaEnvironment:
+   PKG_RESPONSIBLE: "Navigation-Vorintegration"
+
+environment:
+   PKG_VERSION: "EUR_1PR004_FCT3WS-18135_EU1_Pre_Installed"
+   PKG_HASH: "d338e23001e6019b3a0e838aa88ae5d75c0e88d3"
+
+
+   MAP_LOCATION: "maps"
+
+checkoutSCM:
+  - if: $(eq,${mapupdate:-0},0)
+    scm: url
+    url: ${DEFAULT_DOWNLOAD_SCM_URL}${MAP_LOCATION}/${PKG_VERSION}.zip
+    digestSHA1: ${PKG_HASH}
+    extract: no
+
+buildScript: |
+   rm -rf *
+   ln -sf $1/*zip
+packageVars: [PKG_VERSION]
+multiPackage:
+   pkg:
+      inherit: [packing-module]
+      packageScript: |
+         mkdir -p tmp/var/lib/nav/map
+         unzip $1/*.zip -d tmp/var/lib/nav/map
+         mv tmp/var/lib/nav/map/${PKG_VERSION}/* tmp/var/lib/nav/map
+         rm -r tmp/var/lib/nav/map/${PKG_VERSION}
+         echo ${PKG_VERSION} > tmp/var/lib/nav/map/map.version
+         buildSwupModule -n 'map' -p "emmc.maps" -o 'map::ext-here-map-eu1-livecache' -f tmp \
+            -m 'display,display,0775,/var/lib/nav/map/SDS$'   \
+            -m 'display,display,0775,/var/lib/nav/map/SDS/.*' \
+            -m 'display,display,0775,/var/lib/nav/map/[^/]+/SDS$'   \
+            -m 'display,display,0775,/var/lib/nav/map/[^/]+/SDS/.*' \
+            -m 'display,display,0771,/var/lib/nav$'           \
+            -m 'display,display,0771,/var/lib/nav/.*' --      \
+            --requiredBy '{"Packages":[{"PackageName":"prescripts.map-delete","Flags":"Selected"},{"PackageName":"prescripts.updatemanager-delete","Flags":"Selected"}]}' \
+            -U "Partition=rootfs_ro" \
+            -U "Optional=True"
+
+         rm -rf tmp
+
+   target:
+      packageScript: |
+         mkdir -p var/lib/nav/map
+         pushd var/lib/nav/map
+         echo ${PKG_VERSION} > map.version
+         unzip $1/*zip
+         mv ${PKG_VERSION}/* .
+         rm -r ${PKG_VERSION}
+
+   cloud:
+      packageScript: |
+         mkdir -p usr/bin/map
+         pushd usr/bin/map
+         unzip $1/*zip
+         mv ${PKG_VERSION}/* .
+         rm -r ${PKG_VERSION}
+
+provideVars:
+   TRAIN_PKG_VERSION: ${PKG_VERSION}

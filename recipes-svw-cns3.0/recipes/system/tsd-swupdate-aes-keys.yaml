@@ -1,0 +1,41 @@
+inherit: [buildenv, packing-module]
+
+depends:
+  - system::tsd-tee-cryptolib-swupdate-dev
+  - system::tsd-common-dev
+
+  - use: []
+    depends:
+      - system::tsd-tee-cryptolib-swupdate-target
+      - system::tsd-common-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-security/tsd.swupdate.aes.keys.git
+   dir: tsd.swupdate.aes.keys
+   tag: mqb_sop1_eu-1.2.1
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   developer-apps:
+      buildTools: [toolchain]
+      buildScript: |
+         buildenvBuildModules -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.swupdate.aes.keys.app.develop.write
+
+      packageScript: buildenvPackageTarget
+      provideDeps: ['*-target']
+
+   production-apps:
+      buildTools: [toolchain]
+      buildScript: |
+         buildenvBuildModules -DTSD_BUILDENV_ENABLE_APP_TARGETS=1 -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=1 \
+            tsd.swupdate.aes.keys.app.generic.write
+
+      packageScript: buildenvPackageTarget
+      provideDeps: ['*-target']

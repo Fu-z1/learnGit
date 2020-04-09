@@ -1,0 +1,58 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "MMI-HMI"
+   PKG_ARTEFACT_TYPE: "API"
+
+depends:
+  - communication::tsd-communication-dev
+  - system::tsd-common-dev
+  - system::tsd-common-daemon-dev
+  - use: []
+    depends:
+      - communication::tsd-communication-target
+      - system::tsd-common-target
+      - system::tsd-common-daemon-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.dsi.cpp.git
+   dir: tsd.dsi.cpp
+   branch: main/svw_cns3.0_1250_dev 
+
+buildScript: |
+   buildenvBuildModules \
+      -DCMAKE_INSTALL_PREFIX=/tsd \
+      -DTSD_BUILDENV_ENABLE_APP_TARGETS:BOOL=ON \
+      -DTSD_BUILDENV_INSTALLABLE_APP_TARGETS=on \
+      tsd.dsi.cpp \
+      tsd.dsi.cpp.app.mock
+
+multiPackage:
+   dev:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      packageScript: |
+         buildenvPackageDev
+      provideDeps:
+        - communication::tsd-communication-dev
+        - system::tsd-common-dev
+
+   target:
+      privateEnvironment:
+         CXXFLAGS: "${CXXFLAGS} -Werror -Wno-error=deprecated-declarations"
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "dsi-cpp" \
+            -p "emmc.hmi" \
+            -o "hmi:tsd-dsi-cpp " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ['*-target']
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

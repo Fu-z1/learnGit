@@ -1,0 +1,199 @@
+scmOverrides:
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-integration/tsd.buildenv.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd.buildenv.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.clock.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.clock.service.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.block.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.checksums.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.daemon.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.guid.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.ini.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-libs/tsd.common.stm.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.common.types.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-system/tsd.persistence.file.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-communication/tsd.communication.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.config.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.config.normal.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-libs/tsd.drivers.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.freertos.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd-mib3-root.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.minijournald.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.pwc.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.pwc.mib3.api.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/mib3-pwc-updater.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-hmi/tsd.rvc.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-libs/tsd.system.displaymanager.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-displaymanager/tsd.system.displaymanager.mib3.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd-system-mcp.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.system.test.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.tools.debug.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-system/tsd.tools.memdebug.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.watchdog.mib3.api.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-system/tsd.waitfor.git"
+      del: [commit, tag]
+      set:
+         branch: "develop_mqb_sop1_eu"
+   -
+      match:
+         url: "git@${DEFAULT_PCC_GIT_SERVER}:tip-communication/ext.commonapi.runtime.git"
+      del: [commit, tag]
+      set:
+         branch: "develop"

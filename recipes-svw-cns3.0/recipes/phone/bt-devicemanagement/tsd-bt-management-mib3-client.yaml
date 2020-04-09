@@ -1,0 +1,43 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Phone"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - phone::bt-devicemanagement::tsd-bt-management-mib3-api-dev
+
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - phone::bt-devicemanagement::tsd-bt-management-mib3-api-target
+
+checkoutSCM:
+   scm: git
+   url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.bt.management.mib3.client.git
+   dir: tsd.bt.management.mib3.client
+   branch: master_mqb_sop1_eu
+
+multiPackage:
+   dev:
+      buildScript: buildenvBuildAll
+      packageScript: buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      buildScript: buildenvBuildAll
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "bt-management-mib3-client" \
+            -p "emmc.phone.bt-devicemanagement" \
+            -o "phone.bt-devicemanagement:tsd-bt-management-mib3-client " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc

@@ -1,0 +1,301 @@
+inherit: [packing-device, packing-release]
+
+depends:
+   - keys::devkeys::devkeys-updatecontainer
+   - name: toolchain::aarch64-linux-gnu
+     use: [tools, environment]
+     forward: True
+
+   - customerupdate-meta-sds-asr-resources
+   - name: sds::asr::resources-integration-pkg
+     use: [deps]
+
+privateEnvironment:
+   SANDBOX: "$(is-sandbox-enabled)"
+
+buildVars:
+   - MU_VERSION
+   - TRAIN_NUMBER
+   - UPDATE_VARIANTS
+   - VARIANTS #important to save in the audit-trail
+   - SIGNATURE
+   - SANDBOX
+   - DEVELOPMENT_FLAGS
+   - CONFIG_FDS
+
+buildVarsWeak:
+   - MAJOR
+   - DELIVERY
+   - BUILDREF
+
+environment:
+   DEVELOPMENT_FLAGS: "true"
+   PACKAGE_VERSION: "${MAJOR}.${DELIVERY}.${BUILDREF}"
+   MODULE_VERSION:  "${MAJOR}.${DELIVERY}.${BUILDREF}"
+
+buildScript: |
+
+   rm -rf *
+   declare -A tocopy
+   for key in ${!BOB_DEP_PATHS[@]}; do
+      tocopy[$key]=${BOB_DEP_PATHS[$key]}
+   done
+   unset tocopy[zr3-cu-sds-asr-resources]
+   unset tocopy[packing::packing-scripts]
+   unset tocopy[keys::devkeys::devkeys-updatecontainer]
+
+   copy_and_check_modules() {
+      modules=""
+      for key in $@; do
+         if [ ${tocopy[$key]+isset} ]; then
+            modules="$modules --module ${tocopy[$key]}/_swupdata"
+            unset tocopy[$key]
+         else
+            echo "ERROR: while building device: $key not found in tocopy!"
+         fi
+      done
+   }
+
+
+   # create customerupdates device
+   customerupdateModules="customerupdate-meta-sds-asr-resources"
+
+   copy_and_check_modules $customerupdateModules
+
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+      --packageType="device" --packageName="customerupdates" \
+      --outputDir UpdateContainer \
+      --diagnosticAddress=0 \
+      --deviceType=MU \
+      $modules
+
+
+   # create emmc-device using all remaining modules
+   emmc_modules() {
+      for key in "${!tocopy[@]}"; do
+         echo "--submodule ${key%::*}=${tocopy[$key]}/_swupdata"
+      done | sort
+   }
+
+   modules=$(emmc_modules)
+   buildSwupDevice --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+      --packageType="device" --packageName="emmc" \
+      --outputDir UpdateContainer \
+      --diagnosticAddress=0 \
+      --deviceType=MU \
+      ${modules//::/.}
+
+   # set development flags for development software
+   _DEVFLAGS=""
+   if [ $DEVELOPMENT_FLAGS == true ]; then
+      _DEVFLAGS+=" --devFlag SkipCheckManifestChecksum=false"
+      _DEVFLAGS+=" --devFlag SkipCheckInstallerChecksum=false"
+      _DEVFLAGS+=" --devFlag SkipCheckVariant=false"
+   fi
+
+   buildSwupRelease --packageVersion "${MAJOR}.${DELIVERY}.${BUILDREF}" \
+    --packageType="main" --packageName=${TRAIN_NUMBER} \
+    --updateContainerDir UpdateContainer --release ${TRAIN_NUMBER} \
+    --muVersion ${MU_VERSION} --variant ${UPDATE_VARIANTS} \
+    --buildRef ${BUILDREF} \
+    --device emmc \
+    --device customerupdates \
+    --flag CustomerUpdate=true \
+    --flag RebootBeforeCU=true \
+    --supportedTrains '["*_?152*"]' \
+    --devKey ${BOB_DEP_PATHS['keys::devkeys::devkeys-updatecontainer']}/dev/MetainfoDevKey-MIB3/config_FDSProject_${CONFIG_FDS:0}_E/keys/FDSProject_${CONFIG_FDS:0}_E.p8 \
+    --sandboxEnabled ${SANDBOX} \
+    ${_DEVFLAGS}
+
+packageScript: |
+   rsync -a --delete $1/ .
+
+multiPackage:
+   mqb:
+      environment:
+         UPDATE_VARIANTS: "\
+            FM3-SM-NWBY4-EU-VW-MQB-PC,\
+            FM3-SM-NWBY4-EU-SK-MQB-PC,\
+            FM3-SM-NDWBY4-EU-VW-MQB-PC,\
+            FM3-SM-NDWBY4-EU-SK-MQB-PC,\
+            FM3-SM-NWBY4-RW-VW-MQB-PC,\
+            FM3-SM-NWBY4-RW-SK-MQB-PC,\
+            FM3-SM-NWBY4-R2-VW-MQB-PC,\
+            FM3-SM-NWBY4-R2-SK-MQB-PC,\
+            FM3-SM-NWBY4-KR-VW-MQB-PC,\
+            FM3-SM-NWBY4-KR-SK-MQB-PC,\
+            FM3-SM-NWBY4-JP-VW-MQB-PC,\
+            FM3-S-NDWBY4-EU-VW-MQB-PC,\
+            FM3-S-NDWBY4-EU-SK-MQB-PC,\
+            FM3-S-NWBY4-RW-SK-MQB-PC,\
+            FM3-S-NWBY4-RW-VW-MQB-PC,\
+            FM3-S-NWBY4-R2-SK-MQB-PC,\
+            FM3-S-NWBY4-R2-VW-MQB-PC,\
+            FM3-S-NWBY4-KR-VW-MQB-PC,\
+            FM3-S-NWBY4-KR-SK-MQB-PC,\
+            FM3-S-NWBY4-JP-VW-MQB-PC,\
+            FM3-SM-NWBY4-W3-SK-MQB-PC,\
+            FM3-S-NWBY4-W3-SK-MQB-PC,\
+            FM3-SM-NDWBY4-EE-VW-MQB-PC,\
+            FM3-SM-NDWBY4-EE-SK-MQB-PC,\
+            FM3-S-NDWBY4-EE-VW-MQB-PC,\
+            FM3-S-NDWBY4-EE-SK-MQB-PC"
+      multiPackage:
+         "":
+            environment:
+               MU_VERSION: "X${MAJOR}"
+               TRAIN_NUMBER: "MOI3_PCC_MQB_CU_SDS_ASR_RESOURCES_E${MAJOR}${DELIVERY}P"
+               VARIANTS: "\
+                  101001,\
+                  101002,\
+                  101004,\
+                  101005,\
+                  101007,\
+                  101008,\
+                  101010,\
+                  101011,\
+                  101016,\
+                  101017,\
+                  101018,\
+                  101033,\
+                  101034,\
+                  101035,\
+                  101036,\
+                  101037,\
+                  101038,\
+                  101042,\
+                  101043,\
+                  101044,\
+                  101048,\
+                  101049,\
+                  101050,\
+                  101051,\
+                  101052,\
+                  101053"
+         sec:
+            environment:
+               MU_VERSION: "0${MAJOR}"
+               TRAIN_NUMBER: "MOI3_PCC_MQB_CU_SDS_ASR_RESOURCES_R${MAJOR}${DELIVERY}P"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+               VARIANTS: "\
+                  111001,\
+                  111002,\
+                  111004,\
+                  111005,\
+                  111007,\
+                  111008,\
+                  111010,\
+                  111011,\
+                  111016,\
+                  111017,\
+                  111018,\
+                  111033,\
+                  111034,\
+                  111035,\
+                  111036,\
+                  111037,\
+                  111038,\
+                  111042,\
+                  111043,\
+                  111044,\
+                  111048,\
+                  111049,\
+                  111050,\
+                  111051,\
+                  111052,\
+                  111053"
+   37w:
+      environment:
+         UPDATE_VARIANTS: "\
+            FM3-SM-NWBY4-EU-VW-MQ2-PC,\
+            FM3-SM-NWBY4-EU-SK-MQ2-PC,\
+            FM3-SM-NDWBY4-EU-VW-MQ2-PC,\
+            FM3-SM-NDWBY4-EU-SK-MQ2-PC,\
+            FM3-SM-NWBY4-RW-VW-MQ2-PC,\
+            FM3-SM-NWBY4-RW-SK-MQ2-PC,\
+            FM3-SM-NWBY4-W2-VW-MQ2-PC,\
+            FM3-SM-NWBY4-W2-SK-MQ2-PC,\
+            FM3-SM-NWBY4-KR-VW-MQ2-PC,\
+            FM3-SM-NWBY4-KR-SK-MQ2-PC,\
+            FM3-SM-NWBY4-JP-VW-MQ2-PC,\
+            FM3-S-NDWBY4-EU-VW-MQ2-PC,\
+            FM3-S-NDWBY4-EU-SK-MQ2-PC,\
+            FM3-S-NWBY4-RW-SK-MQ2-PC,\
+            FM3-S-NWBY4-RW-VW-MQ2-PC,\
+            FM3-S-NWBY4-W2-SK-MQ2-PC,\
+            FM3-S-NWBY4-W2-VW-MQ2-PC,\
+            FM3-S-NWBY4-KR-VW-MQ2-PC,\
+            FM3-S-NWBY4-KR-SK-MQ2-PC,\
+            FM3-S-NWBY4-JP-VW-MQ2-PC,\
+            FM3-SM-NWBY4-W3-SK-MQ2-PC,\
+            FM3-S-NWBY4-W3-SK-MQ2-PC,\
+            FM3-SM-NDWBY4-EE-VW-MQ2-PC,\
+            FM3-SM-NDWBY4-EE-SK-MQ2-PC,\
+            FM3-S-NDWBY4-EE-VW-MQ2-PC,\
+            FM3-S-NDWBY4-EE-SK-MQ2-PC"
+      multiPackage:
+         "":
+            environment:
+               MU_VERSION: "X${MAJOR}"
+               TRAIN_NUMBER: "MOI3_PCC_37W_CU_SDS_ASR_RESOURCES_E${MAJOR}${DELIVERY}P"
+               VARIANTS: "\
+                  201001,\
+                  201002,\
+                  201004,\
+                  201005,\
+                  201007,\
+                  201008,\
+                  201010,\
+                  201011,\
+                  201017,\
+                  201018,\
+                  201019,\
+                  201026,\
+                  201027,\
+                  201028,\
+                  201029,\
+                  201030,\
+                  201031,\
+                  201036,\
+                  201037,\
+                  201038,\
+                  201048,\
+                  201049,\
+                  201050,\
+                  201051,\
+                  201052,\
+                  201053"
+         sec:
+            environment:
+               MU_VERSION: "0${MAJOR}"
+               TRAIN_NUMBER: "MOI3_PCC_37W_CU_SDS_ASR_RESOURCES_R${MAJOR}${DELIVERY}P"
+               SIGNATURE: "false"
+               DEVELOPMENT_FLAGS: "false"
+               VARIANTS: "\
+                  211001,\
+                  211002,\
+                  211004,\
+                  211005,\
+                  211007,\
+                  211008,\
+                  211010,\
+                  211011,\
+                  211017,\
+                  211018,\
+                  211019,\
+                  211026,\
+                  211027,\
+                  211028,\
+                  211029,\
+                  211030,\
+                  211031,\
+                  211036,\
+                  211037,\
+                  211038,\
+                  211048,\
+                  211049,\
+                  211050,\
+                  211051,\
+                  211052,\
+                  211053"

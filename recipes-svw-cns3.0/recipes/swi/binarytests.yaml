@@ -1,0 +1,234 @@
+environment:
+   PCC_SWI_BTF_COMMON_VERSION: "0.12.0"
+   PCC_SWI_BTF_COMMON_API_VERSION: "1.3.0"
+
+   PCC_SWI_BTF_COMMON_DSI_VERSION: "3.4.0"
+   PCC_SWI_BTF_COMMON_RSI_VERSION: "1.1.0"
+   PCC_SWI_BTF_COMMON_COMMONAPI_VERSION: "0.0.0"
+
+multiPackage:
+   "":
+      depends:
+         -
+            name: communication::tsd-communication-apps
+            if: "$(match,${BINARYTESTS_TEST:-false},'.*-host')"
+#####################################################################
+# 1) Start of definitions of binarytestsuites (build for host)
+#####################################################################
+         -
+            name: swi::pcc-swi-testapp-binarytests
+            if: "$(match,${BINARYTESTS_TEST:-false},'swi::pcc-swi-testapp-.*')"
+         -
+            name: swi::pcc-swi-testapp-dev
+            if: "$(eq,${BINARYTESTS_TEST:-false},swi::pcc-swi-testapp-host)"
+
+         -
+            name: media::mediaapplication::tsd-media-mib3-binarytests
+            if: "$(match,${BINARYTESTS_TEST:-false},'media::mediaapplication::tsd-media-mib3-.*')"
+
+         -
+            name: radio::tsd-radio-binarytests
+            if: "$(match,${BINARYTESTS_TEST:-false},'radio::tsd-radio-.*')"
+
+         -
+            name: phone::phonemanager::tsd-phonemanager-binarytests
+            if: "$(match,${BINARYTESTS_TEST:-false},'phone::phonemanager::tsd-phonemanager-.*')"
+         -
+            name: phone::phonemanager::tsd-phonemanager-dev
+            if: "$(match,${BINARYTESTS_TEST:-false},'phone::phonemanager::tsd-phonemanager-host')"
+
+         -
+            name: navigation::tsd-nav-rsi-viwi-binarytests
+            if: "$(match,${BINARYTESTS_TEST:-false},'navigation::tsd-nav-rsi-viwi-host')"
+#####################################################################
+# End of definitions of binarytestsuites (build for host)
+#####################################################################
+
+         # switch of toolchain to build applications for target
+         -
+            name: toolchain::aarch64-linux-gnu
+            use: [tools, environment]
+            forward: True
+
+#####################################################################
+# 1.1) Start of definitions of applications to test (build for target)
+#####################################################################
+         -
+            name: swi::pcc-swi-testapp-target
+            if: "$(eq,${BINARYTESTS_TEST:-false},swi::pcc-swi-testapp-target)"
+
+#####################################################################
+# End of definitions of applications to test (build for target)
+#####################################################################
+
+      multiPackage:
+
+###################################################################
+# 2) Start of definitions of multiPackage step
+###################################################################
+         swi__pcc-swi-testapp-host:
+            environment:
+               BINARYTESTS_TEST: swi::pcc-swi-testapp-host
+         swi__pcc-swi-testapp-target:
+            environment:
+               BINARYTESTS_TEST: swi::pcc-swi-testapp-target
+
+         media__mediaapplication__tsd-media-mib3-target:
+            environment:
+               BINARYTESTS_TEST: media::mediaapplication::tsd-media-mib3-target
+
+         radio__tsd-radio-target:
+            environment:
+               BINARYTESTS_TEST: radio::tsd-radio-target
+
+         phone__phonemanager__tsd-phonemanager-host:
+            environment:
+               BINARYTESTS_TEST: phone::phonemanager::tsd-phonemanager-host
+
+         phone__phonemanager__tsd-phonemanager-host:
+            environment:
+               BINARYTESTS_TEST: phone::phonemanager::tsd-phonemanager-host
+
+         navigation__tsd-nav-rsi-viwi-host:
+            environment:
+               BINARYTESTS_TEST: navigation::tsd-nav-rsi-viwi-host
+###################################################################
+# End Definition of multiPackage step
+###################################################################
+
+      buildVars: [ BINARYTESTS_TEST ]
+      buildScript: |
+         rm -rf *
+
+         # check if we test on host or target
+         APPLICATION_RUNS_ON=${BINARYTESTS_TEST##*-}
+
+         # only the libs in whitelist are copied for testrun
+         host_white_list_libs="\
+            usr/lib64/libh2o.so.* \
+            usr/lib64/libjansson.so.* \
+            usr/lib64/libsystemd.so.* \
+            usr/lib64/libwslay.so.* \
+            usr/lib64/libuv.so.* \
+            usr/lib64/libssl.so.* \
+            usr/lib64/libcrypto.so.* \
+            \
+            usr/lib64/libtsd.common.so \
+            usr/lib64/libtsd.dataformats.so \
+            usr/lib64/libtsd.rsi.*.so \
+            usr/lib64/libtsd.vw.rsi.viwi.*.so \
+            \
+            usr/lib64/libpcc.swi.btf.+so \
+            usr/lib64/libtsd.communication.messaging.so \
+            \
+            usr/lib64/libtsd.+proxy.so \
+         "
+         # files in black list are not copied to target
+         target_black_list="\
+            usr/bin/h2o \
+         "
+
+         # get all deps needed for testrun
+         for dep in $( echo ${!BOB_ALL_PATHS[@]} | tr ' ' '\n' | sort ) ; do
+            echo "=== $dep ==="
+
+            if [ -f "${BOB_ALL_PATHS[$dep]}/startArguments.txt" ]; then
+               echo "Copy startArguments.txt from $dep"
+               mkdir -p files_host
+               rsync ${BOB_ALL_PATHS[$dep]}/startArguments.txt files_host/
+            fi
+
+            [ ! -d "${BOB_ALL_PATHS[$dep]}/usr" ] && continue
+            # only take files below usr
+            for binary in $(find ${BOB_ALL_PATHS[$dep]}/usr -type f -executable -o -name "*.so" -o -name "*.so.*" | sed '/\/.debug\//d'); do
+               # are the files for target or host?
+               prefix=files_host; [ "$(readelf -h $binary 2>/dev/null | sed -n '/ *Machine:/s/.*: *//p')" == "AArch64" ] && prefix=files_target
+
+               binary_rel_name=${binary##*/workspace/}
+               if [ "files_host" == "$prefix" ]; then
+                  # for host files only copy testsuites and libs in whitelist
+                  if [[ "$binary_rel_name" == "usr/bin"* ]]; then
+                     [[ "$binary_rel_name" != *".test."* ]] && {
+                        echo "Skip copy of $binary_rel_name because it is no test binary for host!"
+                        continue
+                     }
+                  else
+                     found=0
+                     for entry in $host_white_list_libs; do
+                        [ $( echo "$binary_rel_name" | grep -cP "^${entry}$" ) -eq 1 ] && found=1
+                     done
+                     [ $found -eq 0 ] && {
+                        echo "Skip copy of $binary_rel_name because not in host libs whitelist!"
+                        continue
+                     }
+                  fi
+               else
+                  if [ "target" == "$APPLICATION_RUNS_ON" ]; then
+                     # for target files copy all except the files in blacklist
+                     found=0
+                     for entry in $target_black_list; do
+                        [ $( echo "$binary_rel_name" | grep -cP "^${entry}$" ) -eq 1 ] && found=1
+                     done
+                     [ $found -eq 1 ] && {
+                        echo "Skip copy of $binary_rel_name because in target blacklist!"
+                        continue
+                     }
+                  else
+                     echo "ERROR: No target file should be copied for test on host!"
+                     exit 1
+                  fi
+               fi
+               echo "Copy $binary_rel_name to $prefix"
+               mkdir -p $prefix/$(dirname $binary | sed 's|.*workspace/||')
+               rsync -l $binary $prefix/$(dirname $binary | sed 's|.*workspace/||')/
+            done
+         done
+
+         # copy scripts for binarytest run
+         rsync -r ${BOB_ALL_PATHS[swi::pcc-swi-btf-common-dev]}/scripts/host/* files_host/
+         find files_host/ -type f -exec chmod +x {} \;
+         if [ "target" == "$APPLICATION_RUNS_ON" ]; then
+            rsync -r ${BOB_ALL_PATHS[swi::pcc-swi-btf-common-dev]}/scripts/target/* files_target/
+            [ -d "files_target/usr/bin" ] && find files_target/usr/bin/ -type f -exec chmod +x {} \;
+         fi
+
+      packageScript: |
+         cp -a $1/* .
+
+   doc:
+      depends:
+         - swi::pcc-swi-testapp-doc
+         - swi::pcc-swi-btf-common-doc
+         - swi::pcc-swi-btf-common-api-doc
+         - swi::pcc-swi-btf-common-rsi-doc
+         - swi::pcc-swi-btf-common-dsi-doc
+         - swi::pcc-swi-btf-common-commonapi-doc
+
+      buildScript: |
+         rm -rf *
+         for dep in "${!BOB_ALL_PATHS[@]}" ; do
+            [ "${dep:0:5}" != "swi::" ] && continue
+            [ "${dep: -4}" != "-doc" ] && continue
+            mkdir -p "${dep}"
+            # find the index file and copy all context without the long bob path
+            index_file="$( find "${BOB_ALL_PATHS[$dep]}" -type f -name "index.html" )"
+            cp -a "$( dirname "$index_file" )"/* "${dep}"/
+         done
+
+      packageScript: |
+         cp -a $1/* .
+
+   unittests:
+      depends:
+         - swi::pcc-swi-btf-common-rsi-unittests
+         - swi::pcc-swi-btf-common-dsi-unittests
+
+      buildScript: |
+         rm -rf *
+         for dep in "${!BOB_ALL_PATHS[@]}" ; do
+            mkdir -p "${dep}"
+            cp -a "${BOB_ALL_PATHS[$dep]}"/* "${dep}"/
+         done
+
+      packageScript: |
+         cp -a $1/* .

@@ -1,0 +1,48 @@
+inherit: [buildenv, packing-module]
+
+metaEnvironment:
+   ISSW_VERSION: "2019cw25.4"
+   PKG_LICENSE: "proprietary"
+   PKG_VERSION: "0.13.B300"
+   PKG_NAME: "ViWi CarSSW"
+   PKG_PATCH_VERSION: "0.13.B300"
+   PKG_RESPONSIBLE: "System-Vernetzung"
+   PKG_ARTEFACT_TYPE: "Library"
+
+privateEnvironment:
+   CXXFLAGS: "${CXXFLAGS} -fvisibility=hidden"
+
+depends:
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-vehicleapplications/ext.vw.carssw.git
+    dir: ext.vw.carssw
+    branch: main/svw_cns3.0_1520_dev
+    #tag: vSOP1_V0.13.0560
+    #branch: master_mqb_sop1_eu
+
+buildScript: |
+   buildenvBuildAll
+
+multiPackage:
+   dev:
+      packageScript: |
+         buildenvPackageDev
+      provideDeps: ["*-dev"]
+
+   target:
+      packageScript: |
+         buildenvPackageTarget
+         d=$(mktemp -d)
+         rsync -a --delete --exclude ".debug" ./ $d
+         buildSwupModule -n "ext-vw-carssw" \
+            -p "emmc.basic-svcs.cfm" \
+            -o "basic-services.car-function-management:ext-vw-carssw " -f $d -- \
+            -U "Partition=rootfs_ro"
+         rm -rf $d
+      provideDeps: ["*-target"]

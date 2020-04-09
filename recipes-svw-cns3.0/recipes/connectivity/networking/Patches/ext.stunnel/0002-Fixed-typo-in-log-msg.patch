@@ -1,0 +1,25 @@
+From f23f0057b2d6b7fc4ef020c7aace4db521309ca5 Mon Sep 17 00:00:00 2001
+From: Karsten Heinze <karsten.heinze@preh.de>
+Date: Mon, 5 Feb 2018 11:01:55 +0100
+Subject: [PATCH 2/4] Fixed typo in log msg.
+
+---
+ src/ctx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/ctx.c b/src/ctx.c
+index fc1befb..a23b097 100644
+--- a/src/ctx.c
++++ b/src/ctx.c
+@@ -563,7 +563,7 @@ NOEXPORT unsigned psk_client_callback(SSL *ssl, const char *hint,
+     identity_len=strlen(c->opt->psk_selected->identity)+1;
+     if(identity_len>max_identity_len) {
+         s_log(LOG_ERR, "PSK identity too long (%lu>%d bytes)",
+-            (long unsigned)identity_len, max_psk_len);
++            (long unsigned)identity_len, max_identity_len);
+         return 0;
+     }
+     if(c->opt->psk_selected->key_len>max_psk_len) {
+-- 
+2.11.0
+

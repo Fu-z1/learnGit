@@ -1,0 +1,157 @@
+environment:
+   TOOLCHAIN_NAME: "mingw-w32-bin_x86_64-linux_20131227"
+   TOOLCHAIN_HASH: "7d9fcddd1a3abbbbf6da6625668020916e263db8"
+   URL:            "${DEFAULT_DOWNLOAD_SCM_URL}src/toolchain/mingw/"
+   ROOTFS:         "i686-w64-mingw32"
+
+shared: True
+
+checkoutVars: [TOOLCHAIN_NAME, TOOLCHAIN_HASH]
+checkoutSCM:
+   scm: url
+   url: ${URL}${TOOLCHAIN_NAME}.tar.bz2
+   digestSHA1: ${TOOLCHAIN_HASH}
+   extract: no
+
+buildScript: |
+   ln -sf $1/${TOOLCHAIN_NAME}.tar.bz2 .
+
+packageVars: [ROOTFS]
+packageScript: |
+   if [ ! -e .extracted ] ; then
+      mkdir -p ${TOOLCHAIN_NAME}
+      tar xjf $1/${TOOLCHAIN_NAME}.tar.bz2 -C ${TOOLCHAIN_NAME} .
+
+      # done
+      touch .extracted
+   fi
+
+   # add sysroot for compiler and linker
+   mkdir -p bin
+   for i in gcc g++ ld cpp; do
+      cat > bin/i686-w64-mingw32-$i <<EOF
+   #!/bin/sh
+   \${0%/*}/../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-$i --sysroot=\${0%/*}/../$TOOLCHAIN_NAME/$ROOTFS "\$@"
+   EOF
+      chmod a+x bin/i686-w64-mingw32-$i
+   done
+
+   # just symlink the rest
+   pushd bin
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-ar
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-as
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-gcc-ar
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-gcc-nm
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-gcc-ranlib
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-gdb
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-nm
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-objcopy
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-objdump
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-ranlib
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-readelf
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-size
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-strings
+   ln -sf ../$TOOLCHAIN_NAME/bin/i686-w64-mingw32-strip
+   popd
+
+   # create toolchain file
+   cat > i686-w64-mingw32.toolchain <<EOF
+   # tell cmake the name of our target system
+   set (CMAKE_SYSTEM_NAME "Windows")
+
+   # set compiler
+   SET(CMAKE_C_COMPILER   "i686-w64-mingw32-gcc")
+   SET(CMAKE_CXX_COMPILER "i686-w64-mingw32-g++")
+
+   # set root path
+   SET(CMAKE_SYSROOT "\${CMAKE_CURRENT_LIST_DIR}/${TOOLCHAIN_NAME}/${ROOTFS}")
+
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY CACHE INTERNAL "")
+   EOF
+
+   cat > i686-w64-mingw32-klocwork.toolchain <<EOF
+   # kw wrapper toolchain
+   IF( NOT KLOCWORK_BIN_PATH )
+   SET( KLOCWORK_BIN_PATH "/opt/install/klocwork/bin" )
+   ENDIF()
+
+   IF( NOT WORKSPACE )
+   SET(WORKSPACE "\$ENV{WORKSPACE}")
+   ENDIF()
+
+   FIND_PROGRAM(
+   KWWRAP_PATH
+   kwwrap
+   PATHS "\${KLOCWORK_BIN_PATH}"
+   )
+
+   SET(KLOCWORK_LOGFILE "\${WORKSPACE}/klocwork-buildtrace.log")
+   IF(EXISTS \${KLOCWORK_LOGFILE})
+   FILE(REMOVE \${KLOCWORK_LOGFILE})
+   ENDIF()
+
+   SET(CMAKE_C_COMPILER   "i686-w64-mingw32-gcc")
+   SET(CMAKE_CXX_COMPILER "i686-w64-mingw32-g++")
+   SET(CMAKE_SYSTEM_NAME "Windows")
+
+   # override defaults for build profiles
+   SET(CMAKE_C_FLAGS_MINSIZEREL "-g -Os" CACHE STRING "C MinSizeRel Flags")
+   SET(CMAKE_C_FLAGS_RELWITHDEBINFO "-g -O2" CACHE STRING "C RelWithDebInfo Flags")
+   SET(CMAKE_CXX_FLAGS_MINSIZEREL "-g -Os" CACHE STRING "C++ MinSizeRel Flags")
+   SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2" CACHE STRING "C++ RelWithDebInfo Flags")
+
+   # set root path
+   SET(CMAKE_SYSROOT "\${CMAKE_CURRENT_LIST_DIR}/${TOOLCHAIN_NAME}/${ROOTFS}")
+
+   SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY CACHE INTERNAL "")
+   SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY CACHE INTERNAL "")
+
+   SET(GCC_KW_WRAPPER_PATH "\${WORKSPACE}/gcc-kw-wrapper.sh")
+   SET(GXX_KW_WRAPPER_PATH "\${WORKSPACE}/gxx-kw-wrapper.sh")
+   FILE(WRITE "\${GCC_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_C_COMPILER} \"\$@\"")
+   FILE(WRITE "\${GXX_KW_WRAPPER_PATH}" "#!/bin/bash\n\n\${KWWRAP_PATH} -o \${KLOCWORK_LOGFILE} \${CMAKE_CXX_COMPILER} \"\$@\"")
+   execute_process(COMMAND chmod 754 "\${GCC_KW_WRAPPER_PATH}")
+   execute_process(COMMAND chmod 754 "\${GXX_KW_WRAPPER_PATH}")
+
+   SET(CMAKE_C_COMPILER "\${GCC_KW_WRAPPER_PATH}")
+   SET(CMAKE_CXX_COMPILER "\${GXX_KW_WRAPPER_PATH}")
+   EOF
+
+provideVars:
+   # architecture
+   ARCH: arm64
+   AUTOCONF_HOST:   "i686-w64-mingw32"
+   AUTOCONF_TARGET: "i686-w64-mingw32"
+   CROSS_COMPILE:   "i686-w64-mingw32-"
+   TARGET_TYPE:     "host"
+
+   # compiler settings
+   CMAKE_TARGET_FILE: "win32_mingw.cmake"
+   CMAKE_TOOLCHAIN_FILE: $(if-then-else,$(eq,${CONFIG_KLOCWORK:-0},1),"../i686-w64-mingw32-klocwork.toolchain","../i686-w64-mingw32.toolchain")
+   CFLAGS: "-O2 -g -pipe"
+   CXXFLAGS: "-O2 -g1 -pipe -std=c++11 -D__STDC_FORMAT_MACROS -D__USE_MINGW_ANSI_STDIO"
+   LDFLAGS: "-Wl,-O1"
+   LIBDIR: lib
+   SYSROOT: "../${TOOLCHAIN_NAME}/${ROOTFS}"
+
+   # tools
+   AR:     "i686-w64-mingw32-gcc-ar"
+   AS:     "i686-w64-mingw32-as"
+   CC:     "i686-w64-mingw32-gcc"
+   CPP:    "i686-w64-mingw32-cpp"
+   CXX:    "i686-w64-mingw32-g++"
+   GDB:    "i686-w64-mingw32-gdb"
+   LD:     "i686-w64-mingw32-ld"
+   NM:     "i686-w64-mingw32-gcc-nm"
+   OBJCPY: "i686-w64-mingw32-objcopy"
+   OBJDMP: "i686-w64-mingw32-objdump"
+   RANLIB: "i686-w64-mingw32-gcc-ranlib"
+   STRIP:  "i686-w64-mingw32-strip"
+
+provideTools:
+   toolchain:
+      path: "bin"
+

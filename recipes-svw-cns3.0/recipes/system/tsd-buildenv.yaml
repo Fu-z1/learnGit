@@ -1,0 +1,26 @@
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-integration/tsd.buildenv.git
+    dir: tsd.buildenv
+    tag: mqb_sop1_eu-3.2.0
+    branch: master_mqb_sop1_eu
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:mib3-integration/tsd.buildenv.mib3.git
+    dir: tsd.buildenv.mib3
+    tag: 2.8.0
+    branch: master_mqb_sop1_eu
+
+buildScript: |
+   rsync -a --delete --exclude='.git' $1/ .
+
+multiPackage:
+   ? ""
+   :  packageScript: |
+         # not excluding bin because some scripts are needed (e.g. for unittests)
+         rsync -a --delete --exclude='.git' $1/ .
+   tool:
+      packageScript: |
+         rsync -am --delete --include='*/' --include='bin**' --exclude='*' $1/ .
+      provideTools:
+         buildenv:
+            path: "tsd.buildenv/bin"

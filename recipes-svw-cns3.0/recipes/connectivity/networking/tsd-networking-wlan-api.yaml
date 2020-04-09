@@ -1,0 +1,65 @@
+inherit: [buildenv, packing-module, capigen, werror]
+
+metaEnvironment:
+   PKG_RESPONSIBLE: "Connect-Connection"
+
+depends:
+  - communication::ext-commonapi-runtime-dev
+  - communication::tsd-communication-binding-dev
+  - system::tsd-common-dev
+  - use: []
+    depends:
+      - communication::ext-commonapi-runtime-target
+      - system::tsd-common-target
+
+checkoutSCM:
+  - scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-internet/tsd.networking.wlan.api.git
+    dir: tsd.networking.wlan.api
+    branch: main/svw_cns3.0_1480_dev
+  - if: "${CONFIG_CAPI_MOCKS:-0}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-internet/tsd.networking.wlan.client.git
+    dir: tsd.networking.wlan.client
+    branch: master_mqb_sop1_eu
+  - if: "${CONFIG_CAPI_MOCKS:-0}"
+    scm: git
+    url: git@${DEFAULT_PCC_GIT_SERVER}:tip-internet/tsd.networking.wlan.service.git
+    dir: tsd.networking.wlan.service
+    branch: master_mqb_sop1_eu
+
+checkoutScript: CapiGenProcessFIDLFiles tsd.networking.wlan.api
+checkoutDeterministic: True
+
+buildVars: [AUTOCONF_HOST]
+
+multiPackage:
+   ? ""
+   :  buildScript: buildenvBuildAll
+      multiPackage:
+         dev:
+            packageScript: buildenvPackageDev
+            provideDeps: ["*-dev"]
+
+         target:
+            packageScript: |
+               buildenvPackageTarget
+               d=$(mktemp -d)
+               rsync -a --delete --exclude ".debug" ./ $d
+               buildSwupModule -n "networking-wlan-api" \
+                  -p "emmc.connectivity.networking" \
+                  -o "connectivity.networking:tsd-networking-wlan-api " -f $d -- \
+                  -U "Partition=rootfs_ro"
+               rm -rf $d
+            provideDeps: ["*-target"]
+
+   doc:
+      buildTools: [doxygen, dot]
+      buildScript: buildenvBuildDocAll
+      packageScript: buildenvPackageDoc
+
+   unittests:
+      environment:
+         TSD_BUILDENV_ENABLE_TEST_TARGETS: "1"
+      buildScript: buildenvTestAll
+      packageScript: buildenvPackageTests

@@ -1,0 +1,8 @@
+scmOverrides:
+-
+     match:
+        url: "git@${DEFAULT_PCC_GIT_SERVER}:mib3-ceconnect/tsd.usb.api.git"
+     del: [commit, tag]
+     set:
+        branch: "feature/jrcCardReader"
+        commit: "7da4513b0026adeef8fad839a9889f8d1291e198"
