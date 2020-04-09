@@ -10,3 +10,5 @@ has a mutable index called stage.
 Git tracks changes
 
 add dev
+
+This is a bug, I have fix it!
