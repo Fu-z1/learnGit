@@ -1,4 +1,6 @@
 
+I am test charry-pick and deal a bug with git!
+
 I have figure it out why cant foeord!
 Now I have create feature2 branch!
 
